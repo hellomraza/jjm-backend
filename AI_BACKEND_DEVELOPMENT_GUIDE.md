@@ -704,7 +704,7 @@ yarn add @nestjs/throttler helmet
 
 ---
 
-# TASK 2 — Database Configuration
+# TASK 2 — Database Configuration [x]
 
 | Setting | Value                     |
 | ------- | ------------------------- |
@@ -713,11 +713,11 @@ yarn add @nestjs/throttler helmet
 
 ### Subtasks:
 
-- [ ] Create `config/database.config.ts` with TypeORM options
-- [ ] Configure MySQL connection using environment variables
-- [ ] Enable entity auto-loading via glob pattern
-- [ ] Setup migration directory (`src/database/migrations`)
-- [ ] **Note:** Migration scripts are already configured in `package.json` (do not modify)
+- [x] Create `config/database.config.ts` with TypeORM options
+- [x] Configure MySQL connection using environment variables
+- [x] Enable entity auto-loading via glob pattern
+- [x] Setup migration directory (`src/database/migrations`)
+- [x] **Note:** Migration scripts are already configured in `package.json` (do not modify)
 
 ### Environment Variables Required:
 
