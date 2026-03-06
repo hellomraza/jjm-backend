@@ -1,10 +1,14 @@
-import { Injectable, NotFoundException, ConflictException, BadRequestException } from '@nestjs/common';
+import {
+  ConflictException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
 import * as bcrypt from 'bcryptjs';
-import { User } from './entities/user.entity';
+import { Repository } from 'typeorm';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
+import { User } from './entities/user.entity';
 
 @Injectable()
 export class UsersService {
@@ -17,7 +21,9 @@ export class UsersService {
     const { email, password, name, role, district_id } = createUserDto;
 
     // Check if user already exists
-    const existingUser = await this.userRepository.findOne({ where: { email } });
+    const existingUser = await this.userRepository.findOne({
+      where: { email },
+    });
     if (existingUser) {
       throw new ConflictException(`User with email ${email} already exists`);
     }
@@ -41,7 +47,10 @@ export class UsersService {
     return userWithoutPassword;
   }
 
-  async findAll(page: number = 1, limit: number = 20): Promise<{
+  async findAll(
+    page: number = 1,
+    limit: number = 20,
+  ): Promise<{
     data: Omit<User, 'password'>[];
     total: number;
     page: number;
@@ -79,7 +88,10 @@ export class UsersService {
     return this.userRepository.findOne({ where: { email } });
   }
 
-  async update(id: number, updateUserDto: UpdateUserDto): Promise<Omit<User, 'password'>> {
+  async update(
+    id: number,
+    updateUserDto: UpdateUserDto,
+  ): Promise<Omit<User, 'password'>> {
     const user = await this.userRepository.findOne({ where: { id } });
     if (!user) {
       throw new NotFoundException(`User #${id} not found`);
@@ -96,7 +108,9 @@ export class UsersService {
         where: { email: updateUserDto.email },
       });
       if (existingUser) {
-        throw new ConflictException(`User with email ${updateUserDto.email} already exists`);
+        throw new ConflictException(
+          `User with email ${updateUserDto.email} already exists`,
+        );
       }
     }
 
@@ -116,7 +130,10 @@ export class UsersService {
     await this.userRepository.remove(user);
   }
 
-  async comparePasswords(plainPassword: string, hashedPassword: string): Promise<boolean> {
+  async comparePasswords(
+    plainPassword: string,
+    hashedPassword: string,
+  ): Promise<boolean> {
     return bcrypt.compare(plainPassword, hashedPassword);
   }
 }

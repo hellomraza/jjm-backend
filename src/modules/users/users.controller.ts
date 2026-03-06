@@ -1,18 +1,17 @@
 import {
-  Controller,
-  Get,
-  Post,
-  Patch,
-  Delete,
   Body,
+  Controller,
+  Delete,
+  Get,
   Param,
   ParseIntPipe,
-  UseGuards,
+  Patch,
+  Post,
   Query,
 } from '@nestjs/common';
-import { UsersService } from './users.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
+import { UsersService } from './users.service';
 
 @Controller('users')
 export class UsersController {
@@ -24,10 +23,7 @@ export class UsersController {
   }
 
   @Get()
-  findAll(
-    @Query('page') page: number = 1,
-    @Query('limit') limit: number = 20,
-  ) {
+  findAll(@Query('page') page: number = 1, @Query('limit') limit: number = 20) {
     return this.usersService.findAll(page, limit);
   }
 
