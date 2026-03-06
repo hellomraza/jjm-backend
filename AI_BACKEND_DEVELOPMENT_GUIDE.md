@@ -746,7 +746,7 @@ yarn typeorm migration:revert -d src/config/database.config.ts
 
 ---
 
-# TASK 3 — Users Module
+# TASK 3 — Users Module [x]
 
 | Setting | Value                  |
 | ------- | ---------------------- |
@@ -755,12 +755,12 @@ yarn typeorm migration:revert -d src/config/database.config.ts
 
 ### Subtasks:
 
-- [ ] Create `User` entity with TypeORM decorators
-- [ ] Create `CreateUserDto` and `UpdateUserDto` with validation
-- [ ] Create `UsersService` with CRUD operations
-- [ ] Create `UsersController` with protected routes
-- [ ] Implement **password hashing** on create/update
-- [ ] **Exclude password** from all responses
+- [x] Create `User` entity with TypeORM decorators
+- [x] Create `CreateUserDto` and `UpdateUserDto` with validation
+- [x] Create `UsersService` with CRUD operations
+- [x] Create `UsersController` with protected routes
+- [x] Implement **password hashing** on create/update
+- [x] **Exclude password** from all responses
 
 ### User Entity Fields:
 
