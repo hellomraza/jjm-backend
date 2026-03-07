@@ -5,6 +5,7 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { WorkItem } from '../work-items/entities/work-item.entity';
 import { CreateComponentDto } from './dto/create-component.dto';
 import { UpdateComponentDto } from './dto/update-component.dto';
 import { Component, ComponentStatus } from './entities/component.entity';
@@ -14,7 +15,28 @@ export class ComponentsService {
   constructor(
     @InjectRepository(Component)
     private componentRepo: Repository<Component>,
+    @InjectRepository(WorkItem)
+    private workItemRepo: Repository<WorkItem>,
   ) {}
+
+  private async recalculateProgress(workItemId: number): Promise<void> {
+    const totalComponents = await this.componentRepo.count({
+      where: { work_item_id: workItemId },
+    });
+
+    const approvedComponents = await this.componentRepo.count({
+      where: { work_item_id: workItemId, status: ComponentStatus.APPROVED },
+    });
+
+    const progress =
+      totalComponents === 0
+        ? 0
+        : Number(((approvedComponents / totalComponents) * 100).toFixed(2));
+
+    await this.workItemRepo.update(workItemId, {
+      progress_percentage: progress,
+    });
+  }
 
   async create(createComponentDto: CreateComponentDto): Promise<Component> {
     const component = this.componentRepo.create(createComponentDto);
@@ -105,8 +127,10 @@ export class ComponentsService {
     component.status = ComponentStatus.APPROVED;
     component.approved_by = userId;
     component.approved_at = new Date();
+    const savedComponent = await this.componentRepo.save(component);
+    await this.recalculateProgress(component.work_item_id);
 
-    return await this.componentRepo.save(component);
+    return savedComponent;
   }
 
   async rejectComponent(id: number, userId: number): Promise<Component> {
@@ -121,8 +145,10 @@ export class ComponentsService {
     component.status = ComponentStatus.REJECTED;
     component.approved_by = userId;
     component.approved_at = new Date();
+    const savedComponent = await this.componentRepo.save(component);
+    await this.recalculateProgress(component.work_item_id);
 
-    return await this.componentRepo.save(component);
+    return savedComponent;
   }
 
   async updateStatus(id: number, status: ComponentStatus): Promise<Component> {
