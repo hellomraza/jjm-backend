@@ -861,7 +861,7 @@ export class RolesGuard implements CanActivate {
 
 ---
 
-# TASK 6 — Work Items Module
+# TASK 6 — Work Items Module [x]
 
 | Setting | Value                |
 | ------- | -------------------- |
@@ -870,10 +870,10 @@ export class RolesGuard implements CanActivate {
 
 ### Subtasks:
 
-- [ ] Create `WorkItem` entity
-- [ ] Create `CreateWorkItemDto` and `UpdateWorkItemDto`
-- [ ] Create `WorkItemsService` with CRUD + status management
-- [ ] Create `WorkItemsController` with role-protected routes
+- [x] Create `WorkItem` entity
+- [x] Create `CreateWorkItemDto` and `UpdateWorkItemDto`
+- [x] Create `WorkItemsService` with CRUD + status management
+- [x] Create `WorkItemsController` with role-protected routes
 
 ### Work Item Entity Fields:
 
