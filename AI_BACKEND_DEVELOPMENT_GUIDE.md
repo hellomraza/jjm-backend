@@ -984,10 +984,10 @@ async startComponent(workItemId: number, componentNumber: number): Promise<void>
 
 ### Subtasks:
 
-- [ ] Create endpoint for contractor to **review uploaded photos**
-- [ ] Implement logic to **select the best photo** for a component
-- [ ] Create endpoint to **forward selected photo to DO** for approval
-- [ ] Add validation: only `CO` role can perform verification
+- [x] Create endpoint for contractor to **review uploaded photos**
+- [x] Implement logic to **select the best photo** for a component
+- [x] Create endpoint to **forward selected photo to DO** for approval
+- [x] Add validation: only `CO` role can perform verification
 
 ### Flow:
 
