@@ -5,6 +5,7 @@ import {
   Param,
   ParseFilePipeBuilder,
   ParseIntPipe,
+  Patch,
   Post,
   Request,
   UploadedFile,
@@ -49,6 +50,26 @@ export class PhotosController {
   @Roles(UserRole.HO, UserRole.DO, UserRole.CO, UserRole.EM)
   findAll() {
     return this.photosService.findAll();
+  }
+
+  @Get('component/:componentId/review')
+  @Roles(UserRole.CO)
+  reviewUploadedPhotos(
+    @Param('componentId', ParseIntPipe) componentId: number,
+  ) {
+    return this.photosService.reviewByComponent(componentId);
+  }
+
+  @Patch(':id/select')
+  @Roles(UserRole.CO)
+  selectBestPhoto(@Param('id', ParseIntPipe) id: number, @Request() req) {
+    return this.photosService.selectBestPhoto(id, req.user.userId);
+  }
+
+  @Patch(':id/forward')
+  @Roles(UserRole.CO)
+  forwardSelectedPhoto(@Param('id', ParseIntPipe) id: number, @Request() req) {
+    return this.photosService.forwardSelectedPhoto(id, req.user.userId);
   }
 
   @Get(':id')

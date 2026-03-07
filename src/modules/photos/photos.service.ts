@@ -1,5 +1,6 @@
 import { PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
 import {
+  BadRequestException,
   Injectable,
   InternalServerErrorException,
   NotFoundException,
@@ -72,15 +73,74 @@ export class PhotosService {
 
   async findAll(): Promise<Photo[]> {
     return await this.photoRepo.find({
-      relations: ['employee', 'component', 'workItem'],
+      relations: ['employee', 'component', 'workItem', 'selectedByUser'],
       order: { created_at: 'DESC' },
     });
+  }
+
+  async reviewByComponent(componentId: number): Promise<Photo[]> {
+    return await this.photoRepo.find({
+      where: { component_id: componentId },
+      relations: ['employee', 'component', 'workItem', 'selectedByUser'],
+      order: { created_at: 'DESC' },
+    });
+  }
+
+  async selectBestPhoto(photoId: number, contractorId: number): Promise<Photo> {
+    const targetPhoto = await this.findOne(photoId);
+
+    await this.photoRepo.update(
+      { component_id: targetPhoto.component_id },
+      {
+        is_selected: false,
+        selected_by: null,
+        selected_at: null,
+        is_forwarded_to_do: false,
+        forwarded_at: null,
+      },
+    );
+
+    targetPhoto.is_selected = true;
+    targetPhoto.selected_by = contractorId;
+    targetPhoto.selected_at = new Date();
+    targetPhoto.is_forwarded_to_do = false;
+    targetPhoto.forwarded_at = null;
+
+    return await this.photoRepo.save(targetPhoto);
+  }
+
+  async forwardSelectedPhoto(
+    photoId: number,
+    contractorId: number,
+  ): Promise<Photo> {
+    const photo = await this.findOne(photoId);
+
+    if (!photo.is_selected) {
+      throw new BadRequestException(
+        'Only selected photo can be forwarded to DO',
+      );
+    }
+
+    if (photo.selected_by !== contractorId) {
+      throw new BadRequestException(
+        'Only the contractor who selected this photo can forward it',
+      );
+    }
+
+    if (photo.is_forwarded_to_do) {
+      throw new BadRequestException('Photo already forwarded to DO');
+    }
+
+    photo.is_forwarded_to_do = true;
+    photo.forwarded_at = new Date();
+
+    return await this.photoRepo.save(photo);
   }
 
   async findOne(id: number): Promise<Photo> {
     const photo = await this.photoRepo.findOne({
       where: { id },
-      relations: ['employee', 'component', 'workItem'],
+      relations: ['employee', 'component', 'workItem', 'selectedByUser'],
     });
 
     if (!photo) {
