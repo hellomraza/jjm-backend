@@ -6,6 +6,7 @@ import { AppService } from './app.service';
 import { databaseConfig } from './config/database.config';
 import { AuthModule } from './modules/auth/auth.module';
 import { ComponentsModule } from './modules/components/components.module';
+import { PhotosModule } from './modules/photos/photos.module';
 import { UsersModule } from './modules/users/users.module';
 import { WorkItemsModule } from './modules/work-items/work-items.module';
 
@@ -24,6 +25,7 @@ import { WorkItemsModule } from './modules/work-items/work-items.module';
     AuthModule,
     WorkItemsModule,
     ComponentsModule,
+    PhotosModule,
   ],
   controllers: [AppController],
   providers: [AppService],
