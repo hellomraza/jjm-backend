@@ -777,7 +777,7 @@ yarn typeorm migration:revert -d src/config/database.config.ts
 
 ---
 
-# TASK 4 — Auth Module
+# TASK 4 — Auth Module [x]
 
 | Setting | Value                 |
 | ------- | --------------------- |
@@ -786,12 +786,12 @@ yarn typeorm migration:revert -d src/config/database.config.ts
 
 ### Subtasks:
 
-- [ ] Create Auth module, controller, and service
-- [ ] Implement **login endpoint** (`POST /auth/login`)
-- [ ] Implement **JWT strategy** (`JwtStrategy`)
-- [ ] Implement **Local strategy** (`LocalStrategy`)
-- [ ] Create `JwtAuthGuard`
-- [ ] Create `LoginDto` with validation
+- [x] Create Auth module, controller, and service
+- [x] Implement **login endpoint** (`POST /auth/login`)
+- [x] Implement **JWT strategy** (`JwtStrategy`)
+- [x] Implement **Local strategy** (`LocalStrategy`)
+- [x] Create `JwtAuthGuard`
+- [x] Create `LoginDto` with validation
 
 ### Login Flow:
 
