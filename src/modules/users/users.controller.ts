@@ -10,6 +10,20 @@ import {
   Query,
   UseGuards,
 } from '@nestjs/common';
+import {
+  ApiBadRequestResponse,
+  ApiBearerAuth,
+  ApiConflictResponse,
+  ApiCreatedResponse,
+  ApiForbiddenResponse,
+  ApiNotFoundResponse,
+  ApiOkResponse,
+  ApiOperation,
+  ApiParam,
+  ApiQuery,
+  ApiTags,
+  ApiUnauthorizedResponse,
+} from '@nestjs/swagger';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
@@ -18,6 +32,10 @@ import { UpdateUserDto } from './dto/update-user.dto';
 import { UserRole } from './entities/user.entity';
 import { UsersService } from './users.service';
 
+@ApiTags('Users')
+@ApiBearerAuth('access-token')
+@ApiUnauthorizedResponse({ description: 'Missing or invalid JWT token' })
+@ApiForbiddenResponse({ description: 'Insufficient role permission' })
 @Controller('users')
 @UseGuards(JwtAuthGuard, RolesGuard)
 export class UsersController {
@@ -25,24 +43,54 @@ export class UsersController {
 
   @Post()
   @Roles(UserRole.HO, UserRole.DO)
+  @ApiOperation({
+    summary: 'Create user',
+    description: 'Creates a new user account with role and optional district',
+  })
+  @ApiCreatedResponse({ description: 'User created successfully' })
+  @ApiBadRequestResponse({ description: 'Invalid request body' })
+  @ApiConflictResponse({ description: 'User with email already exists' })
   create(@Body() createUserDto: CreateUserDto) {
     return this.usersService.create(createUserDto);
   }
 
   @Get()
   @Roles(UserRole.HO, UserRole.DO, UserRole.CO, UserRole.EM)
+  @ApiOperation({
+    summary: 'List users',
+    description: 'Returns paginated user list without password field',
+  })
+  @ApiQuery({ name: 'page', required: false, type: Number, example: 1 })
+  @ApiQuery({ name: 'limit', required: false, type: Number, example: 20 })
+  @ApiOkResponse({ description: 'Paginated users list' })
   findAll(@Query('page') page: number = 1, @Query('limit') limit: number = 20) {
     return this.usersService.findAll(page, limit);
   }
 
   @Get(':id')
   @Roles(UserRole.HO, UserRole.DO, UserRole.CO, UserRole.EM)
+  @ApiOperation({
+    summary: 'Get user by ID',
+    description: 'Returns a single user details by numeric user ID',
+  })
+  @ApiParam({ name: 'id', type: Number, description: 'User ID' })
+  @ApiOkResponse({ description: 'User found' })
+  @ApiNotFoundResponse({ description: 'User not found' })
   findOne(@Param('id', ParseIntPipe) id: number) {
     return this.usersService.findOne(id);
   }
 
   @Patch(':id')
   @Roles(UserRole.HO, UserRole.DO)
+  @ApiOperation({
+    summary: 'Update user',
+    description: 'Updates selected fields of an existing user',
+  })
+  @ApiParam({ name: 'id', type: Number, description: 'User ID' })
+  @ApiOkResponse({ description: 'User updated successfully' })
+  @ApiBadRequestResponse({ description: 'Invalid request body' })
+  @ApiNotFoundResponse({ description: 'User not found' })
+  @ApiConflictResponse({ description: 'Email already in use' })
   update(
     @Param('id', ParseIntPipe) id: number,
     @Body() updateUserDto: UpdateUserDto,
@@ -52,6 +100,13 @@ export class UsersController {
 
   @Delete(':id')
   @Roles(UserRole.HO)
+  @ApiOperation({
+    summary: 'Delete user',
+    description: 'Deletes an existing user by ID',
+  })
+  @ApiParam({ name: 'id', type: Number, description: 'User ID' })
+  @ApiOkResponse({ description: 'User deleted successfully' })
+  @ApiNotFoundResponse({ description: 'User not found' })
   remove(@Param('id', ParseIntPipe) id: number) {
     return this.usersService.remove(id);
   }
