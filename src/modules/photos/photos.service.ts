@@ -1,0 +1,92 @@
+import { PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
+import {
+  Injectable,
+  InternalServerErrorException,
+  NotFoundException,
+} from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { UploadPhotoDto } from './dto/upload-photo.dto';
+import { Photo } from './entities/photo.entity';
+
+@Injectable()
+export class PhotosService {
+  private readonly s3Client: S3Client;
+
+  constructor(
+    @InjectRepository(Photo)
+    private photoRepo: Repository<Photo>,
+    private configService: ConfigService,
+  ) {
+    this.s3Client = new S3Client({
+      region: this.configService.get<string>('AWS_REGION', 'ap-south-1'),
+      credentials: {
+        accessKeyId: this.configService.get<string>('AWS_ACCESS_KEY_ID', ''),
+        secretAccessKey: this.configService.get<string>(
+          'AWS_SECRET_ACCESS_KEY',
+          '',
+        ),
+      },
+    });
+  }
+
+  async uploadPhoto(
+    file: Express.Multer.File,
+    uploadPhotoDto: UploadPhotoDto,
+    employeeId: number,
+  ): Promise<Photo> {
+    const bucketName = this.configService.get<string>('AWS_S3_BUCKET', '');
+    const region = this.configService.get<string>('AWS_REGION', 'ap-south-1');
+
+    if (!bucketName) {
+      throw new InternalServerErrorException('AWS_S3_BUCKET is not configured');
+    }
+
+    const sanitizedName = file.originalname.replace(/\s+/g, '-');
+    const objectKey = `work-items/${uploadPhotoDto.work_item_id}/components/${uploadPhotoDto.component_id}/${Date.now()}-${sanitizedName}`;
+
+    await this.s3Client.send(
+      new PutObjectCommand({
+        Bucket: bucketName,
+        Key: objectKey,
+        Body: file.buffer,
+        ContentType: file.mimetype,
+      }),
+    );
+
+    const imageUrl = `https://${bucketName}.s3.${region}.amazonaws.com/${objectKey}`;
+
+    const photo = this.photoRepo.create({
+      image_url: imageUrl,
+      latitude: uploadPhotoDto.latitude,
+      longitude: uploadPhotoDto.longitude,
+      timestamp: uploadPhotoDto.timestamp,
+      employee_id: employeeId,
+      component_id: uploadPhotoDto.component_id,
+      work_item_id: uploadPhotoDto.work_item_id,
+    });
+
+    return await this.photoRepo.save(photo);
+  }
+
+  async findAll(): Promise<Photo[]> {
+    return await this.photoRepo.find({
+      relations: ['employee', 'component', 'workItem'],
+      order: { created_at: 'DESC' },
+    });
+  }
+
+  async findOne(id: number): Promise<Photo> {
+    const photo = await this.photoRepo.findOne({
+      where: { id },
+      relations: ['employee', 'component', 'workItem'],
+    });
+
+    if (!photo) {
+      throw new NotFoundException(`Photo with ID ${id} not found`);
+    }
+
+    return photo;
+  }
+}
