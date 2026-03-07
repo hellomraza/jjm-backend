@@ -10,11 +10,17 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
       ignoreExpiration: false,
-      secretOrKey: configService.get('JWT_SECRET') || 'default-secret-key',
+      secretOrKey: (() => {
+        const jwtSecret = configService.get<string>('JWT_SECRET');
+        if (!jwtSecret) {
+          throw new Error('JWT_SECRET environment variable is not set');
+        }
+        return jwtSecret;
+      })(),
     });
   }
 
-  async validate(payload: JwtPayload) {
+  validate(payload: JwtPayload) {
     if (!payload.sub || !payload.email || !payload.role) {
       throw new UnauthorizedException('Invalid token payload');
     }
