@@ -953,11 +953,11 @@ async startComponent(workItemId: number, componentNumber: number): Promise<void>
 
 ### Subtasks:
 
-- [ ] Create `Photo` entity with all metadata fields
-- [ ] Setup **Multer file upload** with type/size validation
-- [ ] Integrate **AWS S3** for cloud storage
-- [ ] Create `UploadPhotoDto` with geo-location validation
-- [ ] Store all metadata in database after successful upload
+- [x] Create `Photo` entity with all metadata fields
+- [x] Setup **Multer file upload** with type/size validation
+- [x] Integrate **AWS S3** for cloud storage
+- [x] Create `UploadPhotoDto` with geo-location validation
+- [x] Store all metadata in database after successful upload
 
 ### Photo Entity Fields:
 
