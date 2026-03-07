@@ -1,10 +1,11 @@
 import {
   BadRequestException,
+  ConflictException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { DataSource, EntityManager, Repository } from 'typeorm';
 import { WorkItem } from '../work-items/entities/work-item.entity';
 import { CreateComponentDto } from './dto/create-component.dto';
 import { UpdateComponentDto } from './dto/update-component.dto';
@@ -17,14 +18,20 @@ export class ComponentsService {
     private componentRepo: Repository<Component>,
     @InjectRepository(WorkItem)
     private workItemRepo: Repository<WorkItem>,
+    private dataSource: DataSource,
   ) {}
 
-  private async recalculateProgress(workItemId: number): Promise<void> {
-    const totalComponents = await this.componentRepo.count({
+  private async recalculateProgress(
+    workItemId: number,
+    manager?: EntityManager,
+  ): Promise<void> {
+    const repositoryManager = manager ?? this.componentRepo.manager;
+
+    const totalComponents = await repositoryManager.count(Component, {
       where: { work_item_id: workItemId },
     });
 
-    const approvedComponents = await this.componentRepo.count({
+    const approvedComponents = await repositoryManager.count(Component, {
       where: { work_item_id: workItemId, status: ComponentStatus.APPROVED },
     });
 
@@ -33,7 +40,7 @@ export class ComponentsService {
         ? 0
         : Number(((approvedComponents / totalComponents) * 100).toFixed(2));
 
-    await this.workItemRepo.update(workItemId, {
+    await repositoryManager.update(WorkItem, workItemId, {
       progress_percentage: progress,
     });
   }
@@ -116,39 +123,99 @@ export class ComponentsService {
   }
 
   async approveComponent(id: number, userId: number): Promise<Component> {
-    const component = await this.findOne(id);
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
 
-    if (component.status !== ComponentStatus.IN_PROGRESS) {
-      throw new BadRequestException(
-        'Only IN_PROGRESS components can be approved',
+    try {
+      const component = await queryRunner.manager.findOne(Component, {
+        where: { id },
+        lock: { mode: 'pessimistic_write' },
+      });
+
+      if (!component) {
+        throw new NotFoundException(`Component with ID ${id} not found`);
+      }
+
+      if (component.status === ComponentStatus.APPROVED) {
+        throw new ConflictException('Component already approved');
+      }
+
+      if (component.status !== ComponentStatus.IN_PROGRESS) {
+        throw new BadRequestException(
+          'Only IN_PROGRESS components can be approved',
+        );
+      }
+
+      component.status = ComponentStatus.APPROVED;
+      component.approved_by = userId;
+      component.approved_at = new Date();
+
+      const savedComponent = await queryRunner.manager.save(
+        Component,
+        component,
       );
+      await this.recalculateProgress(
+        component.work_item_id,
+        queryRunner.manager,
+      );
+
+      await queryRunner.commitTransaction();
+      return savedComponent;
+    } catch (error) {
+      await queryRunner.rollbackTransaction();
+      throw error;
+    } finally {
+      await queryRunner.release();
     }
-
-    component.status = ComponentStatus.APPROVED;
-    component.approved_by = userId;
-    component.approved_at = new Date();
-    const savedComponent = await this.componentRepo.save(component);
-    await this.recalculateProgress(component.work_item_id);
-
-    return savedComponent;
   }
 
   async rejectComponent(id: number, userId: number): Promise<Component> {
-    const component = await this.findOne(id);
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
 
-    if (component.status !== ComponentStatus.IN_PROGRESS) {
-      throw new BadRequestException(
-        'Only IN_PROGRESS components can be rejected',
+    try {
+      const component = await queryRunner.manager.findOne(Component, {
+        where: { id },
+        lock: { mode: 'pessimistic_write' },
+      });
+
+      if (!component) {
+        throw new NotFoundException(`Component with ID ${id} not found`);
+      }
+
+      if (component.status === ComponentStatus.REJECTED) {
+        throw new ConflictException('Component already rejected');
+      }
+
+      if (component.status !== ComponentStatus.IN_PROGRESS) {
+        throw new BadRequestException(
+          'Only IN_PROGRESS components can be rejected',
+        );
+      }
+
+      component.status = ComponentStatus.REJECTED;
+      component.approved_by = userId;
+      component.approved_at = new Date();
+
+      const savedComponent = await queryRunner.manager.save(
+        Component,
+        component,
       );
+      await this.recalculateProgress(
+        component.work_item_id,
+        queryRunner.manager,
+      );
+
+      await queryRunner.commitTransaction();
+      return savedComponent;
+    } catch (error) {
+      await queryRunner.rollbackTransaction();
+      throw error;
+    } finally {
+      await queryRunner.release();
     }
-
-    component.status = ComponentStatus.REJECTED;
-    component.approved_by = userId;
-    component.approved_at = new Date();
-    const savedComponent = await this.componentRepo.save(component);
-    await this.recalculateProgress(component.work_item_id);
-
-    return savedComponent;
   }
 
   async updateStatus(id: number, status: ComponentStatus): Promise<Component> {
