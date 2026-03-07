@@ -71,19 +71,58 @@ export class PhotosService {
     return await this.photoRepo.save(photo);
   }
 
-  async findAll(): Promise<Photo[]> {
-    return await this.photoRepo.find({
+  async findAll(
+    page: number = 1,
+    limit: number = 20,
+  ): Promise<{
+    data: Photo[];
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+  }> {
+    const [items, total] = await this.photoRepo.findAndCount({
+      skip: (page - 1) * limit,
+      take: limit,
       relations: ['employee', 'component', 'workItem', 'selectedByUser'],
       order: { created_at: 'DESC' },
     });
+
+    return {
+      data: items,
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+    };
   }
 
-  async reviewByComponent(componentId: number): Promise<Photo[]> {
-    return await this.photoRepo.find({
+  async reviewByComponent(
+    componentId: number,
+    page: number = 1,
+    limit: number = 20,
+  ): Promise<{
+    data: Photo[];
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+  }> {
+    const [items, total] = await this.photoRepo.findAndCount({
       where: { component_id: componentId },
+      skip: (page - 1) * limit,
+      take: limit,
       relations: ['employee', 'component', 'workItem', 'selectedByUser'],
       order: { created_at: 'DESC' },
     });
+
+    return {
+      data: items,
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+    };
   }
 
   async selectBestPhoto(photoId: number, contractorId: number): Promise<Photo> {
