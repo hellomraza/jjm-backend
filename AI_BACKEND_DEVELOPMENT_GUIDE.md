@@ -902,10 +902,10 @@ export class RolesGuard implements CanActivate {
 
 ### Subtasks:
 
-- [ ] Create `Component` entity with status tracking
-- [ ] Create DTOs with validation
-- [ ] Implement **sequential approval rule** in service
-- [ ] Implement approval/rejection logic
+- [x] Create `Component` entity with status tracking
+- [x] Create DTOs with validation
+- [x] Implement **sequential approval rule** in service
+- [x] Implement approval/rejection logic
 
 ### Sequential Approval Rule:
 
