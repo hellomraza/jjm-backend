@@ -50,18 +50,58 @@ export class ComponentsService {
     return await this.componentRepo.save(component);
   }
 
-  async findAll(): Promise<Component[]> {
-    return await this.componentRepo.find({
+  async findAll(
+    page: number = 1,
+    limit: number = 20,
+  ): Promise<{
+    data: Component[];
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+  }> {
+    const [items, total] = await this.componentRepo.findAndCount({
+      skip: (page - 1) * limit,
+      take: limit,
       relations: ['workItem', 'approver'],
+      order: { created_at: 'DESC' },
     });
+
+    return {
+      data: items,
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+    };
   }
 
-  async findByWorkItem(workItemId: number): Promise<Component[]> {
-    return await this.componentRepo.find({
+  async findByWorkItem(
+    workItemId: number,
+    page: number = 1,
+    limit: number = 20,
+  ): Promise<{
+    data: Component[];
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+  }> {
+    const [items, total] = await this.componentRepo.findAndCount({
       where: { work_item_id: workItemId },
+      skip: (page - 1) * limit,
+      take: limit,
       order: { component_number: 'ASC' },
       relations: ['workItem', 'approver'],
     });
+
+    return {
+      data: items,
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+    };
   }
 
   async findOne(id: number): Promise<Component> {
