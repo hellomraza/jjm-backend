@@ -55,20 +55,20 @@ export class Photo {
   is_selected: boolean;
 
   @Column({ nullable: true })
-  selected_by: number;
+  selected_by: number | null;
 
   @ManyToOne(() => User, { nullable: true })
   @JoinColumn({ name: 'selected_by' })
   selectedByUser: User;
 
   @Column({ type: 'datetime', nullable: true })
-  selected_at: Date;
+  selected_at: Date | null;
 
   @Column({ default: false })
   is_forwarded_to_do: boolean;
 
   @Column({ type: 'datetime', nullable: true })
-  forwarded_at: Date;
+  forwarded_at: Date | null;
 
   @CreateDateColumn()
   created_at: Date;
