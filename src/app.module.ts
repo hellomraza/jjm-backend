@@ -4,10 +4,10 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { databaseConfig } from './config/database.config';
-import { UsersModule } from './modules/users/users.module';
 import { AuthModule } from './modules/auth/auth.module';
-import { WorkItemsModule } from './modules/work-items/work-items.module';
 import { ComponentsModule } from './modules/components/components.module';
+import { UsersModule } from './modules/users/users.module';
+import { WorkItemsModule } from './modules/work-items/work-items.module';
 
 @Module({
   imports: [

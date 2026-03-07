@@ -1,14 +1,14 @@
 import {
-  Entity,
-  PrimaryGeneratedColumn,
   Column,
   CreateDateColumn,
-  UpdateDateColumn,
-  ManyToOne,
+  Entity,
   JoinColumn,
+  ManyToOne,
+  PrimaryGeneratedColumn,
+  UpdateDateColumn,
 } from 'typeorm';
-import { WorkItem } from '../../work-items/entities/work-item.entity';
 import { User } from '../../users/entities/user.entity';
+import { WorkItem } from '../../work-items/entities/work-item.entity';
 
 export enum ComponentStatus {
   PENDING = 'PENDING',
