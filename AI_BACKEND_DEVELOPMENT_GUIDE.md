@@ -1009,11 +1009,11 @@ async startComponent(workItemId: number, componentNumber: number): Promise<void>
 
 ### Subtasks:
 
-- [ ] Create **approval endpoint** (`PATCH /components/:id/approve`)
-- [ ] Create **rejection endpoint** (`PATCH /components/:id/reject`)
-- [ ] Update **component status** on approval/rejection
-- [ ] **Recalculate work item progress %** after component approval
-- [ ] Only `DO` and `HO` roles can approve
+- [x] Create **approval endpoint** (`PATCH /components/:id/approve`)
+- [x] Create **rejection endpoint** (`PATCH /components/:id/reject`)
+- [x] Update **component status** on approval/rejection
+- [x] **Recalculate work item progress %** after component approval
+- [x] Only `DO` and `HO` roles can approve
 
 ### Progress Calculation:
 
