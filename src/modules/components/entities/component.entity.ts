@@ -19,7 +19,10 @@ export enum ComponentStatus {
 }
 
 @Entity('components')
-@Index('IDX_COMPONENT_WORKITEM_COMPONENT_NO', ['work_item_id', 'component_number'])
+@Index('IDX_COMPONENT_WORKITEM_COMPONENT_NO', [
+  'work_item_id',
+  'component_number',
+])
 @Index('IDX_COMPONENT_WORKITEM_STATUS', ['work_item_id', 'status'])
 export class Component {
   @PrimaryGeneratedColumn()
