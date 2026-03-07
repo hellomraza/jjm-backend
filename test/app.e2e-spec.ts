@@ -16,8 +16,10 @@ import { UsersService } from './../src/modules/users/users.service';
 describe('Auth Login (e2e)', () => {
   let app: INestApplication;
 
-  const mockUsersService: Pick<UsersService, 'findByEmail' | 'comparePasswords'>
-  = {
+  const mockUsersService: Pick<
+    UsersService,
+    'findByEmail' | 'comparePasswords'
+  > = {
     findByEmail: jest.fn(async (email: string) => {
       if (email !== 'test.user@jjm.local') {
         return null;

@@ -815,7 +815,7 @@ interface JwtPayload {
 
 ---
 
-# TASK 5 — Role Authorization
+# TASK 5 — Role Authorization [x]
 
 | Setting | Value          |
 | ------- | -------------- |
@@ -824,10 +824,10 @@ interface JwtPayload {
 
 ### Subtasks:
 
-- [ ] Create `@Roles()` custom decorator
-- [ ] Create `RolesGuard` that reads roles from JWT payload
-- [ ] Apply guards to **all protected endpoints**
-- [ ] Test each role has correct access
+- [x] Create `@Roles()` custom decorator
+- [x] Create `RolesGuard` that reads roles from JWT payload
+- [x] Apply guards to **all protected endpoints**
+- [x] Test each role has correct access
 
 ### Roles Decorator:
 
