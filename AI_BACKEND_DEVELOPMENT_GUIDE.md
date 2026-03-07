@@ -1092,11 +1092,11 @@ async approveComponent(componentId: number, userId: number): Promise<void> {
 
 ### Subtasks:
 
-- [ ] Add **single-column indexes** (see [Section 10](#section-10--performance-rules))
-- [ ] Add **composite indexes** for common query patterns
-- [ ] Review and **optimize slow queries**
-- [ ] Add **pagination** to all list endpoints
-- [ ] Verify no **N+1 queries** exist
+- [x] Add **single-column indexes** (see [Section 10](#section-10--performance-rules))
+- [x] Add **composite indexes** for common query patterns
+- [x] Review and **optimize slow queries**
+- [x] Add **pagination** to all list endpoints
+- [x] Verify no **N+1 queries** exist
 
 ### Pagination Helper:
 
