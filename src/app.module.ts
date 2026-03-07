@@ -7,6 +7,7 @@ import { databaseConfig } from './config/database.config';
 import { UsersModule } from './modules/users/users.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { WorkItemsModule } from './modules/work-items/work-items.module';
+import { ComponentsModule } from './modules/components/components.module';
 
 @Module({
   imports: [
@@ -22,6 +23,7 @@ import { WorkItemsModule } from './modules/work-items/work-items.module';
     UsersModule,
     AuthModule,
     WorkItemsModule,
+    ComponentsModule,
   ],
   controllers: [AppController],
   providers: [AppService],
