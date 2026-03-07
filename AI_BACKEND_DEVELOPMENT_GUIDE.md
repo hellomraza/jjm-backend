@@ -1041,10 +1041,10 @@ async recalculateProgress(workItemId: number): Promise<void> {
 
 ### Subtasks:
 
-- [ ] Wrap **approval operations** in database transactions
-- [ ] Implement **row-level locking** (`pessimistic_write`) for approvals
-- [ ] Prevent **duplicate approvals** with status check before update
-- [ ] Add **conflict detection** with `ConflictException`
+- [x] Wrap **approval operations** in database transactions
+- [x] Implement **row-level locking** (`pessimistic_write`) for approvals
+- [x] Prevent **duplicate approvals** with status check before update
+- [x] Add **conflict detection** with `ConflictException`
 
 ### Transaction-Safe Approval:
 
