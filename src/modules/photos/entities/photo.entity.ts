@@ -12,6 +12,8 @@ import { User } from '../../users/entities/user.entity';
 import { WorkItem } from '../../work-items/entities/work-item.entity';
 
 @Entity('photos')
+@Index('IDX_PHOTO_COMPONENT_SELECTED', ['component_id', 'is_selected'])
+@Index('IDX_PHOTO_COMPONENT_CREATED_AT', ['component_id', 'created_at'])
 export class Photo {
   @PrimaryGeneratedColumn()
   id: number;
@@ -44,6 +46,7 @@ export class Photo {
   @JoinColumn({ name: 'component_id' })
   component: Component;
 
+  @Index()
   @Column()
   work_item_id: number;
 
@@ -51,6 +54,7 @@ export class Photo {
   @JoinColumn({ name: 'work_item_id' })
   workItem: WorkItem;
 
+  @Index()
   @Column({ default: false })
   is_selected: boolean;
 
@@ -64,6 +68,7 @@ export class Photo {
   @Column({ type: 'datetime', nullable: true })
   selected_at: Date | null;
 
+  @Index()
   @Column({ default: false })
   is_forwarded_to_do: boolean;
 

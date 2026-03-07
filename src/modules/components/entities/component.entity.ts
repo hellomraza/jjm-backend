@@ -2,6 +2,7 @@ import {
   Column,
   CreateDateColumn,
   Entity,
+  Index,
   JoinColumn,
   ManyToOne,
   PrimaryGeneratedColumn,
@@ -18,10 +19,13 @@ export enum ComponentStatus {
 }
 
 @Entity('components')
+@Index('IDX_COMPONENT_WORKITEM_COMPONENT_NO', ['work_item_id', 'component_number'])
+@Index('IDX_COMPONENT_WORKITEM_STATUS', ['work_item_id', 'status'])
 export class Component {
   @PrimaryGeneratedColumn()
   id: number;
 
+  @Index()
   @Column()
   work_item_id: number;
 
@@ -29,12 +33,14 @@ export class Component {
   @JoinColumn({ name: 'work_item_id' })
   workItem: WorkItem;
 
+  @Index()
   @Column()
   component_number: number;
 
   @Column()
   name: string;
 
+  @Index()
   @Column({
     type: 'enum',
     enum: ComponentStatus,
@@ -42,6 +48,7 @@ export class Component {
   })
   status: ComponentStatus;
 
+  @Index()
   @Column({ nullable: true })
   approved_by: number;
 
