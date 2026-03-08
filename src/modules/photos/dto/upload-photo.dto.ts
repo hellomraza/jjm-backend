@@ -5,7 +5,7 @@ import {
   IsLatitude,
   IsLongitude,
   IsNotEmpty,
-  IsNumber,
+  IsUUID,
 } from 'class-validator';
 
 export class UploadPhotoDto {
@@ -27,19 +27,19 @@ export class UploadPhotoDto {
 
   @ApiProperty({
     description: 'Work item component mapping ID associated with this photo',
-    example: 2001,
+    example: '550e8400-e29b-41d4-a716-446655440000',
   })
-  @IsNumber()
+  @IsUUID()
   @IsNotEmpty()
-  component_id: number;
+  component_id: string;
 
   @ApiProperty({
     description: 'Work item ID associated with this photo',
-    example: 101,
+    example: '550e8400-e29b-41d4-a716-446655440001',
   })
-  @IsNumber()
+  @IsUUID()
   @IsNotEmpty()
-  work_item_id: number;
+  work_item_id: string;
 
   @ApiProperty({
     description: 'Photo capture timestamp in ISO format',

@@ -4,7 +4,6 @@ import {
   Get,
   Param,
   ParseFilePipeBuilder,
-  ParseIntPipe,
   Patch,
   Post,
   Query,
@@ -124,12 +123,12 @@ export class PhotosController {
     summary: 'Review component photos',
     description: 'Contractor reviews paginated photos for a specific component',
   })
-  @ApiParam({ name: 'componentId', type: Number, description: 'Component ID' })
+  @ApiParam({ name: 'componentId', type: String, description: 'Component ID' })
   @ApiQuery({ name: 'page', required: false, type: Number, example: 1 })
   @ApiQuery({ name: 'limit', required: false, type: Number, example: 20 })
   @ApiOkResponse({ description: 'Paginated component photo list' })
   reviewUploadedPhotos(
-    @Param('componentId', ParseIntPipe) componentId: number,
+    @Param('componentId') componentId: string,
     @Query('page') page: number = 1,
     @Query('limit') limit: number = 20,
   ) {
@@ -142,11 +141,11 @@ export class PhotosController {
     summary: 'Select best photo',
     description: 'Marks one photo as selected for the component',
   })
-  @ApiParam({ name: 'id', type: Number, description: 'Photo ID' })
+  @ApiParam({ name: 'id', type: String, description: 'Photo ID' })
   @ApiOkResponse({ description: 'Photo selected successfully' })
   @ApiBadRequestResponse({ description: 'Invalid photo state for selection' })
   @ApiNotFoundResponse({ description: 'Photo not found' })
-  selectBestPhoto(@Param('id', ParseIntPipe) id: number, @Request() req) {
+  selectBestPhoto(@Param('id') id: string, @Request() req) {
     return this.photosService.selectBestPhoto(id, req.user.userId);
   }
 
@@ -156,13 +155,13 @@ export class PhotosController {
     summary: 'Forward selected photo',
     description: 'Forwards selected photo to district office for approval flow',
   })
-  @ApiParam({ name: 'id', type: Number, description: 'Photo ID' })
+  @ApiParam({ name: 'id', type: String, description: 'Photo ID' })
   @ApiOkResponse({ description: 'Photo forwarded successfully' })
   @ApiBadRequestResponse({
     description: 'Photo not selected, already forwarded, or invalid contractor',
   })
   @ApiNotFoundResponse({ description: 'Photo not found' })
-  forwardSelectedPhoto(@Param('id', ParseIntPipe) id: number, @Request() req) {
+  forwardSelectedPhoto(@Param('id') id: string, @Request() req) {
     return this.photosService.forwardSelectedPhoto(id, req.user.userId);
   }
 
@@ -172,10 +171,10 @@ export class PhotosController {
     summary: 'Get photo by ID',
     description: 'Returns single photo metadata and relations by ID',
   })
-  @ApiParam({ name: 'id', type: Number, description: 'Photo ID' })
+  @ApiParam({ name: 'id', type: String, description: 'Photo ID' })
   @ApiOkResponse({ description: 'Photo found' })
   @ApiNotFoundResponse({ description: 'Photo not found' })
-  findOne(@Param('id', ParseIntPipe) id: number) {
+  findOne(@Param('id') id: string) {
     return this.photosService.findOne(id);
   }
 }

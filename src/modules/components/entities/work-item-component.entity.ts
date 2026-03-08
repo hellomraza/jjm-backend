@@ -23,20 +23,23 @@ export enum WorkItemComponentStatus {
 @Unique('UQ_WORK_ITEM_COMPONENT', ['work_item_id', 'component_id'])
 @Index('IDX_WORK_ITEM_COMPONENT_WORK_ITEM_ID', ['work_item_id'])
 @Index('IDX_WORK_ITEM_COMPONENT_COMPONENT_ID', ['component_id'])
-@Index('IDX_WORK_ITEM_COMPONENT_WORK_ITEM_COMPONENT', ['work_item_id', 'component_id'])
+@Index('IDX_WORK_ITEM_COMPONENT_WORK_ITEM_COMPONENT', [
+  'work_item_id',
+  'component_id',
+])
 export class WorkItemComponent {
-  @PrimaryGeneratedColumn()
-  id: number;
+  @PrimaryGeneratedColumn('uuid')
+  id: string;
 
   @Column()
-  work_item_id: number;
+  work_item_id: string;
 
   @ManyToOne(() => WorkItem)
   @JoinColumn({ name: 'work_item_id' })
   workItem: WorkItem;
 
   @Column()
-  component_id: number;
+  component_id: string;
 
   @ManyToOne(() => Component)
   @JoinColumn({ name: 'component_id' })
@@ -56,7 +59,7 @@ export class WorkItemComponent {
   status: WorkItemComponentStatus;
 
   @Column({ nullable: true })
-  approved_photo_id?: number;
+  approved_photo_id?: string;
 
   @CreateDateColumn()
   created_at: Date;

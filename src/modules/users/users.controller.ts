@@ -4,7 +4,6 @@ import {
   Delete,
   Get,
   Param,
-  ParseIntPipe,
   Patch,
   Post,
   Query,
@@ -71,12 +70,12 @@ export class UsersController {
   @Roles(UserRole.HO, UserRole.DO, UserRole.CO, UserRole.EM)
   @ApiOperation({
     summary: 'Get user by ID',
-    description: 'Returns a single user details by numeric user ID',
+    description: 'Returns a single user details by user ID',
   })
-  @ApiParam({ name: 'id', type: Number, description: 'User ID' })
+  @ApiParam({ name: 'id', type: String, description: 'User ID' })
   @ApiOkResponse({ description: 'User found' })
   @ApiNotFoundResponse({ description: 'User not found' })
-  findOne(@Param('id', ParseIntPipe) id: number) {
+  findOne(@Param('id') id: string) {
     return this.usersService.findOne(id);
   }
 
@@ -86,15 +85,12 @@ export class UsersController {
     summary: 'Update user',
     description: 'Updates selected fields of an existing user',
   })
-  @ApiParam({ name: 'id', type: Number, description: 'User ID' })
+  @ApiParam({ name: 'id', type: String, description: 'User ID' })
   @ApiOkResponse({ description: 'User updated successfully' })
   @ApiBadRequestResponse({ description: 'Invalid request body' })
   @ApiNotFoundResponse({ description: 'User not found' })
   @ApiConflictResponse({ description: 'Email already in use' })
-  update(
-    @Param('id', ParseIntPipe) id: number,
-    @Body() updateUserDto: UpdateUserDto,
-  ) {
+  update(@Param('id') id: string, @Body() updateUserDto: UpdateUserDto) {
     return this.usersService.update(id, updateUserDto);
   }
 
@@ -104,10 +100,10 @@ export class UsersController {
     summary: 'Delete user',
     description: 'Deletes an existing user by ID',
   })
-  @ApiParam({ name: 'id', type: Number, description: 'User ID' })
+  @ApiParam({ name: 'id', type: String, description: 'User ID' })
   @ApiOkResponse({ description: 'User deleted successfully' })
   @ApiNotFoundResponse({ description: 'User not found' })
-  remove(@Param('id', ParseIntPipe) id: number) {
+  remove(@Param('id') id: string) {
     return this.usersService.remove(id);
   }
 }

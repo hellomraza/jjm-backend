@@ -15,8 +15,8 @@ import { WorkItem } from '../../work-items/entities/work-item.entity';
 @Index('IDX_PHOTO_COMPONENT_SELECTED', ['component_id', 'is_selected'])
 @Index('IDX_PHOTO_COMPONENT_CREATED_AT', ['component_id', 'created_at'])
 export class Photo {
-  @PrimaryGeneratedColumn()
-  id: number;
+  @PrimaryGeneratedColumn('uuid')
+  id: string;
 
   @Column()
   image_url: string;
@@ -32,7 +32,7 @@ export class Photo {
 
   @Index()
   @Column()
-  employee_id: number;
+  employee_id: string;
 
   @ManyToOne(() => User)
   @JoinColumn({ name: 'employee_id' })
@@ -40,7 +40,7 @@ export class Photo {
 
   @Index()
   @Column()
-  component_id: number;
+  component_id: string;
 
   @ManyToOne(() => WorkItemComponent)
   @JoinColumn({ name: 'component_id' })
@@ -48,7 +48,7 @@ export class Photo {
 
   @Index()
   @Column()
-  work_item_id: number;
+  work_item_id: string;
 
   @ManyToOne(() => WorkItem)
   @JoinColumn({ name: 'work_item_id' })
@@ -59,7 +59,7 @@ export class Photo {
   is_selected: boolean;
 
   @Column({ nullable: true })
-  selected_by: number | null;
+  selected_by: string | null;
 
   @ManyToOne(() => User, { nullable: true })
   @JoinColumn({ name: 'selected_by' })

@@ -12,8 +12,8 @@ import {
 @Unique('UQ_COMPONENT_ORDER_NUMBER', ['order_number'])
 @Index('IDX_COMPONENT_ORDER_NUMBER', ['order_number'])
 export class Component {
-  @PrimaryGeneratedColumn()
-  id: number;
+  @PrimaryGeneratedColumn('uuid')
+  id: string;
 
   @Column()
   name: string;

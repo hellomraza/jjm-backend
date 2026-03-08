@@ -15,8 +15,8 @@ export enum UserRole {
 
 @Entity('users')
 export class User {
-  @PrimaryGeneratedColumn()
-  id: number;
+  @PrimaryGeneratedColumn('uuid')
+  id: string;
 
   @Column({ unique: true })
   email: string;
@@ -31,7 +31,7 @@ export class User {
   role: UserRole;
 
   @Column({ nullable: true })
-  district_id: number;
+  district_id: string;
 
   @CreateDateColumn()
   created_at: Date;

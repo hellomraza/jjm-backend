@@ -75,7 +75,7 @@ export class UsersService {
     };
   }
 
-  async findOne(id: number): Promise<Omit<User, 'password'>> {
+  async findOne(id: string): Promise<Omit<User, 'password'>> {
     const user = await this.userRepository.findOne({ where: { id } });
     if (!user) {
       throw new NotFoundException(`User #${id} not found`);
@@ -89,7 +89,7 @@ export class UsersService {
   }
 
   async update(
-    id: number,
+    id: string,
     updateUserDto: UpdateUserDto,
   ): Promise<Omit<User, 'password'>> {
     const user = await this.userRepository.findOne({ where: { id } });
@@ -122,7 +122,7 @@ export class UsersService {
     return userWithoutPassword;
   }
 
-  async remove(id: number): Promise<void> {
+  async remove(id: string): Promise<void> {
     const user = await this.userRepository.findOne({ where: { id } });
     if (!user) {
       throw new NotFoundException(`User #${id} not found`);

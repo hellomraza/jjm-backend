@@ -15,8 +15,8 @@ export enum WorkItemStatus {
 
 @Entity('work_items')
 export class WorkItem {
-  @PrimaryGeneratedColumn()
-  id: number;
+  @PrimaryGeneratedColumn('uuid')
+  id: string;
 
   @Column()
   title: string;
@@ -26,11 +26,11 @@ export class WorkItem {
 
   @Index()
   @Column()
-  district_id: number;
+  district_id: string;
 
   @Index()
   @Column()
-  contractor_id: number;
+  contractor_id: string;
 
   @Column({ type: 'decimal', precision: 10, scale: 7 })
   latitude: number;

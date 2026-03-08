@@ -7,6 +7,7 @@ import {
   IsNumber,
   IsOptional,
   IsString,
+  IsUUID,
   Max,
   Min,
 } from 'class-validator';
@@ -29,13 +30,19 @@ export class CreateWorkItemDto {
   @IsOptional()
   description?: string;
 
-  @ApiProperty({ description: 'District ID', example: 12 })
-  @IsNumber()
-  district_id: number;
+  @ApiProperty({
+    description: 'District ID',
+    example: '550e8400-e29b-41d4-a716-446655440000',
+  })
+  @IsUUID()
+  district_id: string;
 
-  @ApiProperty({ description: 'Contractor user ID', example: 34 })
-  @IsNumber()
-  contractor_id: number;
+  @ApiProperty({
+    description: 'Contractor user ID',
+    example: '550e8400-e29b-41d4-a716-446655440001',
+  })
+  @IsUUID()
+  contractor_id: string;
 
   @ApiProperty({ description: 'Latitude of work location', example: 25.5941 })
   @IsLatitude()

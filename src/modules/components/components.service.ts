@@ -30,7 +30,7 @@ export class ComponentsService {
     });
   }
 
-  async findByWorkItem(workItemId: number): Promise<WorkItemComponent[]> {
+  async findByWorkItem(workItemId: string): Promise<WorkItemComponent[]> {
     return this.workItemComponentRepo.find({
       where: { work_item_id: workItemId },
       relations: ['component'],
@@ -42,7 +42,7 @@ export class ComponentsService {
     });
   }
 
-  async findOneMapping(id: number): Promise<WorkItemComponent> {
+  async findOneMapping(id: string): Promise<WorkItemComponent> {
     const mapping = await this.workItemComponentRepo.findOne({
       where: { id },
       relations: ['component', 'workItem'],
@@ -58,7 +58,7 @@ export class ComponentsService {
   }
 
   async updateMapping(
-    id: number,
+    id: string,
     updateDto: UpdateWorkItemComponentDto,
   ): Promise<WorkItemComponent> {
     if (Object.keys(updateDto).length === 0) {
@@ -77,7 +77,7 @@ export class ComponentsService {
   }
 
   async recalculateProgress(
-    workItemId: number,
+    workItemId: string,
     manager?: EntityManager,
   ): Promise<void> {
     const repositoryManager = manager ?? this.workItemComponentRepo.manager;
@@ -86,12 +86,15 @@ export class ComponentsService {
       where: { work_item_id: workItemId },
     });
 
-    const approvedComponents = await repositoryManager.count(WorkItemComponent, {
-      where: {
-        work_item_id: workItemId,
-        status: WorkItemComponentStatus.APPROVED,
+    const approvedComponents = await repositoryManager.count(
+      WorkItemComponent,
+      {
+        where: {
+          work_item_id: workItemId,
+          status: WorkItemComponentStatus.APPROVED,
+        },
       },
-    });
+    );
 
     const progress =
       totalComponents === 0

@@ -19,8 +19,77 @@ type SeedUser = {
   email: string;
   name: string;
   role: UserRole;
-  district_id?: number;
+  district_id?: string;
 };
+
+type SeedComponent = {
+  name: string;
+  unit: string;
+  order_number: number;
+};
+
+const STATIC_COMPONENTS: SeedComponent[] = [
+  {
+    name: 'Supply & Installation of Submersible Pump',
+    unit: 'No.',
+    order_number: 1,
+  },
+  {
+    name: 'Pumping Mains',
+    unit: 'Mtr.',
+    order_number: 2,
+  },
+  {
+    name: 'OHT',
+    unit: 'No.',
+    order_number: 3,
+  },
+  {
+    name: 'Chlorinator',
+    unit: 'No.',
+    order_number: 4,
+  },
+  {
+    name: 'Distribution Network',
+    unit: 'Mtr.',
+    order_number: 5,
+  },
+  {
+    name: 'FHTC',
+    unit: 'No.',
+    order_number: 6,
+  },
+  {
+    name: 'Electricity Charge For Power Connection',
+    unit: 'No.',
+    order_number: 7,
+  },
+  {
+    name: 'Boundary Wall',
+    unit: 'Mtr.',
+    order_number: 8,
+  },
+  {
+    name: 'Sump Well',
+    unit: 'No.',
+    order_number: 9,
+  },
+  {
+    name: 'Switch Room',
+    unit: 'No.',
+    order_number: 10,
+  },
+  {
+    name: 'Chlorinator Room',
+    unit: 'No.',
+    order_number: 11,
+  },
+  {
+    name: 'Survey and DPR',
+    unit: 'No.',
+    order_number: 12,
+  },
+];
 
 async function seedMockData() {
   const app = await NestFactory.createApplicationContext(AppModule, {
@@ -49,31 +118,31 @@ async function seedMockData() {
         email: 'do.mock@jjm.local',
         name: 'District Officer Mock',
         role: UserRole.DO,
-        district_id: 10,
+        district_id: '10',
       },
       {
         email: 'co.mock.1@jjm.local',
         name: 'Contractor Mock 1',
         role: UserRole.CO,
-        district_id: 10,
+        district_id: '10',
       },
       {
         email: 'co.mock.2@jjm.local',
         name: 'Contractor Mock 2',
         role: UserRole.CO,
-        district_id: 11,
+        district_id: '11',
       },
       {
         email: 'em.mock.1@jjm.local',
         name: 'Employee Mock 1',
         role: UserRole.EM,
-        district_id: 10,
+        district_id: '10',
       },
       {
         email: 'em.mock.2@jjm.local',
         name: 'Employee Mock 2',
         role: UserRole.EM,
-        district_id: 11,
+        district_id: '11',
       },
     ];
 
@@ -132,7 +201,7 @@ async function seedMockData() {
       workItemRepo.create({
         title: 'MOCK-Work Item 1',
         description: 'Mock data for district 10 - in progress',
-        district_id: 10,
+        district_id: '10',
         contractor_id: contractor1.id,
         latitude: 25.5941,
         longitude: 85.1376,
@@ -142,7 +211,7 @@ async function seedMockData() {
       workItemRepo.create({
         title: 'MOCK-Work Item 2',
         description: 'Mock data for district 11 - pending',
-        district_id: 11,
+        district_id: '11',
         contractor_id: contractor2.id,
         latitude: 25.3176,
         longitude: 82.9739,
@@ -152,7 +221,7 @@ async function seedMockData() {
       workItemRepo.create({
         title: 'MOCK-Work Item 3',
         description: 'Mock data for district 10 - completed',
-        district_id: 10,
+        district_id: '10',
         contractor_id: contractor1.id,
         latitude: 28.6139,
         longitude: 77.209,
@@ -161,12 +230,27 @@ async function seedMockData() {
       }),
     ]);
 
-    const componentsToCreate: Component[] = [];
-
     // Fetch all 12 master components to create mappings
-    const masterComponents = await componentRepo.find({
+    let masterComponents = await componentRepo.find({
       order: { order_number: 'ASC' },
     });
+
+    if (masterComponents.length === 0) {
+      for (const component of STATIC_COMPONENTS) {
+        await componentRepo.upsert(
+          {
+            name: component.name,
+            unit: component.unit,
+            order_number: component.order_number,
+          },
+          ['order_number'],
+        );
+      }
+
+      masterComponents = await componentRepo.find({
+        order: { order_number: 'ASC' },
+      });
+    }
 
     if (masterComponents.length !== 12) {
       throw new Error(

@@ -85,7 +85,7 @@ export class WorkItemsService {
     };
   }
 
-  async findOne(id: number): Promise<WorkItem> {
+  async findOne(id: string): Promise<WorkItem> {
     const workItem = await this.workItemsRepository.findOne({ where: { id } });
     if (!workItem) {
       throw new NotFoundException(`Work item #${id} not found`);
@@ -95,7 +95,7 @@ export class WorkItemsService {
   }
 
   async update(
-    id: number,
+    id: string,
     updateWorkItemDto: UpdateWorkItemDto,
   ): Promise<WorkItem> {
     const workItem = await this.findOne(id);
@@ -103,7 +103,7 @@ export class WorkItemsService {
     return this.workItemsRepository.save(workItem);
   }
 
-  async updateStatus(id: number, status: WorkItemStatus): Promise<WorkItem> {
+  async updateStatus(id: string, status: WorkItemStatus): Promise<WorkItem> {
     const workItem = await this.findOne(id);
     workItem.status = status;
 
@@ -118,7 +118,7 @@ export class WorkItemsService {
     return this.workItemsRepository.save(workItem);
   }
 
-  async remove(id: number): Promise<void> {
+  async remove(id: string): Promise<void> {
     const workItem = await this.findOne(id);
     await this.workItemsRepository.remove(workItem);
   }

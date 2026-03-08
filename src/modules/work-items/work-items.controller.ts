@@ -4,7 +4,6 @@ import {
   Delete,
   Get,
   Param,
-  ParseIntPipe,
   Patch,
   Post,
   Query,
@@ -73,10 +72,10 @@ export class WorkItemsController {
     summary: 'Get work item by ID',
     description: 'Returns work item details by ID',
   })
-  @ApiParam({ name: 'id', type: Number, description: 'Work item ID' })
+  @ApiParam({ name: 'id', type: String, description: 'Work item ID' })
   @ApiOkResponse({ description: 'Work item found' })
   @ApiNotFoundResponse({ description: 'Work item not found' })
-  findOne(@Param('id', ParseIntPipe) id: number) {
+  findOne(@Param('id') id: string) {
     return this.workItemsService.findOne(id);
   }
 
@@ -86,12 +85,12 @@ export class WorkItemsController {
     summary: 'Update work item',
     description: 'Updates editable fields of a work item',
   })
-  @ApiParam({ name: 'id', type: Number, description: 'Work item ID' })
+  @ApiParam({ name: 'id', type: String, description: 'Work item ID' })
   @ApiOkResponse({ description: 'Work item updated successfully' })
   @ApiBadRequestResponse({ description: 'Invalid request body' })
   @ApiNotFoundResponse({ description: 'Work item not found' })
   update(
-    @Param('id', ParseIntPipe) id: number,
+    @Param('id') id: string,
     @Body() updateWorkItemDto: UpdateWorkItemDto,
   ) {
     return this.workItemsService.update(id, updateWorkItemDto);
@@ -116,12 +115,12 @@ export class WorkItemsController {
       },
     },
   })
-  @ApiParam({ name: 'id', type: Number, description: 'Work item ID' })
+  @ApiParam({ name: 'id', type: String, description: 'Work item ID' })
   @ApiOkResponse({ description: 'Work item status updated successfully' })
   @ApiBadRequestResponse({ description: 'Invalid status value' })
   @ApiNotFoundResponse({ description: 'Work item not found' })
   updateStatus(
-    @Param('id', ParseIntPipe) id: number,
+    @Param('id') id: string,
     @Body('status') status: WorkItemStatus,
   ) {
     return this.workItemsService.updateStatus(id, status);
@@ -133,10 +132,10 @@ export class WorkItemsController {
     summary: 'Delete work item',
     description: 'Deletes a work item by ID',
   })
-  @ApiParam({ name: 'id', type: Number, description: 'Work item ID' })
+  @ApiParam({ name: 'id', type: String, description: 'Work item ID' })
   @ApiOkResponse({ description: 'Work item deleted successfully' })
   @ApiNotFoundResponse({ description: 'Work item not found' })
-  remove(@Param('id', ParseIntPipe) id: number) {
+  remove(@Param('id') id: string) {
     return this.workItemsService.remove(id);
   }
 }

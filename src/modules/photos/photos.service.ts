@@ -35,7 +35,7 @@ export class PhotosService {
   async uploadPhoto(
     file: Express.Multer.File,
     uploadPhotoDto: UploadPhotoDto,
-    employeeId: number,
+    employeeId: string,
   ): Promise<Photo> {
     const bucketName = this.configService.get<string>('AWS_S3_BUCKET', '');
     const region = this.configService.get<string>('AWS_REGION', 'ap-south-1');
@@ -84,7 +84,12 @@ export class PhotosService {
     const [items, total] = await this.photoRepo.findAndCount({
       skip: (page - 1) * limit,
       take: limit,
-      relations: ['employee', 'workItemComponent', 'workItem', 'selectedByUser'],
+      relations: [
+        'employee',
+        'workItemComponent',
+        'workItem',
+        'selectedByUser',
+      ],
       order: { created_at: 'DESC' },
     });
 
@@ -98,7 +103,7 @@ export class PhotosService {
   }
 
   async reviewByComponent(
-    componentId: number,
+    componentId: string,
     page: number = 1,
     limit: number = 20,
   ): Promise<{
@@ -112,7 +117,12 @@ export class PhotosService {
       where: { component_id: componentId },
       skip: (page - 1) * limit,
       take: limit,
-      relations: ['employee', 'workItemComponent', 'workItem', 'selectedByUser'],
+      relations: [
+        'employee',
+        'workItemComponent',
+        'workItem',
+        'selectedByUser',
+      ],
       order: { created_at: 'DESC' },
     });
 
@@ -125,7 +135,7 @@ export class PhotosService {
     };
   }
 
-  async selectBestPhoto(photoId: number, contractorId: number): Promise<Photo> {
+  async selectBestPhoto(photoId: string, contractorId: string): Promise<Photo> {
     const targetPhoto = await this.findOne(photoId);
 
     await this.photoRepo.update(
@@ -149,8 +159,8 @@ export class PhotosService {
   }
 
   async forwardSelectedPhoto(
-    photoId: number,
-    contractorId: number,
+    photoId: string,
+    contractorId: string,
   ): Promise<Photo> {
     const photo = await this.findOne(photoId);
 
@@ -176,10 +186,15 @@ export class PhotosService {
     return await this.photoRepo.save(photo);
   }
 
-  async findOne(id: number): Promise<Photo> {
+  async findOne(id: string): Promise<Photo> {
     const photo = await this.photoRepo.findOne({
       where: { id },
-      relations: ['employee', 'workItemComponent', 'workItem', 'selectedByUser'],
+      relations: [
+        'employee',
+        'workItemComponent',
+        'workItem',
+        'selectedByUser',
+      ],
     });
 
     if (!photo) {

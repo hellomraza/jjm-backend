@@ -1,12 +1,4 @@
-import {
-  Body,
-  Controller,
-  Get,
-  Param,
-  ParseIntPipe,
-  Patch,
-  UseGuards,
-} from '@nestjs/common';
+import { Body, Controller, Get, Param, Patch, UseGuards } from '@nestjs/common';
 import {
   ApiBadRequestResponse,
   ApiBearerAuth,
@@ -52,9 +44,9 @@ export class ComponentsController {
     description:
       'Returns component mappings for a work item sorted by master order',
   })
-  @ApiParam({ name: 'workItemId', type: Number, description: 'Work item ID' })
+  @ApiParam({ name: 'workItemId', type: String, description: 'Work item ID' })
   @ApiOkResponse({ description: 'Work item component mappings' })
-  findByWorkItem(@Param('workItemId', ParseIntPipe) workItemId: number) {
+  findByWorkItem(@Param('workItemId') workItemId: string) {
     return this.componentsService.findByWorkItem(workItemId);
   }
 
@@ -64,10 +56,14 @@ export class ComponentsController {
     summary: 'Get work item component mapping by ID',
     description: 'Returns mapping details by work item component mapping ID',
   })
-  @ApiParam({ name: 'id', type: Number, description: 'Work item component mapping ID' })
+  @ApiParam({
+    name: 'id',
+    type: String,
+    description: 'Work item component mapping ID',
+  })
   @ApiOkResponse({ description: 'Mapping found' })
   @ApiNotFoundResponse({ description: 'Mapping not found' })
-  findOne(@Param('id', ParseIntPipe) id: number) {
+  findOne(@Param('id') id: string) {
     return this.componentsService.findOneMapping(id);
   }
 
@@ -77,12 +73,16 @@ export class ComponentsController {
     summary: 'Update work item component mapping',
     description: 'Updates only quantity, remarks, and status on mapping row',
   })
-  @ApiParam({ name: 'id', type: Number, description: 'Work item component mapping ID' })
+  @ApiParam({
+    name: 'id',
+    type: String,
+    description: 'Work item component mapping ID',
+  })
   @ApiOkResponse({ description: 'Mapping updated successfully' })
   @ApiBadRequestResponse({ description: 'Invalid request body' })
   @ApiNotFoundResponse({ description: 'Mapping not found' })
   update(
-    @Param('id', ParseIntPipe) id: number,
+    @Param('id') id: string,
     @Body() updateWorkItemComponentDto: UpdateWorkItemComponentDto,
   ) {
     return this.componentsService.updateMapping(id, updateWorkItemComponentDto);

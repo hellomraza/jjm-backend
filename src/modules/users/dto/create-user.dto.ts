@@ -3,9 +3,9 @@ import {
   IsEmail,
   IsEnum,
   IsNotEmpty,
-  IsNumber,
   IsOptional,
   IsString,
+  IsUUID,
   MinLength,
 } from 'class-validator';
 import { UserRole } from '../entities/user.entity';
@@ -46,9 +46,9 @@ export class CreateUserDto {
 
   @ApiPropertyOptional({
     description: 'District ID for district-level users, nullable for HO',
-    example: 5,
+    example: '550e8400-e29b-41d4-a716-446655440000',
   })
   @IsOptional()
-  @IsNumber()
-  district_id?: number;
+  @IsUUID()
+  district_id?: string;
 }
