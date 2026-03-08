@@ -1121,6 +1121,29 @@ async findAll(page: number = 1, limit: number = 20) {
 
 ---
 
+# TASK 1 (NEW_TESKS) — Create Component Template System [x]
+
+| Setting | Value                         |
+| ------- | ----------------------------- |
+| Branch  | `feature/component-templates` |
+| Files   | 5–8                           |
+
+### Subtasks:
+
+- [x] Create `ComponentTemplate` entity
+- [x] Create database migration for `component_templates`
+- [x] Create seed script for 12 static components
+- [x] Create `ComponentTemplate` service
+
+### Commits:
+
+- [x] `feat(components): create component template entity`
+- [x] `feat(database): create component template migration`
+- [x] `feat(database): seed static component templates`
+- [x] `feat(components): add component template service`
+
+---
+
 # Task Completion Rule
 
 After finishing **any** task, AI must:

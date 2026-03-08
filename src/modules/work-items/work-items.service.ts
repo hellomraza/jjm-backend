@@ -1,7 +1,4 @@
-import {
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { CreateWorkItemDto } from './dto/create-work-item.dto';
@@ -15,9 +12,7 @@ export class WorkItemsService {
     private readonly workItemsRepository: Repository<WorkItem>,
   ) {}
 
-  async create(
-    createWorkItemDto: CreateWorkItemDto,
-  ): Promise<WorkItem> {
+  async create(createWorkItemDto: CreateWorkItemDto): Promise<WorkItem> {
     const workItem = this.workItemsRepository.create({
       ...createWorkItemDto,
       progress_percentage: createWorkItemDto.progress_percentage ?? 0,
@@ -73,10 +68,7 @@ export class WorkItemsService {
     return this.workItemsRepository.save(workItem);
   }
 
-  async updateStatus(
-    id: number,
-    status: WorkItemStatus,
-  ): Promise<WorkItem> {
+  async updateStatus(id: number, status: WorkItemStatus): Promise<WorkItem> {
     const workItem = await this.findOne(id);
     workItem.status = status;
 
