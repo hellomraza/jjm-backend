@@ -31,6 +31,50 @@
 $ yarn install
 ```
 
+## Local MySQL setup (recommended for all contributors)
+
+1. Copy env file:
+
+```bash
+cp .env.example .env
+```
+
+2. Start local MySQL in Docker:
+
+```bash
+yarn start:db
+```
+
+This uses:
+
+```bash
+docker run --name some-mysql -e MYSQL_ROOT_PASSWORD=12345 -e MYSQL_DATABASE=jjm_work_monitoring -p 3306:3306 -d mysql:8.0
+```
+
+3. Start API:
+
+```bash
+yarn start:dev
+```
+
+4. Seed mock data (users with multiple roles, work items, components, photos, assignments):
+
+```bash
+yarn mock-data
+```
+
+5. Stop local MySQL when done:
+
+```bash
+yarn stop:db
+```
+
+### Notes
+
+- Container name is fixed as `some-mysql` so scripts are consistent across machines.
+- Mock users are created with password: `Mock@1234`.
+- If Docker container is removed, just run `yarn start:db` again.
+
 ## Compile and run the project
 
 ```bash
