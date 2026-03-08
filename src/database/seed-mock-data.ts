@@ -3,10 +3,11 @@ import * as bcrypt from 'bcryptjs';
 import 'reflect-metadata';
 import { DataSource, In } from 'typeorm';
 import { AppModule } from '../app.module';
+import { Component } from '../modules/components/entities/component.entity';
 import {
-  Component,
-  ComponentStatus,
-} from '../modules/components/entities/component.entity';
+  WorkItemComponent,
+  WorkItemComponentStatus,
+} from '../modules/components/entities/work-item-component.entity';
 import { Photo } from '../modules/photos/entities/photo.entity';
 import { User, UserRole } from '../modules/users/entities/user.entity';
 import {
@@ -32,6 +33,7 @@ async function seedMockData() {
     const userRepo = dataSource.getRepository(User);
     const workItemRepo = dataSource.getRepository(WorkItem);
     const componentRepo = dataSource.getRepository(Component);
+    const workItemComponentRepo = dataSource.getRepository(WorkItemComponent);
     const photoRepo = dataSource.getRepository(Photo);
 
     const passwordPlain = 'Mock@1234';
@@ -122,7 +124,7 @@ async function seedMockData() {
         (workItem) => workItem.id,
       );
       await photoRepo.delete({ work_item_id: In(mockWorkItemIds) });
-      await componentRepo.delete({ work_item_id: In(mockWorkItemIds) });
+      await workItemComponentRepo.delete({ work_item_id: In(mockWorkItemIds) });
       await workItemRepo.delete({ id: In(mockWorkItemIds) });
     }
 
@@ -161,91 +163,79 @@ async function seedMockData() {
 
     const componentsToCreate: Component[] = [];
 
-    for (const workItem of workItems) {
-      componentsToCreate.push(
-        componentRepo.create({
-          work_item_id: workItem.id,
-          component_number: 1,
-          name: `MOCK-Component 1 for ${workItem.title}`,
-          status: ComponentStatus.APPROVED,
-          approved_by: districtOfficer.id,
-          approved_at: new Date(),
-        }),
-      );
+    // Fetch all 12 master components to create mappings
+    const masterComponents = await componentRepo.find({
+      order: { order_number: 'ASC' },
+    });
 
-      componentsToCreate.push(
-        componentRepo.create({
-          work_item_id: workItem.id,
-          component_number: 2,
-          name: `MOCK-Component 2 for ${workItem.title}`,
-          status:
-            workItem.status === WorkItemStatus.COMPLETED
-              ? ComponentStatus.APPROVED
-              : workItem.status === WorkItemStatus.IN_PROGRESS
-                ? ComponentStatus.IN_PROGRESS
-                : ComponentStatus.PENDING,
-          approved_by:
-            workItem.status === WorkItemStatus.COMPLETED
-              ? districtOfficer.id
-              : undefined,
-          approved_at:
-            workItem.status === WorkItemStatus.COMPLETED
-              ? new Date()
-              : undefined,
-        }),
-      );
-
-      componentsToCreate.push(
-        componentRepo.create({
-          work_item_id: workItem.id,
-          component_number: 3,
-          name: `MOCK-Component 3 for ${workItem.title}`,
-          status:
-            workItem.status === WorkItemStatus.COMPLETED
-              ? ComponentStatus.APPROVED
-              : ComponentStatus.PENDING,
-          approved_by:
-            workItem.status === WorkItemStatus.COMPLETED
-              ? districtOfficer.id
-              : undefined,
-          approved_at:
-            workItem.status === WorkItemStatus.COMPLETED
-              ? new Date()
-              : undefined,
-        }),
+    if (masterComponents.length !== 12) {
+      throw new Error(
+        `Expected 12 master components, found ${masterComponents.length}. Run seed-component-templates first.`,
       );
     }
 
-    const savedComponents = await componentRepo.save(componentsToCreate);
+    // Create work_item_components mappings
+    const workItemComponentsToCreate: WorkItemComponent[] = [];
+    for (const workItem of workItems) {
+      for (const masterComponent of masterComponents) {
+        // Determine mapping status based on work item status
+        let mappingStatus: WorkItemComponentStatus;
+        if (workItem.status === WorkItemStatus.COMPLETED) {
+          mappingStatus = WorkItemComponentStatus.APPROVED;
+        } else if (
+          workItem.status === WorkItemStatus.IN_PROGRESS &&
+          masterComponent.order_number <= 2
+        ) {
+          mappingStatus = WorkItemComponentStatus.IN_PROGRESS;
+        } else {
+          mappingStatus = WorkItemComponentStatus.PENDING;
+        }
 
-    const componentByWorkItemAndNumber = new Map(
-      savedComponents.map((component) => [
-        `${component.work_item_id}-${component.component_number}`,
-        component,
-      ]),
+        const mapping = new WorkItemComponent();
+        mapping.work_item_id = workItem.id;
+        mapping.component_id = masterComponent.id;
+        mapping.quantity = undefined;
+        mapping.remarks = undefined;
+        mapping.status = mappingStatus;
+        mapping.approved_photo_id = undefined;
+
+        workItemComponentsToCreate.push(mapping);
+      }
+    }
+
+    const savedWorkItemComponents = await workItemComponentRepo.save(
+      workItemComponentsToCreate,
     );
 
+    // Create photos linked to work_item_components mappings
     const photosToCreate: Photo[] = [];
 
     for (const workItem of workItems) {
-      const component1 = componentByWorkItemAndNumber.get(`${workItem.id}-1`);
-      const component2 = componentByWorkItemAndNumber.get(`${workItem.id}-2`);
+      // Get mappings for this work item
+      const workItemMappings = savedWorkItemComponents.filter(
+        (m) => m.work_item_id === workItem.id,
+      );
 
-      if (!component1 || !component2) {
-        throw new Error(`Missing components for work item ${workItem.id}`);
+      if (workItemMappings.length !== 12) {
+        throw new Error(
+          `Expected 12 mappings for work item ${workItem.id}, found ${workItemMappings.length}`,
+        );
       }
+
+      const mapping1 = workItemMappings[0]; // First component
+      const mapping2 = workItemMappings[1]; // Second component
 
       const baseLat = Number(workItem.latitude) || 25.0;
       const baseLong = Number(workItem.longitude) || 85.0;
 
       photosToCreate.push(
         photoRepo.create({
-          image_url: `https://mock-bucket.s3.ap-south-1.amazonaws.com/work-items/${workItem.id}/component-${component1.id}/photo-1.jpg`,
+          image_url: `https://mock-bucket.s3.ap-south-1.amazonaws.com/work-items/${workItem.id}/component-${mapping1.id}/photo-1.jpg`,
           latitude: baseLat,
           longitude: baseLong,
           timestamp: new Date(),
           employee_id: employee1.id,
-          component_id: component1.id,
+          component_id: mapping1.id,
           work_item_id: workItem.id,
           is_selected: true,
           selected_by: workItem.contractor_id,
@@ -257,12 +247,12 @@ async function seedMockData() {
 
       photosToCreate.push(
         photoRepo.create({
-          image_url: `https://mock-bucket.s3.ap-south-1.amazonaws.com/work-items/${workItem.id}/component-${component1.id}/photo-2.jpg`,
+          image_url: `https://mock-bucket.s3.ap-south-1.amazonaws.com/work-items/${workItem.id}/component-${mapping1.id}/photo-2.jpg`,
           latitude: baseLat + 0.0005,
           longitude: baseLong + 0.0005,
           timestamp: new Date(),
           employee_id: employee2.id,
-          component_id: component1.id,
+          component_id: mapping1.id,
           work_item_id: workItem.id,
           is_selected: false,
           selected_by: null,
@@ -274,12 +264,12 @@ async function seedMockData() {
 
       photosToCreate.push(
         photoRepo.create({
-          image_url: `https://mock-bucket.s3.ap-south-1.amazonaws.com/work-items/${workItem.id}/component-${component2.id}/photo-1.jpg`,
+          image_url: `https://mock-bucket.s3.ap-south-1.amazonaws.com/work-items/${workItem.id}/component-${mapping2.id}/photo-1.jpg`,
           latitude: baseLat + 0.001,
           longitude: baseLong + 0.001,
           timestamp: new Date(),
           employee_id: employee1.id,
-          component_id: component2.id,
+          component_id: mapping2.id,
           work_item_id: workItem.id,
           is_selected: false,
           selected_by: null,
@@ -295,7 +285,7 @@ async function seedMockData() {
     console.log('✅ Mock data seeded successfully');
     console.log(`Users: ${allMockUsers.length}`);
     console.log(`Work Items: ${workItems.length}`);
-    console.log(`Components: ${savedComponents.length}`);
+    console.log(`Work Item Components: ${savedWorkItemComponents.length}`);
     console.log(`Photos: ${savedPhotos.length}`);
     console.log('Mock user password:', passwordPlain);
   } finally {

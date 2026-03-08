@@ -1,14 +1,14 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { IsEnum, IsNotEmpty } from 'class-validator';
-import { ComponentStatus } from '../entities/component.entity';
+import { WorkItemComponentStatus } from '../entities/work-item-component.entity';
 
 export class UpdateStatusDto {
   @ApiProperty({
-    description: 'Target component status',
-    enum: ComponentStatus,
-    example: ComponentStatus.IN_PROGRESS,
+    description: 'Target work item component status',
+    enum: WorkItemComponentStatus,
+    example: WorkItemComponentStatus.IN_PROGRESS,
   })
-  @IsEnum(ComponentStatus)
+  @IsEnum(WorkItemComponentStatus)
   @IsNotEmpty()
-  status: ComponentStatus;
+  status: WorkItemComponentStatus;
 }

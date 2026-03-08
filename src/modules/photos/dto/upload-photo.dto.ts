@@ -26,7 +26,7 @@ export class UploadPhotoDto {
   longitude: number;
 
   @ApiProperty({
-    description: 'Component ID associated with this photo',
+    description: 'Work item component mapping ID associated with this photo',
     example: 2001,
   })
   @IsNumber()

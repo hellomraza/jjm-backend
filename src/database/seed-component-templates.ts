@@ -1,15 +1,15 @@
 import { NestFactory } from '@nestjs/core';
 import { DataSource } from 'typeorm';
 import { AppModule } from '../app.module';
-import { ComponentTemplate } from '../modules/components/entities/component-template.entity';
+import { Component } from '../modules/components/entities/component.entity';
 
-interface SeedComponentTemplate {
+interface SeedComponent {
   name: string;
   unit: string;
   order_number: number;
 }
 
-const STATIC_COMPONENTS: SeedComponentTemplate[] = [
+const STATIC_COMPONENTS: SeedComponent[] = [
   {
     name: 'Supply & Installation of Submersible Pump',
     unit: 'No.',
@@ -72,38 +72,37 @@ const STATIC_COMPONENTS: SeedComponentTemplate[] = [
   },
 ];
 
-async function seedComponentTemplates() {
-  console.log('🌱 Seeding component templates...');
+async function seedComponents() {
+  console.log('🌱 Seeding master components...');
 
   const app = await NestFactory.createApplicationContext(AppModule);
   const dataSource = app.get(DataSource);
-  const templateRepo = dataSource.getRepository(ComponentTemplate);
+  const componentRepo = dataSource.getRepository(Component);
 
   try {
-    // Upsert all component templates (idempotent)
-    for (const template of STATIC_COMPONENTS) {
-      await templateRepo.upsert(
+    for (const component of STATIC_COMPONENTS) {
+      await componentRepo.upsert(
         {
-          name: template.name,
-          unit: template.unit,
-          order_number: template.order_number,
+          name: component.name,
+          unit: component.unit,
+          order_number: component.order_number,
         },
-        ['order_number'], // conflict target
+        ['order_number'],
       );
-      console.log(`✅ Seeded: ${template.order_number}. ${template.name}`);
+      console.log(`✅ Seeded: ${component.order_number}. ${component.name}`);
     }
 
-    console.log('\n✨ Component templates seeded successfully!');
+    console.log('\n✨ Master components seeded successfully!');
     console.log(`📊 Total templates: ${STATIC_COMPONENTS.length}`);
   } catch (error) {
-    console.error('❌ Error seeding component templates:', error);
+    console.error('❌ Error seeding master components:', error);
     throw error;
   } finally {
     await app.close();
   }
 }
 
-seedComponentTemplates()
+seedComponents()
   .then(() => {
     console.log('\n🎉 Seeding completed!');
     process.exit(0);

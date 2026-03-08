@@ -84,7 +84,7 @@ export class PhotosService {
     const [items, total] = await this.photoRepo.findAndCount({
       skip: (page - 1) * limit,
       take: limit,
-      relations: ['employee', 'component', 'workItem', 'selectedByUser'],
+      relations: ['employee', 'workItemComponent', 'workItem', 'selectedByUser'],
       order: { created_at: 'DESC' },
     });
 
@@ -112,7 +112,7 @@ export class PhotosService {
       where: { component_id: componentId },
       skip: (page - 1) * limit,
       take: limit,
-      relations: ['employee', 'component', 'workItem', 'selectedByUser'],
+      relations: ['employee', 'workItemComponent', 'workItem', 'selectedByUser'],
       order: { created_at: 'DESC' },
     });
 
@@ -179,7 +179,7 @@ export class PhotosService {
   async findOne(id: number): Promise<Photo> {
     const photo = await this.photoRepo.findOne({
       where: { id },
-      relations: ['employee', 'component', 'workItem', 'selectedByUser'],
+      relations: ['employee', 'workItemComponent', 'workItem', 'selectedByUser'],
     });
 
     if (!photo) {

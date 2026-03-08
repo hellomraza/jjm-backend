@@ -1,6 +1,11 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { DataSource, Repository } from 'typeorm';
+import { Component } from '../components/entities/component.entity';
+import {
+  WorkItemComponent,
+  WorkItemComponentStatus,
+} from '../components/entities/work-item-component.entity';
 import { CreateWorkItemDto } from './dto/create-work-item.dto';
 import { UpdateWorkItemDto } from './dto/update-work-item.dto';
 import { WorkItem, WorkItemStatus } from './entities/work-item.entity';
@@ -10,16 +15,46 @@ export class WorkItemsService {
   constructor(
     @InjectRepository(WorkItem)
     private readonly workItemsRepository: Repository<WorkItem>,
+    @InjectRepository(Component)
+    private readonly componentsRepository: Repository<Component>,
+    @InjectRepository(WorkItemComponent)
+    private readonly workItemComponentsRepository: Repository<WorkItemComponent>,
+    private readonly dataSource: DataSource,
   ) {}
 
   async create(createWorkItemDto: CreateWorkItemDto): Promise<WorkItem> {
-    const workItem = this.workItemsRepository.create({
-      ...createWorkItemDto,
-      progress_percentage: createWorkItemDto.progress_percentage ?? 0,
-      status: createWorkItemDto.status ?? WorkItemStatus.PENDING,
-    });
+    return this.dataSource.transaction(async (manager) => {
+      const masterComponents = await manager.find(Component, {
+        order: { order_number: 'ASC' },
+      });
 
-    return this.workItemsRepository.save(workItem);
+      if (masterComponents.length !== 12) {
+        throw new NotFoundException(
+          `Expected 12 static components, found ${masterComponents.length}`,
+        );
+      }
+
+      const workItem = manager.create(WorkItem, {
+        ...createWorkItemDto,
+        progress_percentage: createWorkItemDto.progress_percentage ?? 0,
+        status: createWorkItemDto.status ?? WorkItemStatus.PENDING,
+      });
+
+      const savedWorkItem = await manager.save(WorkItem, workItem);
+
+      const mappings = masterComponents.map((component) => {
+        const mapping = new WorkItemComponent();
+        mapping.work_item_id = savedWorkItem.id;
+        mapping.component_id = component.id;
+        mapping.quantity = undefined;
+        mapping.remarks = undefined;
+        mapping.status = WorkItemComponentStatus.PENDING;
+        return mapping;
+      });
+
+      await manager.save(WorkItemComponent, mappings);
+      return savedWorkItem;
+    });
   }
 
   async findAll(

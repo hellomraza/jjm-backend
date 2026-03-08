@@ -7,7 +7,7 @@ import {
   ManyToOne,
   PrimaryGeneratedColumn,
 } from 'typeorm';
-import { Component } from '../../components/entities/component.entity';
+import { WorkItemComponent } from '../../components/entities/work-item-component.entity';
 import { User } from '../../users/entities/user.entity';
 import { WorkItem } from '../../work-items/entities/work-item.entity';
 
@@ -42,9 +42,9 @@ export class Photo {
   @Column()
   component_id: number;
 
-  @ManyToOne(() => Component)
+  @ManyToOne(() => WorkItemComponent)
   @JoinColumn({ name: 'component_id' })
-  component: Component;
+  workItemComponent: WorkItemComponent;
 
   @Index()
   @Column()
