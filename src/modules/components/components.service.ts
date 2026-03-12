@@ -4,7 +4,9 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { EntityManager, Repository } from 'typeorm';
+import { DataSource, EntityManager, Repository } from 'typeorm';
+import { Photo } from '../photos/entities/photo.entity';
+import { UserRole } from '../users/entities/user.entity';
 import { WorkItem } from '../work-items/entities/work-item.entity';
 import { UpdateWorkItemComponentDto } from './dto/update-work-item-component.dto';
 import { Component } from './entities/component.entity';
@@ -22,6 +24,7 @@ export class ComponentsService {
     private readonly workItemComponentRepo: Repository<WorkItemComponent>,
     @InjectRepository(WorkItem)
     private readonly workItemRepo: Repository<WorkItem>,
+    private readonly dataSource: DataSource,
   ) {}
 
   async findMasterComponents(): Promise<Component[]> {
@@ -104,5 +107,90 @@ export class ComponentsService {
     await repositoryManager.update(WorkItem, workItemId, {
       progress_percentage: progress,
     });
+  }
+
+  async submitPhoto(
+    componentId: string,
+    photoId: string,
+    contractorId: string,
+  ): Promise<{ success: boolean; message: string }> {
+    await this.dataSource.transaction(async (manager) => {
+      const componentMapping = await manager.findOne(WorkItemComponent, {
+        where: { id: componentId },
+        relations: ['workItem'],
+      });
+
+      if (!componentMapping) {
+        throw new NotFoundException(
+          `Work item component mapping with ID ${componentId} not found`,
+        );
+      }
+
+      if (componentMapping.workItem.contractor_id !== contractorId) {
+        throw new BadRequestException(
+          'Component does not belong to this contractor',
+        );
+      }
+
+      if (componentMapping.status !== WorkItemComponentStatus.PENDING) {
+        throw new BadRequestException(
+          'Only pending components can be submitted',
+        );
+      }
+
+      const photo = await manager.findOne(Photo, {
+        where: {
+          id: photoId,
+          component_id: componentId,
+        },
+        relations: ['employee'],
+      });
+
+      if (!photo) {
+        throw new NotFoundException(
+          'Photo not found for the provided component',
+        );
+      }
+
+      if (photo.employee.role !== UserRole.EM) {
+        throw new BadRequestException(
+          'Selected photo must be uploaded by an employee',
+        );
+      }
+
+      await manager.update(
+        Photo,
+        { component_id: componentId },
+        {
+          is_selected: false,
+          selected_by: null,
+          selected_at: null,
+          is_forwarded_to_do: false,
+          forwarded_at: null,
+        },
+      );
+
+      await manager.update(
+        Photo,
+        { id: photoId },
+        {
+          is_selected: true,
+          selected_by: contractorId,
+          selected_at: new Date(),
+          is_forwarded_to_do: true,
+          forwarded_at: new Date(),
+        },
+      );
+
+      componentMapping.approved_photo_id = photoId;
+      componentMapping.status = WorkItemComponentStatus.SUBMITTED;
+
+      await manager.save(WorkItemComponent, componentMapping);
+    });
+
+    return {
+      success: true,
+      message: 'Photo submitted for approval',
+    };
   }
 }

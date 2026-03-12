@@ -14,6 +14,7 @@ import { Component } from './component.entity';
 
 export enum WorkItemComponentStatus {
   PENDING = 'PENDING',
+  SUBMITTED = 'SUBMITTED',
   IN_PROGRESS = 'IN_PROGRESS',
   APPROVED = 'APPROVED',
   REJECTED = 'REJECTED',
@@ -59,6 +60,7 @@ export class WorkItemComponent {
   status: WorkItemComponentStatus;
 
   @Column({ nullable: true })
+  @Index('IDX_WORK_ITEM_COMPONENT_APPROVED_PHOTO_ID')
   approved_photo_id?: string;
 
   @CreateDateColumn()

@@ -4,6 +4,8 @@ import { TypeOrmModuleOptions } from '@nestjs/typeorm';
 export const databaseConfig = (
   configService: ConfigService,
 ): TypeOrmModuleOptions => {
+  const synchronize = configService.get('DB_SYNCHRONIZE') === 'true';
+
   return {
     type: 'mysql',
     host: configService.get('DB_HOST'),
@@ -12,7 +14,7 @@ export const databaseConfig = (
     password: configService.get('DB_PASSWORD'),
     database: configService.get('DB_NAME'),
     entities: [__dirname + '/../**/*.entity{.ts,.js}'],
-    synchronize: configService.get('NODE_ENV') !== 'production',
+    synchronize,
     migrations: [__dirname + '/../database/migrations/*{.ts,.js}'],
   };
 };

@@ -1,4 +1,13 @@
-import { Body, Controller, Get, Param, Patch, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  Patch,
+  Post,
+  Request,
+  UseGuards,
+} from '@nestjs/common';
 import {
   ApiBadRequestResponse,
   ApiBearerAuth,
@@ -15,6 +24,7 @@ import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { UserRole } from '../users/entities/user.entity';
 import { ComponentsService } from './components.service';
+import { SubmitPhotoDto } from './dto/submit-photo.dto';
 import { UpdateWorkItemComponentDto } from './dto/update-work-item-component.dto';
 
 @ApiTags('Components')
@@ -86,5 +96,32 @@ export class ComponentsController {
     @Body() updateWorkItemComponentDto: UpdateWorkItemComponentDto,
   ) {
     return this.componentsService.updateMapping(id, updateWorkItemComponentDto);
+  }
+
+  @Post(':componentId/submit-photo')
+  @Roles(UserRole.CO)
+  @ApiOperation({
+    summary: 'Submit selected photo for component approval',
+    description:
+      'Contractor selects a single uploaded photo for a component and submits it for district approval',
+  })
+  @ApiParam({
+    name: 'componentId',
+    type: String,
+    description: 'Work item component mapping ID',
+  })
+  @ApiOkResponse({ description: 'Photo submitted for approval' })
+  @ApiBadRequestResponse({ description: 'Invalid submission state or payload' })
+  @ApiNotFoundResponse({ description: 'Component mapping or photo not found' })
+  submitPhoto(
+    @Param('componentId') componentId: string,
+    @Body() submitPhotoDto: SubmitPhotoDto,
+    @Request() req,
+  ) {
+    return this.componentsService.submitPhoto(
+      componentId,
+      submitPhotoDto.photoId,
+      req.user.userId,
+    );
   }
 }
