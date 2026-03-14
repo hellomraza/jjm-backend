@@ -130,6 +130,113 @@ async function seedMockData() {
       hasWorkCodeColumn = true;
     }
 
+    const hasBlockIdColumn = await queryRunner.hasColumn(
+      'work_items',
+      'block_id',
+    );
+    if (!hasBlockIdColumn) {
+      await queryRunner.query(
+        'ALTER TABLE work_items ADD COLUMN block_id int NULL',
+      );
+    }
+
+    const hasPanchayatIdColumn = await queryRunner.hasColumn(
+      'work_items',
+      'panchayat_id',
+    );
+    if (!hasPanchayatIdColumn) {
+      await queryRunner.query(
+        'ALTER TABLE work_items ADD COLUMN panchayat_id int NULL',
+      );
+    }
+
+    const hasVillageIdColumn = await queryRunner.hasColumn(
+      'work_items',
+      'village_id',
+    );
+    if (!hasVillageIdColumn) {
+      await queryRunner.query(
+        'ALTER TABLE work_items ADD COLUMN village_id int NULL',
+      );
+    }
+
+    const hasSubdivisionIdColumn = await queryRunner.hasColumn(
+      'work_items',
+      'subdivision_id',
+    );
+    if (!hasSubdivisionIdColumn) {
+      await queryRunner.query(
+        'ALTER TABLE work_items ADD COLUMN subdivision_id int NULL',
+      );
+    }
+
+    const hasCircleIdColumn = await queryRunner.hasColumn(
+      'work_items',
+      'circle_id',
+    );
+    if (!hasCircleIdColumn) {
+      await queryRunner.query(
+        'ALTER TABLE work_items ADD COLUMN circle_id int NULL',
+      );
+    }
+
+    const hasZoneIdColumn = await queryRunner.hasColumn(
+      'work_items',
+      'zone_id',
+    );
+    if (!hasZoneIdColumn) {
+      await queryRunner.query(
+        'ALTER TABLE work_items ADD COLUMN zone_id int NULL',
+      );
+    }
+
+    const hasSchemetypeColumn = await queryRunner.hasColumn(
+      'work_items',
+      'schemetype',
+    );
+    if (!hasSchemetypeColumn) {
+      await queryRunner.query(
+        "ALTER TABLE work_items ADD COLUMN schemetype varchar(100) NOT NULL DEFAULT 'UNKNOWN'",
+      );
+    }
+
+    const hasNofhtcColumn = await queryRunner.hasColumn('work_items', 'nofhtc');
+    if (!hasNofhtcColumn) {
+      await queryRunner.query(
+        'ALTER TABLE work_items ADD COLUMN nofhtc varchar(110) NULL',
+      );
+    }
+
+    const hasAmountApprovedColumn = await queryRunner.hasColumn(
+      'work_items',
+      'amount_approved',
+    );
+    if (!hasAmountApprovedColumn) {
+      await queryRunner.query(
+        'ALTER TABLE work_items ADD COLUMN amount_approved double NULL',
+      );
+    }
+
+    const hasPaymentAmountColumn = await queryRunner.hasColumn(
+      'work_items',
+      'payment_amount',
+    );
+    if (!hasPaymentAmountColumn) {
+      await queryRunner.query(
+        'ALTER TABLE work_items ADD COLUMN payment_amount double NULL',
+      );
+    }
+
+    const hasSerialNoColumn = await queryRunner.hasColumn(
+      'work_items',
+      'serial_no',
+    );
+    if (!hasSerialNoColumn) {
+      await queryRunner.query(
+        'ALTER TABLE work_items ADD COLUMN serial_no int NULL',
+      );
+    }
+
     await queryRunner.release();
 
     const passwordPlain = 'Mock@1234';
@@ -235,6 +342,7 @@ async function seedMockData() {
         title: 'MOCK-Work Item 1',
         description: 'Mock data for district 10 - in progress',
         district_id: '10',
+        schemetype: 'PWS',
         contractor_id: contractor1.id,
         latitude: 25.5941,
         longitude: 85.1376,
@@ -248,6 +356,7 @@ async function seedMockData() {
         title: 'MOCK-Work Item 2',
         description: 'Mock data for district 11 - pending',
         district_id: '11',
+        schemetype: 'SVS',
         contractor_id: contractor2.id,
         latitude: 25.3176,
         longitude: 82.9739,
@@ -261,6 +370,7 @@ async function seedMockData() {
         title: 'MOCK-Work Item 3',
         description: 'Mock data for district 10 - completed',
         district_id: '10',
+        schemetype: 'PWS',
         contractor_id: contractor1.id,
         latitude: 28.6139,
         longitude: 77.209,
