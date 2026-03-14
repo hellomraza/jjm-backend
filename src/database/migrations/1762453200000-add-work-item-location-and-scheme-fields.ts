@@ -7,9 +7,7 @@ import {
   TableIndex,
 } from 'typeorm';
 
-export class AddWorkItemLocationAndSchemeFields1762453200000
-  implements MigrationInterface
-{
+export class AddWorkItemLocationAndSchemeFields1762453200000 implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {
     const hasDistrictsTable = await queryRunner.hasTable('districts');
     if (!hasDistrictsTable) {
@@ -431,7 +429,10 @@ export class AddWorkItemLocationAndSchemeFields1762453200000
     );
 
     const latestWorkItemsTable = await queryRunner.getTable('work_items');
-    const createIndexIfMissing = async (name: string, columnNames: string[]) => {
+    const createIndexIfMissing = async (
+      name: string,
+      columnNames: string[],
+    ) => {
       const exists =
         latestWorkItemsTable?.indices.some((index) => index.name === name) ??
         false;
@@ -461,7 +462,9 @@ export class AddWorkItemLocationAndSchemeFields1762453200000
     const workItemsTable = await queryRunner.getTable('work_items');
 
     const dropIndexIfExists = async (name: string): Promise<void> => {
-      const exists = workItemsTable?.indices.some((index) => index.name === name);
+      const exists = workItemsTable?.indices.some(
+        (index) => index.name === name,
+      );
       if (exists) {
         await queryRunner.dropIndex('work_items', name);
       }
