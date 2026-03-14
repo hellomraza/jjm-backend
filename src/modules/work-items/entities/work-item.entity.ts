@@ -18,6 +18,9 @@ export class WorkItem {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
+  @Column({ unique: true })
+  work_code: string;
+
   @Column()
   title: string;
 
@@ -27,6 +30,45 @@ export class WorkItem {
   @Index()
   @Column()
   district_id: string;
+
+  @Index()
+  @Column({ type: 'int', nullable: true })
+  block_id?: number;
+
+  @Index()
+  @Column({ type: 'int', nullable: true })
+  panchayat_id?: number;
+
+  @Index()
+  @Column({ type: 'int', nullable: true })
+  village_id?: number;
+
+  @Index()
+  @Column({ type: 'int', nullable: true })
+  subdivision_id?: number;
+
+  @Index()
+  @Column({ type: 'int', nullable: true })
+  circle_id?: number;
+
+  @Index()
+  @Column({ type: 'int', nullable: true })
+  zone_id?: number;
+
+  @Column({ type: 'varchar', length: 100 })
+  schemetype: string;
+
+  @Column({ type: 'varchar', length: 110, nullable: true, default: null })
+  nofhtc?: string;
+
+  @Column({ type: 'double', nullable: true })
+  amount_approved?: number;
+
+  @Column({ type: 'double', nullable: true })
+  payment_amount?: number;
+
+  @Column({ type: 'int', nullable: true })
+  serial_no?: number;
 
   @Index()
   @Column()

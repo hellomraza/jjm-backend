@@ -3,11 +3,19 @@ import * as bcrypt from 'bcryptjs';
 import 'reflect-metadata';
 import { DataSource, In } from 'typeorm';
 import { AppModule } from '../app.module';
+import { Agreement } from '../modules/agreements/entities/agreement.entity';
 import { Component } from '../modules/components/entities/component.entity';
 import {
   WorkItemComponent,
   WorkItemComponentStatus,
 } from '../modules/components/entities/work-item-component.entity';
+import { Block } from '../modules/locations/entities/block.entity';
+import { Circle } from '../modules/locations/entities/circle.entity';
+import { District } from '../modules/locations/entities/district.entity';
+import { Panchayat } from '../modules/locations/entities/panchayat.entity';
+import { Subdivision } from '../modules/locations/entities/subdivision.entity';
+import { Village } from '../modules/locations/entities/village.entity';
+import { Zone } from '../modules/locations/entities/zone.entity';
 import { Photo } from '../modules/photos/entities/photo.entity';
 import { User, UserRole } from '../modules/users/entities/user.entity';
 import {
@@ -91,6 +99,10 @@ const STATIC_COMPONENTS: SeedComponent[] = [
   },
 ];
 
+const buildSeedNumericCode = (offset: number): string => {
+  return `${Date.now()}${offset.toString().padStart(4, '0')}`.slice(-12);
+};
+
 async function seedMockData() {
   const app = await NestFactory.createApplicationContext(AppModule, {
     logger: ['error', 'warn'],
@@ -104,6 +116,254 @@ async function seedMockData() {
     const componentRepo = dataSource.getRepository(Component);
     const workItemComponentRepo = dataSource.getRepository(WorkItemComponent);
     const photoRepo = dataSource.getRepository(Photo);
+    const agreementRepo = dataSource.getRepository(Agreement);
+    const districtRepo = dataSource.getRepository(District);
+    const blockRepo = dataSource.getRepository(Block);
+    const panchayatRepo = dataSource.getRepository(Panchayat);
+    const villageRepo = dataSource.getRepository(Village);
+    const subdivisionRepo = dataSource.getRepository(Subdivision);
+    const circleRepo = dataSource.getRepository(Circle);
+    const zoneRepo = dataSource.getRepository(Zone);
+
+    const queryRunner = dataSource.createQueryRunner();
+    let hasUserCodeColumn = await queryRunner.hasColumn('users', 'code');
+    let hasWorkCodeColumn = await queryRunner.hasColumn(
+      'work_items',
+      'work_code',
+    );
+
+    // Create location master tables inline if migrations haven't been run yet
+    await queryRunner.query(`
+      CREATE TABLE IF NOT EXISTS districts (
+        districtid INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+        districtname VARCHAR(255) NOT NULL,
+        district_code VARCHAR(100) NOT NULL,
+        INDEX IDX_DISTRICTS_CODE (district_code)
+      )
+    `);
+
+    await queryRunner.query(`
+      CREATE TABLE IF NOT EXISTS blocks (
+        blockid INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+        blockname VARCHAR(255) NOT NULL,
+        block_code VARCHAR(100) NOT NULL,
+        district_id INT NOT NULL,
+        INDEX IDX_BLOCKS_CODE (block_code)
+      )
+    `);
+
+    await queryRunner.query(`
+      CREATE TABLE IF NOT EXISTS panchayats (
+        panchayatid INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+        panchayatname VARCHAR(255) NOT NULL,
+        panchayat_code VARCHAR(100) NOT NULL,
+        INDEX IDX_PANCHAYATS_CODE (panchayat_code)
+      )
+    `);
+
+    await queryRunner.query(`
+      CREATE TABLE IF NOT EXISTS villages (
+        villageid INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+        villagename VARCHAR(255) NOT NULL,
+        village_code VARCHAR(100) NOT NULL,
+        district_id INT NOT NULL,
+        INDEX IDX_VILLAGES_CODE (village_code)
+      )
+    `);
+
+    await queryRunner.query(`
+      CREATE TABLE IF NOT EXISTS subdivisions (
+        subdivisionid INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+        subdivisionname VARCHAR(255) NOT NULL,
+        subdivision_code VARCHAR(100) NOT NULL,
+        INDEX IDX_SUBDIVISIONS_CODE (subdivision_code)
+      )
+    `);
+
+    await queryRunner.query(`
+      CREATE TABLE IF NOT EXISTS circles (
+        circleid INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+        circlename VARCHAR(255) NOT NULL,
+        circle_code VARCHAR(100) NOT NULL,
+        INDEX IDX_CIRCLES_CODE (circle_code)
+      )
+    `);
+
+    await queryRunner.query(`
+      CREATE TABLE IF NOT EXISTS zones (
+        zoneid INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+        zonename VARCHAR(255) NOT NULL,
+        zone_code VARCHAR(100) NOT NULL,
+        INDEX IDX_ZONES_CODE (zone_code)
+      )
+    `);
+
+    await queryRunner.query(`
+      CREATE TABLE IF NOT EXISTS agreements (
+        id VARCHAR(36) NOT NULL PRIMARY KEY,
+        agreementno VARCHAR(100) NOT NULL,
+        agreementyear VARCHAR(9) NOT NULL,
+        contractor_id VARCHAR(36) NOT NULL,
+        work_id VARCHAR(36) NOT NULL,
+        created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+        updated_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+        INDEX IDX_AGREEMENTS_NO (agreementno),
+        INDEX IDX_AGREEMENTS_CONTRACTOR (contractor_id),
+        INDEX IDX_AGREEMENTS_WORK (work_id)
+      )
+    `);
+
+    // Guard: add missing timestamp columns if table existed without them
+    const hasAgrCreatedAt = await queryRunner.hasColumn(
+      'agreements',
+      'created_at',
+    );
+    if (!hasAgrCreatedAt) {
+      await queryRunner.query(
+        'ALTER TABLE agreements ADD COLUMN created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6)',
+      );
+    }
+    const hasAgrUpdatedAt = await queryRunner.hasColumn(
+      'agreements',
+      'updated_at',
+    );
+    if (!hasAgrUpdatedAt) {
+      await queryRunner.query(
+        'ALTER TABLE agreements ADD COLUMN updated_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6)',
+      );
+    }
+
+    const hasAgreementsTable = true;
+    const hasDistrictsTable = true;
+    const hasBlocksTable = true;
+    const hasPanchayatsTable = true;
+    const hasVillagesTable = true;
+    const hasSubdivisionsTable = true;
+    const hasCirclesTable = true;
+    const hasZonesTable = true;
+
+    if (!hasUserCodeColumn) {
+      await queryRunner.query(
+        'ALTER TABLE users ADD COLUMN code varchar(14) NULL',
+      );
+      hasUserCodeColumn = true;
+    }
+
+    if (!hasWorkCodeColumn) {
+      await queryRunner.query(
+        'ALTER TABLE work_items ADD COLUMN work_code varchar(13) NULL',
+      );
+      hasWorkCodeColumn = true;
+    }
+
+    const hasBlockIdColumn = await queryRunner.hasColumn(
+      'work_items',
+      'block_id',
+    );
+    if (!hasBlockIdColumn) {
+      await queryRunner.query(
+        'ALTER TABLE work_items ADD COLUMN block_id int NULL',
+      );
+    }
+
+    const hasPanchayatIdColumn = await queryRunner.hasColumn(
+      'work_items',
+      'panchayat_id',
+    );
+    if (!hasPanchayatIdColumn) {
+      await queryRunner.query(
+        'ALTER TABLE work_items ADD COLUMN panchayat_id int NULL',
+      );
+    }
+
+    const hasVillageIdColumn = await queryRunner.hasColumn(
+      'work_items',
+      'village_id',
+    );
+    if (!hasVillageIdColumn) {
+      await queryRunner.query(
+        'ALTER TABLE work_items ADD COLUMN village_id int NULL',
+      );
+    }
+
+    const hasSubdivisionIdColumn = await queryRunner.hasColumn(
+      'work_items',
+      'subdivision_id',
+    );
+    if (!hasSubdivisionIdColumn) {
+      await queryRunner.query(
+        'ALTER TABLE work_items ADD COLUMN subdivision_id int NULL',
+      );
+    }
+
+    const hasCircleIdColumn = await queryRunner.hasColumn(
+      'work_items',
+      'circle_id',
+    );
+    if (!hasCircleIdColumn) {
+      await queryRunner.query(
+        'ALTER TABLE work_items ADD COLUMN circle_id int NULL',
+      );
+    }
+
+    const hasZoneIdColumn = await queryRunner.hasColumn(
+      'work_items',
+      'zone_id',
+    );
+    if (!hasZoneIdColumn) {
+      await queryRunner.query(
+        'ALTER TABLE work_items ADD COLUMN zone_id int NULL',
+      );
+    }
+
+    const hasSchemetypeColumn = await queryRunner.hasColumn(
+      'work_items',
+      'schemetype',
+    );
+    if (!hasSchemetypeColumn) {
+      await queryRunner.query(
+        "ALTER TABLE work_items ADD COLUMN schemetype varchar(100) NOT NULL DEFAULT 'UNKNOWN'",
+      );
+    }
+
+    const hasNofhtcColumn = await queryRunner.hasColumn('work_items', 'nofhtc');
+    if (!hasNofhtcColumn) {
+      await queryRunner.query(
+        'ALTER TABLE work_items ADD COLUMN nofhtc varchar(110) NULL',
+      );
+    }
+
+    const hasAmountApprovedColumn = await queryRunner.hasColumn(
+      'work_items',
+      'amount_approved',
+    );
+    if (!hasAmountApprovedColumn) {
+      await queryRunner.query(
+        'ALTER TABLE work_items ADD COLUMN amount_approved double NULL',
+      );
+    }
+
+    const hasPaymentAmountColumn = await queryRunner.hasColumn(
+      'work_items',
+      'payment_amount',
+    );
+    if (!hasPaymentAmountColumn) {
+      await queryRunner.query(
+        'ALTER TABLE work_items ADD COLUMN payment_amount double NULL',
+      );
+    }
+
+    const hasSerialNoColumn = await queryRunner.hasColumn(
+      'work_items',
+      'serial_no',
+    );
+    if (!hasSerialNoColumn) {
+      await queryRunner.query(
+        'ALTER TABLE work_items ADD COLUMN serial_no int NULL',
+      );
+    }
+
+    await queryRunner.release();
 
     const passwordPlain = 'Mock@1234';
     const passwordHash = await bcrypt.hash(passwordPlain, 10);
@@ -147,7 +407,10 @@ async function seedMockData() {
     ];
 
     await userRepo.upsert(
-      seedUsers.map((user) => ({
+      seedUsers.map((user, index) => ({
+        ...(hasUserCodeColumn
+          ? { code: `${user.role}${buildSeedNumericCode(index + 1)}` }
+          : {}),
         email: user.email,
         name: user.name,
         role: user.role,
@@ -183,6 +446,252 @@ async function seedMockData() {
       throw new Error('Failed to resolve seeded users');
     }
 
+    let seededDistricts: District[] = [];
+    let seededBlocks: Block[] = [];
+    let seededPanchayats: Panchayat[] = [];
+    let seededVillages: Village[] = [];
+    let seededSubdivisions: Subdivision[] = [];
+    let seededCircles: Circle[] = [];
+    let seededZones: Zone[] = [];
+
+    if (hasDistrictsTable) {
+      // Clean up any legacy MOCK-prefixed districts
+      const oldMockDistricts = await districtRepo
+        .createQueryBuilder('district')
+        .where('district.district_code LIKE :prefix', { prefix: 'MOCK-%' })
+        .getMany();
+      if (oldMockDistricts.length > 0) {
+        await districtRepo.delete({
+          districtid: In(oldMockDistricts.map((d) => d.districtid)),
+        });
+      }
+
+      const chhatisgarhDistricts = [
+        { districtname: 'Balod', district_code: 'CG-BAL' },
+        { districtname: 'Balodabazar-Bhatapara', district_code: 'CG-BABA' },
+        { districtname: 'Balrampur-Ramanujganj', district_code: 'CG-BARA' },
+        { districtname: 'Bastar', district_code: 'CG-BST' },
+        { districtname: 'Bemetara', district_code: 'CG-BEM' },
+        { districtname: 'Bijapur', district_code: 'CG-BJP' },
+        { districtname: 'Bilaspur', district_code: 'CG-BLS' },
+        {
+          districtname: 'Dakshin Bastar Dantewada',
+          district_code: 'CG-DBD',
+        },
+        { districtname: 'Dhamtari', district_code: 'CG-DHT' },
+        { districtname: 'Durg', district_code: 'CG-DRG' },
+        { districtname: 'Gariyaband', district_code: 'CG-GRB' },
+        { districtname: 'Gaurela-Pendra-Marwahi', district_code: 'CG-GPM' },
+        { districtname: 'Janjgir-Champa', district_code: 'CG-JJC' },
+        { districtname: 'Jashpur', district_code: 'CG-JSP' },
+        { districtname: 'Kabeerdham', district_code: 'CG-KBD' },
+        {
+          districtname: 'Khairagarh-Chhuikhadan-Gandai',
+          district_code: 'CG-KCG',
+        },
+        { districtname: 'Kondagaon', district_code: 'CG-KDG' },
+        { districtname: 'Korba', district_code: 'CG-KRB' },
+        { districtname: 'Korea', district_code: 'CG-KOR' },
+        { districtname: 'Mahasamund', district_code: 'CG-MHM' },
+        {
+          districtname: 'Manendragarh-Chirmiri-Bharatpur(M C B)',
+          district_code: 'CG-MCB',
+        },
+        {
+          districtname: 'Mohla-Manpur-Ambagarh Chouki',
+          district_code: 'CG-MMAC',
+        },
+        { districtname: 'Mungeli', district_code: 'CG-MNG' },
+        { districtname: 'Narayanpur', district_code: 'CG-NRP' },
+        { districtname: 'Raigarh', district_code: 'CG-RGH' },
+        { districtname: 'Raipur', district_code: 'CG-RPR' },
+        { districtname: 'Rajnandgaon', district_code: 'CG-RNG' },
+        { districtname: 'Sakti', district_code: 'CG-SKT' },
+        { districtname: 'Sarangarh-Bilaigarh', district_code: 'CG-SBG' },
+        { districtname: 'Sukma', district_code: 'CG-SKM' },
+        { districtname: 'Surajpur', district_code: 'CG-SRP' },
+        { districtname: 'Surguja', district_code: 'CG-SRG' },
+        { districtname: 'Uttar Bastar Kanker', district_code: 'CG-UBK' },
+      ];
+
+      const existingCodes = new Set(
+        (await districtRepo.find({ select: ['district_code'] })).map(
+          (d) => d.district_code,
+        ),
+      );
+
+      const toInsert = chhatisgarhDistricts.filter(
+        (d) => !existingCodes.has(d.district_code),
+      );
+
+      if (toInsert.length > 0) {
+        await districtRepo.save(toInsert.map((d) => districtRepo.create(d)));
+      }
+
+      seededDistricts = await districtRepo.find({
+        where: {
+          district_code: In(chhatisgarhDistricts.map((d) => d.district_code)),
+        },
+        order: { districtid: 'ASC' },
+      });
+    }
+
+    if (hasBlocksTable && seededDistricts.length > 0) {
+      const existingBlocks = await blockRepo
+        .createQueryBuilder('block')
+        .where('block.block_code LIKE :prefix', { prefix: 'MOCK-%' })
+        .getMany();
+
+      if (existingBlocks.length > 0) {
+        await blockRepo.delete({
+          blockid: In(existingBlocks.map((block) => block.blockid)),
+        });
+      }
+
+      seededBlocks = await blockRepo.save([
+        blockRepo.create({
+          blockname: 'Mock Block 10-A',
+          block_code: 'MOCK-BLK-10A',
+          district_id: seededDistricts[0].districtid,
+        }),
+        blockRepo.create({
+          blockname: 'Mock Block 11-A',
+          block_code: 'MOCK-BLK-11A',
+          district_id: seededDistricts[1].districtid,
+        }),
+      ]);
+    }
+
+    if (hasPanchayatsTable) {
+      const existingPanchayats = await panchayatRepo
+        .createQueryBuilder('panchayat')
+        .where('panchayat.panchayat_code LIKE :prefix', { prefix: 'MOCK-%' })
+        .getMany();
+
+      if (existingPanchayats.length > 0) {
+        await panchayatRepo.delete({
+          panchayatid: In(
+            existingPanchayats.map((panchayat) => panchayat.panchayatid),
+          ),
+        });
+      }
+
+      seededPanchayats = await panchayatRepo.save([
+        panchayatRepo.create({
+          panchayatname: 'Mock Panchayat 10-A',
+          panchayat_code: 'MOCK-PAN-10A',
+        }),
+        panchayatRepo.create({
+          panchayatname: 'Mock Panchayat 11-A',
+          panchayat_code: 'MOCK-PAN-11A',
+        }),
+      ]);
+    }
+
+    if (hasVillagesTable && seededDistricts.length > 0) {
+      const existingVillages = await villageRepo
+        .createQueryBuilder('village')
+        .where('village.village_code LIKE :prefix', { prefix: 'MOCK-%' })
+        .getMany();
+
+      if (existingVillages.length > 0) {
+        await villageRepo.delete({
+          villageid: In(existingVillages.map((village) => village.villageid)),
+        });
+      }
+
+      seededVillages = await villageRepo.save([
+        villageRepo.create({
+          villagename: 'Mock Village 10-A',
+          village_code: 'MOCK-VIL-10A',
+          district_id: seededDistricts[0].districtid,
+        }),
+        villageRepo.create({
+          villagename: 'Mock Village 11-A',
+          village_code: 'MOCK-VIL-11A',
+          district_id: seededDistricts[1].districtid,
+        }),
+      ]);
+    }
+
+    if (hasSubdivisionsTable) {
+      const existingSubdivisions = await subdivisionRepo
+        .createQueryBuilder('subdivision')
+        .where('subdivision.subdivision_code LIKE :prefix', {
+          prefix: 'MOCK-%',
+        })
+        .getMany();
+
+      if (existingSubdivisions.length > 0) {
+        await subdivisionRepo.delete({
+          subdivisionid: In(
+            existingSubdivisions.map(
+              (subdivision) => subdivision.subdivisionid,
+            ),
+          ),
+        });
+      }
+
+      seededSubdivisions = await subdivisionRepo.save([
+        subdivisionRepo.create({
+          subdivisionname: 'Mock Subdivision 10-A',
+          subdivision_code: 'MOCK-SUB-10A',
+        }),
+        subdivisionRepo.create({
+          subdivisionname: 'Mock Subdivision 11-A',
+          subdivision_code: 'MOCK-SUB-11A',
+        }),
+      ]);
+    }
+
+    if (hasCirclesTable) {
+      const existingCircles = await circleRepo
+        .createQueryBuilder('circle')
+        .where('circle.circle_code LIKE :prefix', { prefix: 'MOCK-%' })
+        .getMany();
+
+      if (existingCircles.length > 0) {
+        await circleRepo.delete({
+          circleid: In(existingCircles.map((circle) => circle.circleid)),
+        });
+      }
+
+      seededCircles = await circleRepo.save([
+        circleRepo.create({
+          circlename: 'Mock Circle 10-A',
+          circle_code: 'MOCK-CIR-10A',
+        }),
+        circleRepo.create({
+          circlename: 'Mock Circle 11-A',
+          circle_code: 'MOCK-CIR-11A',
+        }),
+      ]);
+    }
+
+    if (hasZonesTable) {
+      const existingZones = await zoneRepo
+        .createQueryBuilder('zone')
+        .where('zone.zone_code LIKE :prefix', { prefix: 'MOCK-%' })
+        .getMany();
+
+      if (existingZones.length > 0) {
+        await zoneRepo.delete({
+          zoneid: In(existingZones.map((zone) => zone.zoneid)),
+        });
+      }
+
+      seededZones = await zoneRepo.save([
+        zoneRepo.create({
+          zonename: 'Mock Zone 10-A',
+          zone_code: 'MOCK-ZON-10A',
+        }),
+        zoneRepo.create({
+          zonename: 'Mock Zone 11-A',
+          zone_code: 'MOCK-ZON-11A',
+        }),
+      ]);
+    }
+
     const existingMockWorkItems = await workItemRepo
       .createQueryBuilder('work_item')
       .where('work_item.title LIKE :prefix', { prefix: 'MOCK-%' })
@@ -199,9 +708,23 @@ async function seedMockData() {
 
     const workItems = await workItemRepo.save([
       workItemRepo.create({
+        ...(hasWorkCodeColumn
+          ? { work_code: `W${buildSeedNumericCode(101)}` }
+          : {}),
         title: 'MOCK-Work Item 1',
         description: 'Mock data for district 10 - in progress',
         district_id: '10',
+        block_id: seededBlocks[0]?.blockid,
+        panchayat_id: seededPanchayats[0]?.panchayatid,
+        village_id: seededVillages[0]?.villageid,
+        subdivision_id: seededSubdivisions[0]?.subdivisionid,
+        circle_id: seededCircles[0]?.circleid,
+        zone_id: seededZones[0]?.zoneid,
+        schemetype: 'PWS',
+        nofhtc: '1250',
+        amount_approved: 1250000,
+        payment_amount: 450000,
+        serial_no: 1,
         contractor_id: contractor1.id,
         latitude: 25.5941,
         longitude: 85.1376,
@@ -209,9 +732,23 @@ async function seedMockData() {
         status: WorkItemStatus.IN_PROGRESS,
       }),
       workItemRepo.create({
+        ...(hasWorkCodeColumn
+          ? { work_code: `W${buildSeedNumericCode(102)}` }
+          : {}),
         title: 'MOCK-Work Item 2',
         description: 'Mock data for district 11 - pending',
         district_id: '11',
+        block_id: seededBlocks[1]?.blockid,
+        panchayat_id: seededPanchayats[1]?.panchayatid,
+        village_id: seededVillages[1]?.villageid,
+        subdivision_id: seededSubdivisions[1]?.subdivisionid,
+        circle_id: seededCircles[1]?.circleid,
+        zone_id: seededZones[1]?.zoneid,
+        schemetype: 'SVS',
+        nofhtc: '980',
+        amount_approved: 980000,
+        payment_amount: 125000,
+        serial_no: 2,
         contractor_id: contractor2.id,
         latitude: 25.3176,
         longitude: 82.9739,
@@ -219,9 +756,23 @@ async function seedMockData() {
         status: WorkItemStatus.PENDING,
       }),
       workItemRepo.create({
+        ...(hasWorkCodeColumn
+          ? { work_code: `W${buildSeedNumericCode(103)}` }
+          : {}),
         title: 'MOCK-Work Item 3',
         description: 'Mock data for district 10 - completed',
         district_id: '10',
+        block_id: seededBlocks[0]?.blockid,
+        panchayat_id: seededPanchayats[0]?.panchayatid,
+        village_id: seededVillages[0]?.villageid,
+        subdivision_id: seededSubdivisions[0]?.subdivisionid,
+        circle_id: seededCircles[0]?.circleid,
+        zone_id: seededZones[0]?.zoneid,
+        schemetype: 'PWS',
+        nofhtc: '1570',
+        amount_approved: 1570000,
+        payment_amount: 1570000,
+        serial_no: 3,
         contractor_id: contractor1.id,
         latitude: 28.6139,
         longitude: 77.209,
@@ -366,9 +917,44 @@ async function seedMockData() {
 
     const savedPhotos = await photoRepo.save(photosToCreate);
 
+    let agreementsCount = 0;
+    if (hasAgreementsTable) {
+      const existingMockAgreements = await agreementRepo
+        .createQueryBuilder('agreement')
+        .where('agreement.agreementno LIKE :prefix', { prefix: 'MOCK-%' })
+        .getMany();
+
+      if (existingMockAgreements.length > 0) {
+        await agreementRepo.delete({
+          id: In(existingMockAgreements.map((agreement) => agreement.id)),
+        });
+      }
+
+      const savedAgreements = await agreementRepo.save(
+        workItems.map((workItem, index) =>
+          agreementRepo.create({
+            agreementno: `MOCK-AGR-${index + 1}`,
+            agreementyear: '2024-2025',
+            contractor_id: workItem.contractor_id,
+            work_id: workItem.id,
+          }),
+        ),
+      );
+
+      agreementsCount = savedAgreements.length;
+    }
+
     console.log('✅ Mock data seeded successfully');
     console.log(`Users: ${allMockUsers.length}`);
+    console.log(`Districts: ${seededDistricts.length}`);
+    console.log(`Blocks: ${seededBlocks.length}`);
+    console.log(`Panchayats: ${seededPanchayats.length}`);
+    console.log(`Villages: ${seededVillages.length}`);
+    console.log(`Subdivisions: ${seededSubdivisions.length}`);
+    console.log(`Circles: ${seededCircles.length}`);
+    console.log(`Zones: ${seededZones.length}`);
     console.log(`Work Items: ${workItems.length}`);
+    console.log(`Agreements: ${agreementsCount}`);
     console.log(`Work Item Components: ${savedWorkItemComponents.length}`);
     console.log(`Photos: ${savedPhotos.length}`);
     console.log('Mock user password:', passwordPlain);

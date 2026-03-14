@@ -1,6 +1,7 @@
 import {
   ConflictException,
   Injectable,
+  InternalServerErrorException,
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -8,7 +9,7 @@ import * as bcrypt from 'bcryptjs';
 import { Repository } from 'typeorm';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
-import { User } from './entities/user.entity';
+import { User, UserRole } from './entities/user.entity';
 
 @Injectable()
 export class UsersService {
@@ -17,8 +18,42 @@ export class UsersService {
     private readonly userRepository: Repository<User>,
   ) {}
 
+  private stripPassword(user: User): Omit<User, 'password'> {
+    const userWithoutPassword = {
+      ...user,
+    } as Omit<User, 'password'> & { password?: string };
+
+    delete userWithoutPassword.password;
+    return userWithoutPassword;
+  }
+
+  private buildNumericCodeBody(): string {
+    const randomSuffix = Math.floor(Math.random() * 1000)
+      .toString()
+      .padStart(3, '0');
+    return `${Date.now()}${randomSuffix}`.slice(-12);
+  }
+
+  private async generateUniqueUserCode(role: UserRole): Promise<string> {
+    for (let attempt = 0; attempt < 10; attempt++) {
+      const candidate = `${role}${this.buildNumericCodeBody()}`;
+      const exists = await this.userRepository.exists({
+        where: { code: candidate },
+      });
+
+      if (!exists) {
+        return candidate;
+      }
+    }
+
+    throw new InternalServerErrorException(
+      'Failed to generate unique user code',
+    );
+  }
+
   async create(createUserDto: CreateUserDto): Promise<Omit<User, 'password'>> {
     const { email, password, name, role, district_id } = createUserDto;
+    const resolvedRole = role ?? UserRole.EM;
 
     // Check if user already exists
     const existingUser = await this.userRepository.findOne({
@@ -33,18 +68,18 @@ export class UsersService {
 
     // Create and save user
     const user = this.userRepository.create({
+      code: await this.generateUniqueUserCode(resolvedRole),
       email,
       password: hashedPassword,
       name,
-      role,
+      role: resolvedRole,
       district_id,
     });
 
     const savedUser = await this.userRepository.save(user);
 
     // Return user without password
-    const { password: _, ...userWithoutPassword } = savedUser;
-    return userWithoutPassword;
+    return this.stripPassword(savedUser);
   }
 
   async findAll(
@@ -64,7 +99,7 @@ export class UsersService {
     });
 
     // Remove password from all users
-    const usersWithoutPassword = users.map(({ password: _, ...user }) => user);
+    const usersWithoutPassword = users.map((user) => this.stripPassword(user));
 
     return {
       data: usersWithoutPassword,
@@ -80,8 +115,7 @@ export class UsersService {
     if (!user) {
       throw new NotFoundException(`User #${id} not found`);
     }
-    const { password: _, ...userWithoutPassword } = user;
-    return userWithoutPassword;
+    return this.stripPassword(user);
   }
 
   async findByEmail(email: string): Promise<User | null> {
@@ -118,8 +152,7 @@ export class UsersService {
     Object.assign(user, updateUserDto);
     const updatedUser = await this.userRepository.save(user);
 
-    const { password: _, ...userWithoutPassword } = updatedUser;
-    return userWithoutPassword;
+    return this.stripPassword(updatedUser);
   }
 
   async remove(id: string): Promise<void> {

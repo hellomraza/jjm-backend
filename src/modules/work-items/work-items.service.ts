@@ -1,6 +1,10 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  InternalServerErrorException,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { DataSource, Repository } from 'typeorm';
+import { DataSource, EntityManager, Repository } from 'typeorm';
 import { Component } from '../components/entities/component.entity';
 import {
   WorkItemComponent,
@@ -22,6 +26,32 @@ export class WorkItemsService {
     private readonly dataSource: DataSource,
   ) {}
 
+  private buildNumericCodeBody(): string {
+    const randomSuffix = Math.floor(Math.random() * 1000)
+      .toString()
+      .padStart(3, '0');
+    return `${Date.now()}${randomSuffix}`.slice(-12);
+  }
+
+  private async generateUniqueWorkCode(
+    manager: EntityManager,
+  ): Promise<string> {
+    for (let attempt = 0; attempt < 10; attempt++) {
+      const candidate = `W${this.buildNumericCodeBody()}`;
+      const exists = await manager.exists(WorkItem, {
+        where: { work_code: candidate },
+      });
+
+      if (!exists) {
+        return candidate;
+      }
+    }
+
+    throw new InternalServerErrorException(
+      'Failed to generate unique work code',
+    );
+  }
+
   async create(createWorkItemDto: CreateWorkItemDto): Promise<WorkItem> {
     return this.dataSource.transaction(async (manager) => {
       const masterComponents = await manager.find(Component, {
@@ -34,8 +64,11 @@ export class WorkItemsService {
         );
       }
 
+      const workCode = await this.generateUniqueWorkCode(manager);
+
       const workItem = manager.create(WorkItem, {
         ...createWorkItemDto,
+        work_code: workCode,
         progress_percentage: createWorkItemDto.progress_percentage ?? 0,
         status: createWorkItemDto.status ?? WorkItemStatus.PENDING,
       });
