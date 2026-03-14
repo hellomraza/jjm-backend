@@ -18,6 +18,9 @@ export class WorkItem {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
+  @Column({ unique: true })
+  work_code: string;
+
   @Column()
   title: string;
 

@@ -91,6 +91,10 @@ const STATIC_COMPONENTS: SeedComponent[] = [
   },
 ];
 
+const buildSeedNumericCode = (offset: number): string => {
+  return `${Date.now()}${offset.toString().padStart(4, '0')}`.slice(-12);
+};
+
 async function seedMockData() {
   const app = await NestFactory.createApplicationContext(AppModule, {
     logger: ['error', 'warn'],
@@ -104,6 +108,29 @@ async function seedMockData() {
     const componentRepo = dataSource.getRepository(Component);
     const workItemComponentRepo = dataSource.getRepository(WorkItemComponent);
     const photoRepo = dataSource.getRepository(Photo);
+
+    const queryRunner = dataSource.createQueryRunner();
+    let hasUserCodeColumn = await queryRunner.hasColumn('users', 'code');
+    let hasWorkCodeColumn = await queryRunner.hasColumn(
+      'work_items',
+      'work_code',
+    );
+
+    if (!hasUserCodeColumn) {
+      await queryRunner.query(
+        'ALTER TABLE users ADD COLUMN code varchar(14) NULL',
+      );
+      hasUserCodeColumn = true;
+    }
+
+    if (!hasWorkCodeColumn) {
+      await queryRunner.query(
+        'ALTER TABLE work_items ADD COLUMN work_code varchar(13) NULL',
+      );
+      hasWorkCodeColumn = true;
+    }
+
+    await queryRunner.release();
 
     const passwordPlain = 'Mock@1234';
     const passwordHash = await bcrypt.hash(passwordPlain, 10);
@@ -147,7 +174,10 @@ async function seedMockData() {
     ];
 
     await userRepo.upsert(
-      seedUsers.map((user) => ({
+      seedUsers.map((user, index) => ({
+        ...(hasUserCodeColumn
+          ? { code: `${user.role}${buildSeedNumericCode(index + 1)}` }
+          : {}),
         email: user.email,
         name: user.name,
         role: user.role,
@@ -199,6 +229,9 @@ async function seedMockData() {
 
     const workItems = await workItemRepo.save([
       workItemRepo.create({
+        ...(hasWorkCodeColumn
+          ? { work_code: `W${buildSeedNumericCode(101)}` }
+          : {}),
         title: 'MOCK-Work Item 1',
         description: 'Mock data for district 10 - in progress',
         district_id: '10',
@@ -209,6 +242,9 @@ async function seedMockData() {
         status: WorkItemStatus.IN_PROGRESS,
       }),
       workItemRepo.create({
+        ...(hasWorkCodeColumn
+          ? { work_code: `W${buildSeedNumericCode(102)}` }
+          : {}),
         title: 'MOCK-Work Item 2',
         description: 'Mock data for district 11 - pending',
         district_id: '11',
@@ -219,6 +255,9 @@ async function seedMockData() {
         status: WorkItemStatus.PENDING,
       }),
       workItemRepo.create({
+        ...(hasWorkCodeColumn
+          ? { work_code: `W${buildSeedNumericCode(103)}` }
+          : {}),
         title: 'MOCK-Work Item 3',
         description: 'Mock data for district 10 - completed',
         district_id: '10',
