@@ -158,6 +158,33 @@ export class ComponentsService {
       throw new ForbiddenException('Only employee can upload component photos');
     }
 
+    if (
+      componentMapping.quantity === null ||
+      componentMapping.quantity === undefined
+    ) {
+      throw new BadRequestException(
+        'Component quantity must be set before uploading progress photos',
+      );
+    }
+
+    const quantity = Number(componentMapping.quantity);
+    const currentProgress = Number(componentMapping.progress ?? 0);
+    const newProgress = Number(uploadDto.progress);
+
+    if (Number.isNaN(newProgress) || newProgress <= 0) {
+      throw new BadRequestException('Progress must be greater than 0');
+    }
+
+    if (newProgress > quantity) {
+      throw new BadRequestException(
+        'Progress cannot exceed component quantity',
+      );
+    }
+
+    if (newProgress < currentProgress) {
+      throw new BadRequestException('Progress must not decrease');
+    }
+
     const uploadPhotoDto: UploadPhotoDto = {
       latitude: uploadDto.latitude,
       longitude: uploadDto.longitude,
@@ -166,7 +193,20 @@ export class ComponentsService {
       work_item_id: componentMapping.work_item_id,
     };
 
-    return this.photosService.uploadPhoto(file, uploadPhotoDto, employeeId);
+    const savedPhoto = await this.photosService.uploadPhoto(
+      file,
+      uploadPhotoDto,
+      employeeId,
+    );
+
+    componentMapping.progress = newProgress;
+    componentMapping.status =
+      newProgress < quantity
+        ? WorkItemComponentStatus.IN_PROGRESS
+        : componentMapping.status;
+    await this.workItemComponentRepo.save(componentMapping);
+
+    return savedPhoto;
   }
 
   async getComponentPhotos(
@@ -237,11 +277,30 @@ export class ComponentsService {
       if (
         ![
           WorkItemComponentStatus.PENDING,
+          WorkItemComponentStatus.IN_PROGRESS,
           WorkItemComponentStatus.REJECTED,
         ].includes(componentMapping.status)
       ) {
         throw new BadRequestException(
-          'Only pending or rejected components can be submitted',
+          'Only pending, in-progress, or rejected components can be submitted',
+        );
+      }
+
+      if (
+        componentMapping.quantity === null ||
+        componentMapping.quantity === undefined
+      ) {
+        throw new BadRequestException(
+          'Component quantity must be set before submission',
+        );
+      }
+
+      const quantity = Number(componentMapping.quantity);
+      const progress = Number(componentMapping.progress ?? 0);
+
+      if (progress < quantity) {
+        throw new BadRequestException(
+          'Component cannot be submitted until progress equals quantity',
         );
       }
 

@@ -1,8 +1,24 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
-import { IsDate, IsLatitude, IsLongitude, IsNotEmpty } from 'class-validator';
+import {
+  IsDate,
+  IsLatitude,
+  IsLongitude,
+  IsNotEmpty,
+  IsNumber,
+  IsPositive,
+} from 'class-validator';
 
 export class UploadComponentPhotoDto {
+  @ApiProperty({
+    description: 'Completed work progress for this component',
+    example: 35.5,
+  })
+  @IsNumber()
+  @IsPositive()
+  @IsNotEmpty()
+  progress: number;
+
   @ApiProperty({
     description: 'Latitude where photo was taken',
     example: 25.5941,

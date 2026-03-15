@@ -80,12 +80,17 @@ export class ComponentsController {
   @ApiBody({
     schema: {
       type: 'object',
-      required: ['file', 'latitude', 'longitude', 'timestamp'],
+      required: ['file', 'progress', 'latitude', 'longitude', 'timestamp'],
       properties: {
         file: {
           type: 'string',
           format: 'binary',
           description: 'Image file (jpg/jpeg/png, max 5MB)',
+        },
+        progress: {
+          type: 'number',
+          example: 25,
+          description: 'Completed work progress for the component',
         },
         latitude: { type: 'number', example: 25.5941 },
         longitude: { type: 'number', example: 85.1376 },
