@@ -363,6 +363,16 @@ async function seedMockData() {
       );
     }
 
+    const hasComponentProgressColumn = await queryRunner.hasColumn(
+      'work_item_components',
+      'progress',
+    );
+    if (!hasComponentProgressColumn) {
+      await queryRunner.query(
+        'ALTER TABLE work_item_components ADD COLUMN progress decimal(12,2) NOT NULL DEFAULT 0',
+      );
+    }
+
     await queryRunner.release();
 
     const passwordPlain = 'Mock@1234';

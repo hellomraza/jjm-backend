@@ -49,6 +49,9 @@ export class WorkItemComponent {
   @Column({ type: 'decimal', precision: 12, scale: 2, nullable: true })
   quantity?: number;
 
+  @Column({ type: 'decimal', precision: 12, scale: 2, default: 0 })
+  progress: number;
+
   @Column({ type: 'text', nullable: true })
   remarks?: string;
 
