@@ -80,15 +80,28 @@ async function seedComponents() {
   const componentRepo = dataSource.getRepository(Component);
 
   try {
+    const existingComponents = await componentRepo.find();
+    const existingByName = new Map(
+      existingComponents.map((component) => [component.name, component]),
+    );
+
     for (const component of STATIC_COMPONENTS) {
-      await componentRepo.upsert(
-        {
-          name: component.name,
-          unit: component.unit,
-          order_number: component.order_number,
-        },
-        ['order_number'],
-      );
+      const existing = existingByName.get(component.name);
+
+      if (existing) {
+        existing.unit = component.unit;
+        existing.order_number = component.order_number;
+        await componentRepo.save(existing);
+      } else {
+        await componentRepo.save(
+          componentRepo.create({
+            name: component.name,
+            unit: component.unit,
+            order_number: component.order_number,
+          }),
+        );
+      }
+
       console.log(`✅ Seeded: ${component.order_number}. ${component.name}`);
     }
 

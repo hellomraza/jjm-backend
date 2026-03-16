@@ -791,27 +791,36 @@ async function seedMockData() {
       }),
     ]);
 
-    // Fetch all 12 master components to create mappings
-    let masterComponents = await componentRepo.find({
-      order: { order_number: 'ASC' },
-    });
+    // Ensure all 12 master components exist with correct order_number/unit
+    // (repair existing bad data as well, e.g. all order_number = 0)
+    const existingComponents = await componentRepo.find();
+    const existingByName = new Map(
+      existingComponents.map((component) => [component.name, component]),
+    );
 
-    if (masterComponents.length === 0) {
-      for (const component of STATIC_COMPONENTS) {
-        await componentRepo.upsert(
-          {
-            name: component.name,
-            unit: component.unit,
-            order_number: component.order_number,
-          },
-          ['order_number'],
-        );
+    const componentsToSave = STATIC_COMPONENTS.map((staticComponent) => {
+      const existing = existingByName.get(staticComponent.name);
+
+      if (existing) {
+        existing.unit = staticComponent.unit;
+        existing.order_number = staticComponent.order_number;
+        return existing;
       }
 
-      masterComponents = await componentRepo.find({
-        order: { order_number: 'ASC' },
+      return componentRepo.create({
+        name: staticComponent.name,
+        unit: staticComponent.unit,
+        order_number: staticComponent.order_number,
       });
-    }
+    });
+
+    await componentRepo.save(componentsToSave);
+
+    // Fetch all 12 master components to create mappings
+    const masterComponents = await componentRepo.find({
+      where: { name: In(STATIC_COMPONENTS.map((component) => component.name)) },
+      order: { order_number: 'ASC' },
+    });
 
     if (masterComponents.length !== 12) {
       throw new Error(
