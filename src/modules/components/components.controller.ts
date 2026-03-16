@@ -28,11 +28,18 @@ import {
   ApiTags,
   ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
+import { ApiPaginatedResponse } from '../../common/decorators/paginated.responce.decorator';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
+import { PhotoResponseDto } from '../photos/dto/photo-response.dto';
 import { UserRole } from '../users/entities/user.entity';
 import { ComponentsService } from './components.service';
+import {
+  ActionResponseDto,
+  ComponentResponseDto,
+  WorkItemComponentResponseDto,
+} from './dto/component-response.dto';
 import { SelectPhotoDto } from './dto/select-photo.dto';
 import { SubmitPhotoDto } from './dto/submit-photo.dto';
 import { UpdateWorkItemComponentDto } from './dto/update-work-item-component.dto';
@@ -59,7 +66,11 @@ export class ComponentsController {
     summary: 'List master components',
     description: 'Returns predefined static master components in display order',
   })
-  @ApiOkResponse({ description: 'Master components list' })
+  @ApiOkResponse({
+    description: 'Master components list',
+    type: ComponentResponseDto,
+    isArray: true,
+  })
   findMasterComponents() {
     return this.componentsService.findMasterComponents();
   }
@@ -102,7 +113,10 @@ export class ComponentsController {
       },
     },
   })
-  @ApiCreatedResponse({ description: 'Photo uploaded successfully' })
+  @ApiCreatedResponse({
+    description: 'Photo uploaded successfully',
+    type: PhotoResponseDto,
+  })
   @ApiBadRequestResponse({ description: 'Invalid upload payload' })
   uploadComponentPhoto(
     @Param('componentId') componentId: string,
@@ -137,7 +151,7 @@ export class ComponentsController {
   })
   @ApiQuery({ name: 'page', required: false, type: Number, example: 1 })
   @ApiQuery({ name: 'limit', required: false, type: Number, example: 20 })
-  @ApiOkResponse({ description: 'Component photo list' })
+  @ApiPaginatedResponse(PhotoResponseDto)
   getComponentPhotos(
     @Param('componentId') componentId: string,
     @Request() req: AuthenticatedRequest,
@@ -164,7 +178,10 @@ export class ComponentsController {
     type: String,
     description: 'Work item component mapping ID',
   })
-  @ApiOkResponse({ description: 'Photo selected and component submitted' })
+  @ApiOkResponse({
+    description: 'Photo selected and component submitted',
+    type: ActionResponseDto,
+  })
   @ApiBadRequestResponse({
     description: 'Invalid selection or component state',
   })
@@ -192,7 +209,10 @@ export class ComponentsController {
     type: String,
     description: 'Work item component mapping ID',
   })
-  @ApiOkResponse({ description: 'Component approved successfully' })
+  @ApiOkResponse({
+    description: 'Component approved successfully',
+    type: ActionResponseDto,
+  })
   approveComponent(
     @Param('componentId') componentId: string,
     @Request() req: AuthenticatedRequest,
@@ -215,7 +235,10 @@ export class ComponentsController {
     type: String,
     description: 'Work item component mapping ID',
   })
-  @ApiOkResponse({ description: 'Component rejected successfully' })
+  @ApiOkResponse({
+    description: 'Component rejected successfully',
+    type: ActionResponseDto,
+  })
   rejectComponent(
     @Param('componentId') componentId: string,
     @Request() req: AuthenticatedRequest,
@@ -230,9 +253,9 @@ export class ComponentsController {
     description:
       'Returns submitted components pending approval for district officer district',
   })
-  @ApiOkResponse({ description: 'Pending approval components list' })
   @ApiQuery({ name: 'page', required: false, type: Number, example: 1 })
   @ApiQuery({ name: 'limit', required: false, type: Number, example: 20 })
+  @ApiPaginatedResponse(WorkItemComponentResponseDto)
   getPendingApproval(
     @Request() req: AuthenticatedRequest,
     @Query('page') page: number = 1,
@@ -251,9 +274,9 @@ export class ComponentsController {
     summary: 'Head office approved components view',
     description: 'Returns components with approved status for head office',
   })
-  @ApiOkResponse({ description: 'Approved components list' })
   @ApiQuery({ name: 'page', required: false, type: Number, example: 1 })
   @ApiQuery({ name: 'limit', required: false, type: Number, example: 20 })
+  @ApiPaginatedResponse(WorkItemComponentResponseDto)
   getApprovedComponents(
     @Query('page') page: number = 1,
     @Query('limit') limit: number = 20,
@@ -269,7 +292,11 @@ export class ComponentsController {
       'Returns component mappings for a work item sorted by master order',
   })
   @ApiParam({ name: 'workItemId', type: String, description: 'Work item ID' })
-  @ApiOkResponse({ description: 'Work item component mappings' })
+  @ApiOkResponse({
+    description: 'Work item component mappings',
+    type: WorkItemComponentResponseDto,
+    isArray: true,
+  })
   findByWorkItem(@Param('workItemId') workItemId: string) {
     return this.componentsService.findByWorkItem(workItemId);
   }
@@ -285,7 +312,10 @@ export class ComponentsController {
     type: String,
     description: 'Work item component mapping ID',
   })
-  @ApiOkResponse({ description: 'Mapping found' })
+  @ApiOkResponse({
+    description: 'Mapping found',
+    type: WorkItemComponentResponseDto,
+  })
   @ApiNotFoundResponse({ description: 'Mapping not found' })
   findOne(@Param('id') id: string) {
     return this.componentsService.findOneMapping(id);
@@ -302,7 +332,10 @@ export class ComponentsController {
     type: String,
     description: 'Work item component mapping ID',
   })
-  @ApiOkResponse({ description: 'Mapping updated successfully' })
+  @ApiOkResponse({
+    description: 'Mapping updated successfully',
+    type: WorkItemComponentResponseDto,
+  })
   @ApiBadRequestResponse({ description: 'Invalid request body' })
   @ApiNotFoundResponse({ description: 'Mapping not found' })
   update(
@@ -324,7 +357,10 @@ export class ComponentsController {
     type: String,
     description: 'Work item component mapping ID',
   })
-  @ApiOkResponse({ description: 'Photo submitted for approval' })
+  @ApiOkResponse({
+    description: 'Photo submitted for approval',
+    type: ActionResponseDto,
+  })
   @ApiBadRequestResponse({ description: 'Invalid submission state or payload' })
   @ApiNotFoundResponse({ description: 'Component mapping or photo not found' })
   submitPhoto(
