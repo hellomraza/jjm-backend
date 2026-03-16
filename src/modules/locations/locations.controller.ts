@@ -23,11 +23,13 @@ import {
   ApiTags,
   ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
+import { ApiPaginatedResponse } from '../../common/decorators/paginated.responce.decorator';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { UserRole } from '../users/entities/user.entity';
 import { CreateLocationDto } from './dto/create-location.dto';
+import { LocationResponseDto } from './dto/location-response.dto';
 import { UpdateLocationDto } from './dto/update-location.dto';
 import { LocationsService } from './locations.service';
 import { LocationMasterType } from './locations.types';
@@ -53,7 +55,10 @@ export class LocationsController {
     enum: LocationMasterType,
     description: 'Location master type',
   })
-  @ApiCreatedResponse({ description: 'Location record created successfully' })
+  @ApiCreatedResponse({
+    description: 'Location record created successfully',
+    type: LocationResponseDto,
+  })
   @ApiBadRequestResponse({ description: 'Invalid type or request body' })
   create(
     @Param('type') type: LocationMasterType,
@@ -75,7 +80,7 @@ export class LocationsController {
   })
   @ApiQuery({ name: 'page', required: false, type: Number, example: 1 })
   @ApiQuery({ name: 'limit', required: false, type: Number, example: 20 })
-  @ApiOkResponse({ description: 'Paginated location master list' })
+  @ApiPaginatedResponse(LocationResponseDto)
   findAll(
     @Param('type') type: LocationMasterType,
     @Query('page') page: number = 1,
@@ -96,7 +101,10 @@ export class LocationsController {
     description: 'Location master type',
   })
   @ApiParam({ name: 'id', type: Number, description: 'Record ID' })
-  @ApiOkResponse({ description: 'Location record found' })
+  @ApiOkResponse({
+    description: 'Location record found',
+    type: LocationResponseDto,
+  })
   @ApiNotFoundResponse({ description: 'Location record not found' })
   findOne(
     @Param('type') type: LocationMasterType,
@@ -117,7 +125,10 @@ export class LocationsController {
     description: 'Location master type',
   })
   @ApiParam({ name: 'id', type: Number, description: 'Record ID' })
-  @ApiOkResponse({ description: 'Location record updated successfully' })
+  @ApiOkResponse({
+    description: 'Location record updated successfully',
+    type: LocationResponseDto,
+  })
   @ApiBadRequestResponse({ description: 'Invalid type or request body' })
   @ApiNotFoundResponse({ description: 'Location record not found' })
   update(

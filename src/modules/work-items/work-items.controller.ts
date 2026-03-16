@@ -23,13 +23,16 @@ import {
   ApiTags,
   ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
+import { PaginatedResponse } from 'src/common/types/response.type';
+import { ApiPaginatedResponse } from '../../common/decorators/paginated.responce.decorator';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { UserRole } from '../users/entities/user.entity';
 import { CreateWorkItemDto } from './dto/create-work-item.dto';
 import { UpdateWorkItemDto } from './dto/update-work-item.dto';
-import { WorkItemStatus } from './entities/work-item.entity';
+import { WorkItemResponseDto } from './dto/work-item-return-type.dto';
+import { WorkItem, WorkItemStatus } from './entities/work-item.entity';
 import { WorkItemsService } from './work-items.service';
 
 @ApiTags('Work Items')
@@ -47,7 +50,10 @@ export class WorkItemsController {
     summary: 'Create work item',
     description: 'Creates a new work item with location and assignment details',
   })
-  @ApiCreatedResponse({ description: 'Work item created successfully' })
+  @ApiCreatedResponse({
+    description: 'Work item created successfully',
+    type: WorkItemResponseDto,
+  })
   @ApiBadRequestResponse({ description: 'Invalid request body' })
   create(@Body() createWorkItemDto: CreateWorkItemDto) {
     return this.workItemsService.create(createWorkItemDto);
@@ -61,9 +67,12 @@ export class WorkItemsController {
   })
   @ApiQuery({ name: 'page', required: false, type: Number, example: 1 })
   @ApiQuery({ name: 'limit', required: false, type: Number, example: 20 })
-  @ApiOkResponse({ description: 'Paginated work items list' })
-  findAll(@Query('page') page: number = 1, @Query('limit') limit: number = 20) {
-    return this.workItemsService.findAll(page, limit);
+  @ApiPaginatedResponse(WorkItemResponseDto)
+  async findAll(
+    @Query('page') page: number = 1,
+    @Query('limit') limit: number = 20,
+  ): Promise<PaginatedResponse<WorkItem>> {
+    return await this.workItemsService.findAll(page, limit);
   }
 
   @Get(':id')
@@ -73,7 +82,7 @@ export class WorkItemsController {
     description: 'Returns work item details by ID',
   })
   @ApiParam({ name: 'id', type: String, description: 'Work item ID' })
-  @ApiOkResponse({ description: 'Work item found' })
+  @ApiOkResponse({ description: 'Work item found', type: WorkItemResponseDto })
   @ApiNotFoundResponse({ description: 'Work item not found' })
   findOne(@Param('id') id: string) {
     return this.workItemsService.findOne(id);
@@ -86,7 +95,10 @@ export class WorkItemsController {
     description: 'Updates editable fields of a work item',
   })
   @ApiParam({ name: 'id', type: String, description: 'Work item ID' })
-  @ApiOkResponse({ description: 'Work item updated successfully' })
+  @ApiOkResponse({
+    description: 'Work item updated successfully',
+    type: WorkItemResponseDto,
+  })
   @ApiBadRequestResponse({ description: 'Invalid request body' })
   @ApiNotFoundResponse({ description: 'Work item not found' })
   update(
@@ -116,7 +128,10 @@ export class WorkItemsController {
     },
   })
   @ApiParam({ name: 'id', type: String, description: 'Work item ID' })
-  @ApiOkResponse({ description: 'Work item status updated successfully' })
+  @ApiOkResponse({
+    description: 'Work item status updated successfully',
+    type: WorkItemResponseDto,
+  })
   @ApiBadRequestResponse({ description: 'Invalid status value' })
   @ApiNotFoundResponse({ description: 'Work item not found' })
   updateStatus(

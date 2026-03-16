@@ -11,6 +11,7 @@ import {
 import { type Request } from 'express';
 import { User } from '../users/entities/user.entity';
 import { AuthService } from './auth.service';
+import { LoginResponseDto } from './dto/login-response.dto';
 import { LoginDto } from './dto/login.dto';
 
 @ApiTags('Auth')
@@ -26,18 +27,7 @@ export class AuthController {
       'Authenticate using email/password and return JWT access token',
   })
   @ApiBody({ type: LoginDto })
-  @ApiOkResponse({
-    description: 'Login successful',
-    schema: {
-      type: 'object',
-      properties: {
-        access_token: {
-          type: 'string',
-          example: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
-        },
-      },
-    },
-  })
+  @ApiOkResponse({ description: 'Login successful', type: LoginResponseDto })
   @ApiBadRequestResponse({ description: 'Invalid request payload' })
   @ApiUnauthorizedResponse({ description: 'Invalid email or password' })
   login(@Req() req: Request & { user: Omit<User, 'password'> }) {

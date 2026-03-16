@@ -28,12 +28,20 @@ import {
   ApiTags,
   ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
+import { ApiPaginatedResponse } from '../../common/decorators/paginated.responce.decorator';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { UserRole } from '../users/entities/user.entity';
+import { PhotoResponseDto } from './dto/photo-response.dto';
 import { UploadPhotoDto } from './dto/upload-photo.dto';
 import { PhotosService } from './photos.service';
+
+type AuthenticatedRequest = {
+  user: {
+    userId: string;
+  };
+};
 
 @ApiTags('Photos')
 @ApiBearerAuth('access-token')
@@ -82,7 +90,10 @@ export class PhotosController {
       },
     },
   })
-  @ApiCreatedResponse({ description: 'Photo uploaded and metadata stored' })
+  @ApiCreatedResponse({
+    description: 'Photo uploaded and metadata stored',
+    type: PhotoResponseDto,
+  })
   @ApiBadRequestResponse({
     description: 'Invalid upload payload or file type/size',
   })
@@ -95,7 +106,7 @@ export class PhotosController {
     )
     file: Express.Multer.File,
     @Body() uploadPhotoDto: UploadPhotoDto,
-    @Request() req,
+    @Request() req: AuthenticatedRequest,
   ) {
     return this.photosService.uploadPhoto(
       file,
@@ -112,7 +123,7 @@ export class PhotosController {
   })
   @ApiQuery({ name: 'page', required: false, type: Number, example: 1 })
   @ApiQuery({ name: 'limit', required: false, type: Number, example: 20 })
-  @ApiOkResponse({ description: 'Paginated photos list' })
+  @ApiPaginatedResponse(PhotoResponseDto)
   findAll(@Query('page') page: number = 1, @Query('limit') limit: number = 20) {
     return this.photosService.findAll(page, limit);
   }
@@ -126,7 +137,7 @@ export class PhotosController {
   @ApiParam({ name: 'componentId', type: String, description: 'Component ID' })
   @ApiQuery({ name: 'page', required: false, type: Number, example: 1 })
   @ApiQuery({ name: 'limit', required: false, type: Number, example: 20 })
-  @ApiOkResponse({ description: 'Paginated component photo list' })
+  @ApiPaginatedResponse(PhotoResponseDto)
   reviewUploadedPhotos(
     @Param('componentId') componentId: string,
     @Query('page') page: number = 1,
@@ -142,10 +153,16 @@ export class PhotosController {
     description: 'Marks one photo as selected for the component',
   })
   @ApiParam({ name: 'id', type: String, description: 'Photo ID' })
-  @ApiOkResponse({ description: 'Photo selected successfully' })
+  @ApiOkResponse({
+    description: 'Photo selected successfully',
+    type: PhotoResponseDto,
+  })
   @ApiBadRequestResponse({ description: 'Invalid photo state for selection' })
   @ApiNotFoundResponse({ description: 'Photo not found' })
-  selectBestPhoto(@Param('id') id: string, @Request() req) {
+  selectBestPhoto(
+    @Param('id') id: string,
+    @Request() req: AuthenticatedRequest,
+  ) {
     return this.photosService.selectBestPhoto(id, req.user.userId);
   }
 
@@ -156,12 +173,18 @@ export class PhotosController {
     description: 'Forwards selected photo to district office for approval flow',
   })
   @ApiParam({ name: 'id', type: String, description: 'Photo ID' })
-  @ApiOkResponse({ description: 'Photo forwarded successfully' })
+  @ApiOkResponse({
+    description: 'Photo forwarded successfully',
+    type: PhotoResponseDto,
+  })
   @ApiBadRequestResponse({
     description: 'Photo not selected, already forwarded, or invalid contractor',
   })
   @ApiNotFoundResponse({ description: 'Photo not found' })
-  forwardSelectedPhoto(@Param('id') id: string, @Request() req) {
+  forwardSelectedPhoto(
+    @Param('id') id: string,
+    @Request() req: AuthenticatedRequest,
+  ) {
     return this.photosService.forwardSelectedPhoto(id, req.user.userId);
   }
 
@@ -172,7 +195,7 @@ export class PhotosController {
     description: 'Returns single photo metadata and relations by ID',
   })
   @ApiParam({ name: 'id', type: String, description: 'Photo ID' })
-  @ApiOkResponse({ description: 'Photo found' })
+  @ApiOkResponse({ description: 'Photo found', type: PhotoResponseDto })
   @ApiNotFoundResponse({ description: 'Photo not found' })
   findOne(@Param('id') id: string) {
     return this.photosService.findOne(id);

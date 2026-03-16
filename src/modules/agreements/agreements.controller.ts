@@ -23,11 +23,13 @@ import {
   ApiUnauthorizedResponse,
   ApiUnprocessableEntityResponse,
 } from '@nestjs/swagger';
+import { ApiPaginatedResponse } from '../../common/decorators/paginated.responce.decorator';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { UserRole } from '../users/entities/user.entity';
 import { AgreementsService } from './agreements.service';
+import { AgreementResponseDto } from './dto/agreement-response.dto';
 import { CreateAgreementDto } from './dto/create-agreement.dto';
 import { UpdateAgreementDto } from './dto/update-agreement.dto';
 
@@ -47,7 +49,10 @@ export class AgreementsController {
     description:
       'Creates a new agreement/work order linked to contractor and work item',
   })
-  @ApiCreatedResponse({ description: 'Agreement created successfully' })
+  @ApiCreatedResponse({
+    description: 'Agreement created successfully',
+    type: AgreementResponseDto,
+  })
   @ApiBadRequestResponse({ description: 'Invalid request body' })
   @ApiUnprocessableEntityResponse({
     description: 'contractor_id or work_id does not exist',
@@ -64,7 +69,7 @@ export class AgreementsController {
   })
   @ApiQuery({ name: 'page', required: false, type: Number, example: 1 })
   @ApiQuery({ name: 'limit', required: false, type: Number, example: 20 })
-  @ApiOkResponse({ description: 'Paginated agreements list' })
+  @ApiPaginatedResponse(AgreementResponseDto)
   findAll(@Query('page') page: number = 1, @Query('limit') limit: number = 20) {
     return this.agreementsService.findAll(page, limit);
   }
@@ -76,7 +81,7 @@ export class AgreementsController {
     description: 'Returns agreement details by agreement ID',
   })
   @ApiParam({ name: 'id', type: String, description: 'Agreement ID' })
-  @ApiOkResponse({ description: 'Agreement found' })
+  @ApiOkResponse({ description: 'Agreement found', type: AgreementResponseDto })
   @ApiNotFoundResponse({ description: 'Agreement not found' })
   findOne(@Param('id') id: string) {
     return this.agreementsService.findOne(id);
@@ -89,7 +94,10 @@ export class AgreementsController {
     description: 'Updates selected fields of an agreement',
   })
   @ApiParam({ name: 'id', type: String, description: 'Agreement ID' })
-  @ApiOkResponse({ description: 'Agreement updated successfully' })
+  @ApiOkResponse({
+    description: 'Agreement updated successfully',
+    type: AgreementResponseDto,
+  })
   @ApiBadRequestResponse({ description: 'Invalid request body' })
   @ApiNotFoundResponse({ description: 'Agreement not found' })
   @ApiUnprocessableEntityResponse({
