@@ -5,8 +5,7 @@ import {
   IsLatitude,
   IsLongitude,
   IsNotEmpty,
-  IsNumber,
-  IsPositive,
+  IsNumberString,
 } from 'class-validator';
 
 export class UploadComponentPhotoDto {
@@ -14,10 +13,8 @@ export class UploadComponentPhotoDto {
     description: 'Completed work progress for this component',
     example: 35.5,
   })
-  @IsNumber()
-  @IsPositive()
-  @IsNotEmpty()
-  progress: number;
+  @IsNumberString()
+  progress: string;
 
   @ApiProperty({
     description: 'Latitude where photo was taken',
