@@ -4,14 +4,22 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { DataSource, EntityManager, Repository } from 'typeorm';
+import {
+  DataSource,
+  EntityManager,
+  FindOptionsWhere,
+  In,
+  Repository,
+} from 'typeorm';
 import { Component } from '../components/entities/component.entity';
 import {
   WorkItemComponent,
   WorkItemComponentStatus,
 } from '../components/entities/work-item-component.entity';
+import { User, UserRole } from '../users/entities/user.entity';
 import { CreateWorkItemDto } from './dto/create-work-item.dto';
 import { UpdateWorkItemDto } from './dto/update-work-item.dto';
+import { WorkItemEmployeeAssignment } from './entities/work-item-employee-assignment.entity';
 import { WorkItem, WorkItemStatus } from './entities/work-item.entity';
 
 @Injectable()
@@ -23,6 +31,10 @@ export class WorkItemsService {
     private readonly componentsRepository: Repository<Component>,
     @InjectRepository(WorkItemComponent)
     private readonly workItemComponentsRepository: Repository<WorkItemComponent>,
+    @InjectRepository(WorkItemEmployeeAssignment)
+    private readonly workItemEmployeeAssignmentsRepository: Repository<WorkItemEmployeeAssignment>,
+    @InjectRepository(User)
+    private readonly usersRepository: Repository<User>,
     private readonly dataSource: DataSource,
   ) {}
 
@@ -104,6 +116,84 @@ export class WorkItemsService {
     const safeLimit = Number.isNaN(Number(limit)) ? 20 : Number(limit);
 
     const [items, total] = await this.workItemsRepository.findAndCount({
+      skip: (safePage - 1) * safeLimit,
+      take: safeLimit,
+      order: { created_at: 'DESC' },
+    });
+
+    return {
+      data: items,
+      total,
+      page: safePage,
+      limit: safeLimit,
+      totalPages: Math.ceil(total / safeLimit),
+    };
+  }
+
+  async getMyWorkItems(
+    userId: string,
+    role: UserRole,
+    page: number = 1,
+    limit: number = 20,
+  ): Promise<{
+    data: WorkItem[];
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+  }> {
+    const safePage = Number.isNaN(Number(page)) ? 1 : Number(page);
+    const safeLimit = Number.isNaN(Number(limit)) ? 20 : Number(limit);
+
+    let where: FindOptionsWhere<WorkItem> = {};
+
+    if (role === UserRole.CO) {
+      where = { contractor_id: userId };
+    }
+
+    if (role === UserRole.DO) {
+      const user = await this.usersRepository.findOne({
+        where: { id: userId },
+      });
+      if (!user) {
+        throw new NotFoundException(`User with ID ${userId} not found`);
+      }
+
+      if (!user.district_id) {
+        throw new InternalServerErrorException(
+          `User with role ${role} does not have district assignment`,
+        );
+      }
+
+      where = { district_id: user.district_id };
+    }
+
+    if (role === UserRole.EM) {
+      const assignedRows =
+        await this.workItemEmployeeAssignmentsRepository.find({
+          where: { employee_id: userId },
+          select: ['work_item_id'],
+        });
+
+      const assignedWorkItemIds = [
+        ...new Set(assignedRows.map((row) => row.work_item_id)),
+      ];
+
+      if (assignedWorkItemIds.length === 0) {
+        return {
+          data: [],
+          total: 0,
+          page: safePage,
+          limit: safeLimit,
+          totalPages: 0,
+        };
+      }
+
+      where = { id: In(assignedWorkItemIds) };
+    }
+
+    const [items, total] = await this.workItemsRepository.findAndCount({
+      where,
       skip: (safePage - 1) * safeLimit,
       take: safeLimit,
       order: { created_at: 'DESC' },

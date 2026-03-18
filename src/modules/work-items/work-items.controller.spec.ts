@@ -1,4 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import { UserRole } from '../users/entities/user.entity';
 import { WorkItemStatus } from './entities/work-item.entity';
 import { WorkItemsController } from './work-items.controller';
 import { WorkItemsService } from './work-items.service';
@@ -7,6 +8,7 @@ describe('WorkItemsController', () => {
   let controller: WorkItemsController;
   const workItemsService = {
     create: jest.fn(),
+    getMyWorkItems: jest.fn(),
     findAll: jest.fn(),
     findOne: jest.fn(),
     update: jest.fn(),
@@ -33,6 +35,20 @@ describe('WorkItemsController', () => {
   it('findAll delegates to service', async () => {
     await controller.findAll(1, 20);
     expect(workItemsService.findAll).toHaveBeenCalledWith(1, 20);
+  });
+
+  it('getMyWorkItems delegates to service with auth user context', async () => {
+    const req = { user: { userId: 'u1', role: UserRole.CO } } as Parameters<
+      WorkItemsController['getMyWorkItems']
+    >[0];
+
+    await controller.getMyWorkItems(req, 2, 10);
+    expect(workItemsService.getMyWorkItems).toHaveBeenCalledWith(
+      'u1',
+      UserRole.CO,
+      2,
+      10,
+    );
   });
 
   it('findOne delegates to service', async () => {
