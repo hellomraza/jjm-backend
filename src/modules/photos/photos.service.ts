@@ -1,65 +1,38 @@
-import { PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
 import {
   BadRequestException,
   Injectable,
-  InternalServerErrorException,
   NotFoundException,
 } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { UploadService } from '../../common/upload/upload.service';
 import { UploadPhotoDto } from './dto/upload-photo.dto';
 import { Photo } from './entities/photo.entity';
 
 @Injectable()
 export class PhotosService {
-  private readonly s3Client: S3Client;
-
   constructor(
     @InjectRepository(Photo)
     private photoRepo: Repository<Photo>,
-    private configService: ConfigService,
-  ) {
-    this.s3Client = new S3Client({
-      region: this.configService.get<string>('AWS_REGION', 'ap-south-1'),
-      credentials: {
-        accessKeyId: this.configService.get<string>('AWS_ACCESS_KEY_ID', ''),
-        secretAccessKey: this.configService.get<string>(
-          'AWS_SECRET_ACCESS_KEY',
-          '',
-        ),
-      },
-    });
-  }
+    private readonly uploadService: UploadService,
+  ) {}
 
   async uploadPhoto(
     file: Express.Multer.File,
     uploadPhotoDto: UploadPhotoDto,
     employeeId: string,
   ): Promise<Photo> {
-    const bucketName = this.configService.get<string>('AWS_S3_BUCKET', '');
-    const region = this.configService.get<string>('AWS_REGION', 'ap-south-1');
-
-    if (!bucketName) {
-      throw new InternalServerErrorException('AWS_S3_BUCKET is not configured');
-    }
-
     const sanitizedName = file.originalname.replace(/\s+/g, '-');
     const objectKey = `work-items/${uploadPhotoDto.work_item_id}/components/${uploadPhotoDto.component_id}/${Date.now()}-${sanitizedName}`;
 
-    await this.s3Client.send(
-      new PutObjectCommand({
-        Bucket: bucketName,
-        Key: objectKey,
-        Body: file.buffer,
-        ContentType: file.mimetype,
-      }),
-    );
-
-    const imageUrl = `https://${bucketName}.s3.${region}.amazonaws.com/${objectKey}`;
+    const uploadResult = await this.uploadService.uploadObject({
+      objectKey,
+      body: file.buffer,
+      contentType: file.mimetype,
+    });
 
     const photo = this.photoRepo.create({
-      image_url: imageUrl,
+      image_url: uploadResult.url,
       latitude: uploadPhotoDto.latitude,
       longitude: uploadPhotoDto.longitude,
       timestamp: uploadPhotoDto.timestamp,

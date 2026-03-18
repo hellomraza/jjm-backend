@@ -1,10 +1,9 @@
-import { S3Client } from '@aws-sdk/client-s3';
 import {
   InternalServerErrorException,
   NotFoundException,
 } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 import { Repository } from 'typeorm';
+import { UploadService } from '../../common/upload/upload.service';
 import { Photo } from './entities/photo.entity';
 import { PhotosService } from './photos.service';
 
@@ -19,21 +18,12 @@ describe('PhotosService', () => {
     update: jest.fn(),
   } as unknown as Repository<Photo>;
 
-  const configService = {
-    get: jest.fn((key: string, fallback?: string) => {
-      const map: Record<string, string> = {
-        AWS_REGION: 'ap-south-1',
-        AWS_ACCESS_KEY_ID: 'test',
-        AWS_SECRET_ACCESS_KEY: 'test',
-        AWS_S3_BUCKET: 'bucket',
-      };
-      return map[key] ?? fallback;
-    }),
-  } as unknown as ConfigService;
+  const uploadService = {
+    uploadObject: jest.fn(),
+  } as unknown as UploadService;
 
   beforeEach(() => {
-    jest.spyOn(S3Client.prototype, 'send').mockResolvedValue({} as never);
-    service = new PhotosService(photoRepo, configService);
+    service = new PhotosService(photoRepo, uploadService);
     jest.clearAllMocks();
   });
 
@@ -43,12 +33,10 @@ describe('PhotosService', () => {
     await expect(service.findOne('missing')).rejects.toThrow(NotFoundException);
   });
 
-  it('uploadPhoto throws when bucket is missing', async () => {
-    (configService.get as jest.Mock).mockImplementation((key: string) => {
-      if (key === 'AWS_S3_BUCKET') return '';
-      if (key === 'AWS_REGION') return 'ap-south-1';
-      return 'x';
-    });
+  it('uploadPhoto bubbles upload provider failures', async () => {
+    (uploadService.uploadObject as jest.Mock).mockRejectedValue(
+      new InternalServerErrorException('Storage provider unavailable'),
+    );
 
     await expect(
       service.uploadPhoto(
@@ -67,5 +55,44 @@ describe('PhotosService', () => {
         'em1',
       ),
     ).rejects.toThrow(InternalServerErrorException);
+  });
+
+  it('uploadPhoto stores the provider returned url', async () => {
+    (uploadService.uploadObject as jest.Mock).mockResolvedValue({
+      objectKey: 'work-items/w1/components/c1/key.jpg',
+      url: 'https://example-storage.com/key.jpg',
+      provider: 'aws-s3',
+    });
+    (photoRepo.create as jest.Mock).mockImplementation((payload) => payload);
+    (photoRepo.save as jest.Mock).mockImplementation(async (photo) => ({
+      id: 'p1',
+      ...photo,
+    }));
+
+    const result = await service.uploadPhoto(
+      {
+        originalname: 'a.jpg',
+        buffer: Buffer.from('a'),
+        mimetype: 'image/jpeg',
+      } as unknown as Express.Multer.File,
+      {
+        latitude: 1,
+        longitude: 1,
+        timestamp: new Date(),
+        component_id: 'c1',
+        work_item_id: 'w1',
+      },
+      'em1',
+    );
+
+    expect(uploadService.uploadObject).toHaveBeenCalled();
+    expect(photoRepo.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        image_url: 'https://example-storage.com/key.jpg',
+        component_id: 'c1',
+        work_item_id: 'w1',
+      }),
+    );
+    expect(result.image_url).toBe('https://example-storage.com/key.jpg');
   });
 });
