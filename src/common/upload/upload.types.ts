@@ -1,4 +1,4 @@
-export type StorageProviderName = 'aws-s3' | 'cloudflare-r2';
+export type StorageProviderName = 'aws-s3' | 'cloudflare-r2' | 'mock';
 
 export type UploadObjectInput = {
   objectKey: string;

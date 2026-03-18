@@ -2,11 +2,13 @@ import { InternalServerErrorException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { AwsS3UploadProvider } from './providers/aws-s3-upload.provider';
 import { CloudflareR2UploadProvider } from './providers/cloudflare-r2-upload.provider';
+import { MockUploadProvider } from './providers/mock-upload.provider';
 import { UploadService } from './upload.service';
 
 describe('UploadService', () => {
   const awsUploadObjectMock = jest.fn();
   const cloudflareUploadObjectMock = jest.fn();
+  const mockUploadObjectMock = jest.fn();
 
   const awsProvider = {
     providerName: 'aws-s3',
@@ -18,6 +20,11 @@ describe('UploadService', () => {
     uploadObject: cloudflareUploadObjectMock,
   } as unknown as CloudflareR2UploadProvider;
 
+  const mockProvider = {
+    providerName: 'mock',
+    uploadObject: mockUploadObjectMock,
+  } as unknown as MockUploadProvider;
+
   const buildService = (storageProvider: string) => {
     const configService = {
       get: jest.fn((key: string, fallback?: string) => {
@@ -28,7 +35,12 @@ describe('UploadService', () => {
       }),
     } as unknown as ConfigService;
 
-    return new UploadService(configService, awsProvider, cloudflareProvider);
+    return new UploadService(
+      configService,
+      awsProvider,
+      cloudflareProvider,
+      mockProvider,
+    );
   };
 
   beforeEach(() => {
@@ -70,7 +82,28 @@ describe('UploadService', () => {
 
     expect(cloudflareUploadObjectMock).toHaveBeenCalled();
     expect(awsUploadObjectMock).not.toHaveBeenCalled();
+    expect(mockUploadObjectMock).not.toHaveBeenCalled();
     expect(result.provider).toBe('cloudflare-r2');
+  });
+
+  it('uses mock provider when STORAGE_PROVIDER is mock', async () => {
+    const service = buildService('mock');
+    mockUploadObjectMock.mockResolvedValue({
+      objectKey: 'k',
+      url: 'https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=1400&q=80',
+      provider: 'mock',
+    });
+
+    const result = await service.uploadObject({
+      objectKey: 'k',
+      body: Buffer.from('x'),
+      contentType: 'image/jpeg',
+    });
+
+    expect(mockUploadObjectMock).toHaveBeenCalled();
+    expect(awsUploadObjectMock).not.toHaveBeenCalled();
+    expect(cloudflareUploadObjectMock).not.toHaveBeenCalled();
+    expect(result.provider).toBe('mock');
   });
 
   it('throws for unsupported provider value', async () => {

@@ -2,6 +2,7 @@ import { Injectable, InternalServerErrorException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { AwsS3UploadProvider } from './providers/aws-s3-upload.provider';
 import { CloudflareR2UploadProvider } from './providers/cloudflare-r2-upload.provider';
+import { MockUploadProvider } from './providers/mock-upload.provider';
 import {
   UploadObjectInput,
   UploadObjectResult,
@@ -14,6 +15,7 @@ export class UploadService {
     private readonly configService: ConfigService,
     private readonly awsS3UploadProvider: AwsS3UploadProvider,
     private readonly cloudflareR2UploadProvider: CloudflareR2UploadProvider,
+    private readonly mockUploadProvider: MockUploadProvider,
   ) {}
 
   async uploadObject(input: UploadObjectInput): Promise<UploadObjectResult> {
@@ -33,6 +35,10 @@ export class UploadService {
 
     if (providerName === 'cloudflare-r2') {
       return this.cloudflareR2UploadProvider;
+    }
+
+    if (providerName === 'mock') {
+      return this.mockUploadProvider;
     }
 
     throw new InternalServerErrorException(
