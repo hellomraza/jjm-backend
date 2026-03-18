@@ -848,7 +848,10 @@ async function seedMockData() {
         const mapping = new WorkItemComponent();
         mapping.work_item_id = workItem.id;
         mapping.component_id = masterComponent.id;
-        mapping.quantity = undefined;
+        mapping.quantity =
+          masterComponent.unit === 'Mtr.'
+            ? 100 + masterComponent.order_number * 10
+            : 1 + masterComponent.order_number;
         mapping.remarks = undefined;
         mapping.status = mappingStatus;
         mapping.approved_photo_id = undefined;
