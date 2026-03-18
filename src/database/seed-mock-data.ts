@@ -18,6 +18,7 @@ import { Village } from '../modules/locations/entities/village.entity';
 import { Zone } from '../modules/locations/entities/zone.entity';
 import { Photo } from '../modules/photos/entities/photo.entity';
 import { User, UserRole } from '../modules/users/entities/user.entity';
+import { WorkItemEmployeeAssignment } from '../modules/work-items/entities/work-item-employee-assignment.entity';
 import {
   WorkItem,
   WorkItemStatus,
@@ -116,6 +117,9 @@ async function seedMockData() {
     const componentRepo = dataSource.getRepository(Component);
     const workItemComponentRepo = dataSource.getRepository(WorkItemComponent);
     const photoRepo = dataSource.getRepository(Photo);
+    const workItemEmployeeAssignmentRepo = dataSource.getRepository(
+      WorkItemEmployeeAssignment,
+    );
     const agreementRepo = dataSource.getRepository(Agreement);
     const districtRepo = dataSource.getRepository(District);
     const blockRepo = dataSource.getRepository(Block);
@@ -210,6 +214,18 @@ async function seedMockData() {
         INDEX IDX_AGREEMENTS_NO (agreementno),
         INDEX IDX_AGREEMENTS_CONTRACTOR (contractor_id),
         INDEX IDX_AGREEMENTS_WORK (work_id)
+      )
+    `);
+
+    await queryRunner.query(`
+      CREATE TABLE IF NOT EXISTS work_item_employee_assignments (
+        id VARCHAR(36) NOT NULL PRIMARY KEY,
+        work_item_id VARCHAR(36) NOT NULL,
+        employee_id VARCHAR(36) NOT NULL,
+        created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+        UNIQUE KEY UQ_WORK_ITEM_EMPLOYEE_ASSIGNMENT (work_item_id, employee_id),
+        INDEX IDX_WORK_ITEM_EMPLOYEE_ASSIGNMENT_WORK_ITEM_ID (work_item_id),
+        INDEX IDX_WORK_ITEM_EMPLOYEE_ASSIGNMENT_EMPLOYEE_ID (employee_id)
       )
     `);
 
@@ -711,6 +727,9 @@ async function seedMockData() {
       const mockWorkItemIds = existingMockWorkItems.map(
         (workItem) => workItem.id,
       );
+      await workItemEmployeeAssignmentRepo.delete({
+        work_item_id: In(mockWorkItemIds),
+      });
       await photoRepo.delete({ work_item_id: In(mockWorkItemIds) });
       await workItemComponentRepo.delete({ work_item_id: In(mockWorkItemIds) });
       await workItemRepo.delete({ id: In(mockWorkItemIds) });
@@ -939,6 +958,26 @@ async function seedMockData() {
 
     const savedPhotos = await photoRepo.save(photosToCreate);
 
+    const workItemEmployeeAssignmentsToCreate: WorkItemEmployeeAssignment[] = [
+      workItemEmployeeAssignmentRepo.create({
+        work_item_id: workItems[0].id,
+        employee_id: employee1.id,
+      }),
+      workItemEmployeeAssignmentRepo.create({
+        work_item_id: workItems[1].id,
+        employee_id: employee2.id,
+      }),
+      workItemEmployeeAssignmentRepo.create({
+        work_item_id: workItems[2].id,
+        employee_id: employee1.id,
+      }),
+    ];
+
+    const savedWorkItemEmployeeAssignments =
+      await workItemEmployeeAssignmentRepo.save(
+        workItemEmployeeAssignmentsToCreate,
+      );
+
     let agreementsCount = 0;
     if (hasAgreementsTable) {
       const existingMockAgreements = await agreementRepo
@@ -978,6 +1017,9 @@ async function seedMockData() {
     console.log(`Work Items: ${workItems.length}`);
     console.log(`Agreements: ${agreementsCount}`);
     console.log(`Work Item Components: ${savedWorkItemComponents.length}`);
+    console.log(
+      `Work Item Employee Assignments: ${savedWorkItemEmployeeAssignments.length}`,
+    );
     console.log(`Photos: ${savedPhotos.length}`);
     console.log('Mock user password:', passwordPlain);
   } finally {

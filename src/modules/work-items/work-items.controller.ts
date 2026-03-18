@@ -7,6 +7,7 @@ import {
   Patch,
   Post,
   Query,
+  Request,
   UseGuards,
 } from '@nestjs/common';
 import {
@@ -43,6 +44,29 @@ import { WorkItemsService } from './work-items.service';
 @UseGuards(JwtAuthGuard, RolesGuard)
 export class WorkItemsController {
   constructor(private readonly workItemsService: WorkItemsService) {}
+
+  @Get('my-work-items')
+  @Roles(UserRole.HO, UserRole.DO, UserRole.CO, UserRole.EM)
+  @ApiOperation({
+    summary: 'List my work items',
+    description:
+      'Returns paginated work items filtered by logged-in user role and assignment scope',
+  })
+  @ApiQuery({ name: 'page', required: false, type: Number, example: 1 })
+  @ApiQuery({ name: 'limit', required: false, type: Number, example: 20 })
+  @ApiPaginatedResponse(WorkItemResponseDto)
+  async getMyWorkItems(
+    @Request() req: { user: { userId: string; role: UserRole } },
+    @Query('page') page: number = 1,
+    @Query('limit') limit: number = 20,
+  ): Promise<PaginatedResponse<WorkItem>> {
+    return await this.workItemsService.getMyWorkItems(
+      req.user.userId,
+      req.user.role,
+      page,
+      limit,
+    );
+  }
 
   @Post()
   @Roles(UserRole.HO, UserRole.DO, UserRole.CO)
