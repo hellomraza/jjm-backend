@@ -20,6 +20,7 @@ describe('ComponentsService', () => {
 
   const workItemComponentRepo = {
     findOne: jest.fn(),
+    find: jest.fn(),
     save: jest.fn(),
     findAndCount: jest.fn(),
     manager: {
@@ -77,7 +78,7 @@ describe('ComponentsService', () => {
           originalname: 'a.jpg',
         } as unknown as Express.Multer.File,
         {
-          progress: 1,
+          progress: '1',
           latitude: 1,
           longitude: 1,
           timestamp: new Date(),
@@ -88,13 +89,20 @@ describe('ComponentsService', () => {
   });
 
   it('uploadPhoto validates progress > 0', async () => {
-    (workItemComponentRepo.findOne as jest.Mock).mockResolvedValue({
+    const mapping = {
       id: 'wc1',
       status: WorkItemComponentStatus.PENDING,
       quantity: 10,
       progress: 0,
       work_item_id: 'w1',
-    });
+    };
+    (workItemComponentRepo.findOne as jest.Mock).mockResolvedValue(mapping);
+    (workItemComponentRepo.find as jest.Mock).mockResolvedValue([
+      {
+        ...mapping,
+        component: { order_number: 1 },
+      },
+    ]);
     (userRepo.findOne as jest.Mock).mockResolvedValue({ role: UserRole.EM });
 
     await expect(
@@ -104,7 +112,7 @@ describe('ComponentsService', () => {
           originalname: 'a.jpg',
         } as unknown as Express.Multer.File,
         {
-          progress: 0,
+          progress: '0',
           latitude: 1,
           longitude: 1,
           timestamp: new Date(),
@@ -112,5 +120,94 @@ describe('ComponentsService', () => {
         'em1',
       ),
     ).rejects.toThrow(BadRequestException);
+  });
+
+  it('uploadPhoto blocks progress when previous component is not approved', async () => {
+    const mapping = {
+      id: 'wc2',
+      status: WorkItemComponentStatus.PENDING,
+      quantity: 10,
+      progress: 0,
+      work_item_id: 'w1',
+    };
+
+    (workItemComponentRepo.findOne as jest.Mock).mockResolvedValue(mapping);
+    (workItemComponentRepo.find as jest.Mock).mockResolvedValue([
+      {
+        id: 'wc1',
+        status: WorkItemComponentStatus.PENDING,
+        component: { order_number: 1 },
+      },
+      {
+        ...mapping,
+        component: { order_number: 2 },
+      },
+    ]);
+    (userRepo.findOne as jest.Mock).mockResolvedValue({ role: UserRole.EM });
+
+    await expect(
+      service.uploadPhoto(
+        'wc2',
+        {
+          originalname: 'a.jpg',
+        } as unknown as Express.Multer.File,
+        {
+          progress: '1',
+          latitude: 1,
+          longitude: 1,
+          timestamp: new Date(),
+        },
+        'em1',
+      ),
+    ).rejects.toThrow(
+      'Progress updates must follow component order. Previous components must be approved first',
+    );
+  });
+
+  it('uploadPhoto blocks when another component is already in progress', async () => {
+    const mapping = {
+      id: 'wc2',
+      status: WorkItemComponentStatus.PENDING,
+      quantity: 10,
+      progress: 0,
+      work_item_id: 'w1',
+    };
+
+    (workItemComponentRepo.findOne as jest.Mock).mockResolvedValue(mapping);
+    (workItemComponentRepo.find as jest.Mock).mockResolvedValue([
+      {
+        id: 'wc1',
+        status: WorkItemComponentStatus.APPROVED,
+        component: { order_number: 1 },
+      },
+      {
+        id: 'wc-other',
+        status: WorkItemComponentStatus.IN_PROGRESS,
+        component: { order_number: 3 },
+      },
+      {
+        ...mapping,
+        component: { order_number: 2 },
+      },
+    ]);
+    (userRepo.findOne as jest.Mock).mockResolvedValue({ role: UserRole.EM });
+
+    await expect(
+      service.uploadPhoto(
+        'wc2',
+        {
+          originalname: 'a.jpg',
+        } as unknown as Express.Multer.File,
+        {
+          progress: '1',
+          latitude: 1,
+          longitude: 1,
+          timestamp: new Date(),
+        },
+        'em1',
+      ),
+    ).rejects.toThrow(
+      'Only one component can be in progress at a time for a work item',
+    );
   });
 });

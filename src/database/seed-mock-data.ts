@@ -129,7 +129,46 @@ async function seedMockData() {
     const circleRepo = dataSource.getRepository(Circle);
     const zoneRepo = dataSource.getRepository(Zone);
 
-    const queryRunner = dataSource.createQueryRunner();
+    let queryRunner = dataSource.createQueryRunner();
+
+    const requiredBaseTables = [
+      'users',
+      'work_items',
+      'components',
+      'work_item_components',
+      'photos',
+    ];
+
+    const getMissingBaseTables = async (): Promise<string[]> => {
+      const missing: string[] = [];
+      for (const tableName of requiredBaseTables) {
+        const exists = await queryRunner.hasTable(tableName);
+        if (!exists) {
+          missing.push(tableName);
+        }
+      }
+      return missing;
+    };
+
+    let missingBaseTables = await getMissingBaseTables();
+
+    if (missingBaseTables.length > 0) {
+      console.warn(
+        `Missing base tables detected (${missingBaseTables.join(', ')}). Running schema synchronize before seeding...`,
+      );
+
+      await queryRunner.release();
+      await dataSource.synchronize(false);
+      queryRunner = dataSource.createQueryRunner();
+
+      missingBaseTables = await getMissingBaseTables();
+      if (missingBaseTables.length > 0) {
+        throw new Error(
+          `Missing required base tables after synchronize: ${missingBaseTables.join(', ')}. Check DB connection and entity configuration, then run yarn mock-data again.`,
+        );
+      }
+    }
+
     let hasUserCodeColumn = await queryRunner.hasColumn('users', 'code');
     let hasWorkCodeColumn = await queryRunner.hasColumn(
       'work_items',
@@ -857,7 +896,12 @@ async function seedMockData() {
           mappingStatus = WorkItemComponentStatus.APPROVED;
         } else if (
           workItem.status === WorkItemStatus.IN_PROGRESS &&
-          masterComponent.order_number <= 2
+          masterComponent.order_number === 1
+        ) {
+          mappingStatus = WorkItemComponentStatus.APPROVED;
+        } else if (
+          workItem.status === WorkItemStatus.IN_PROGRESS &&
+          masterComponent.order_number === 2
         ) {
           mappingStatus = WorkItemComponentStatus.IN_PROGRESS;
         } else {
@@ -871,6 +915,12 @@ async function seedMockData() {
           masterComponent.unit === 'Mtr.'
             ? 100 + masterComponent.order_number * 10
             : 1 + masterComponent.order_number;
+        mapping.progress =
+          mappingStatus === WorkItemComponentStatus.APPROVED
+            ? mapping.quantity
+            : mappingStatus === WorkItemComponentStatus.IN_PROGRESS
+              ? Number((mapping.quantity * 0.5).toFixed(2))
+              : 0;
         mapping.remarks = undefined;
         mapping.status = mappingStatus;
         mapping.approved_photo_id = undefined;

@@ -167,6 +167,8 @@ export class ComponentsService {
       );
     }
 
+    await this.validateProgressSequence(componentMapping);
+
     const quantity = Number(componentMapping.quantity);
     const currentProgress = Number(componentMapping.progress ?? 0);
     const newProgress = Number(uploadDto.progress);
@@ -207,6 +209,56 @@ export class ComponentsService {
     await this.workItemComponentRepo.save(componentMapping);
 
     return savedPhoto;
+  }
+
+  private async validateProgressSequence(
+    componentMapping: WorkItemComponent,
+  ): Promise<void> {
+    const siblingMappings = await this.workItemComponentRepo.find({
+      where: { work_item_id: componentMapping.work_item_id },
+      relations: ['component'],
+    });
+
+    const currentMapping = siblingMappings.find(
+      (mapping) => mapping.id === componentMapping.id,
+    );
+
+    if (!currentMapping || !currentMapping.component) {
+      throw new NotFoundException(
+        `Work item component mapping with ID ${componentMapping.id} not found`,
+      );
+    }
+
+    const currentOrder = Number(currentMapping.component.order_number);
+
+    const hasUnapprovedPreviousComponent = siblingMappings.some((mapping) => {
+      if (!mapping.component || mapping.id === currentMapping.id) {
+        return false;
+      }
+
+      return (
+        Number(mapping.component.order_number) < currentOrder &&
+        mapping.status !== WorkItemComponentStatus.APPROVED
+      );
+    });
+
+    if (hasUnapprovedPreviousComponent) {
+      throw new BadRequestException(
+        'Progress updates must follow component order. Previous components must be approved first',
+      );
+    }
+
+    const hasAnotherInProgressComponent = siblingMappings.some(
+      (mapping) =>
+        mapping.id !== currentMapping.id &&
+        mapping.status === WorkItemComponentStatus.IN_PROGRESS,
+    );
+
+    if (hasAnotherInProgressComponent) {
+      throw new BadRequestException(
+        'Only one component can be in progress at a time for a work item',
+      );
+    }
   }
 
   async getComponentPhotos(
@@ -434,6 +486,18 @@ export class ComponentsService {
         throw new BadRequestException(
           'Selected photo does not belong to component',
         );
+      }
+
+      if (
+        componentMapping.quantity !== null &&
+        componentMapping.quantity !== undefined
+      ) {
+        const quantity = Number(componentMapping.quantity);
+        const progress = Number(componentMapping.progress ?? 0);
+
+        if (!Number.isNaN(quantity) && progress < quantity) {
+          componentMapping.progress = quantity;
+        }
       }
 
       componentMapping.status = WorkItemComponentStatus.APPROVED;
