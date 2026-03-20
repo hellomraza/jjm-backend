@@ -104,6 +104,13 @@ const buildSeedNumericCode = (offset: number): string => {
   return `${Date.now()}${offset.toString().padStart(4, '0')}`.slice(-12);
 };
 
+const getCurrentFinancialYear = (date: Date = new Date()): string => {
+  const year = date.getFullYear();
+  const month = date.getMonth();
+  const startYear = month >= 3 ? year : year - 1;
+  return `${startYear}-${startYear + 1}`;
+};
+
 async function seedMockData() {
   const app = await NestFactory.createApplicationContext(AppModule, {
     logger: ['error', 'warn'],
@@ -1030,26 +1037,41 @@ async function seedMockData() {
 
     let agreementsCount = 0;
     if (hasAgreementsTable) {
-      const existingMockAgreements = await agreementRepo
-        .createQueryBuilder('agreement')
-        .where('agreement.agreementno LIKE :prefix', { prefix: 'MOCK-%' })
-        .getMany();
+      const financialYear = getCurrentFinancialYear();
 
-      if (existingMockAgreements.length > 0) {
+      const existingWorkItemAgreements = await agreementRepo.find({
+        where: {
+          work_id: In(workItems.map((workItem) => workItem.id)),
+        },
+      });
+
+      if (existingWorkItemAgreements.length > 0) {
         await agreementRepo.delete({
-          id: In(existingMockAgreements.map((agreement) => agreement.id)),
+          id: In(existingWorkItemAgreements.map((agreement) => agreement.id)),
         });
       }
 
+      const latestAgreementInYear = await agreementRepo.findOne({
+        where: { agreementyear: financialYear },
+        order: { created_at: 'DESC' },
+      });
+
+      const lastSequence =
+        latestAgreementInYear?.agreementno.match(/(\d+)$/)?.[1];
+      let nextSequence = lastSequence ? Number(lastSequence) + 1 : 1;
+
       const savedAgreements = await agreementRepo.save(
-        workItems.map((workItem, index) =>
-          agreementRepo.create({
-            agreementno: `MOCK-AGR-${index + 1}`,
-            agreementyear: '2024-2025',
+        workItems.map((workItem) => {
+          const agreementno = `AGR-${financialYear}-${String(nextSequence).padStart(4, '0')}`;
+          nextSequence += 1;
+
+          return agreementRepo.create({
+            agreementno,
+            agreementyear: financialYear,
             contractor_id: workItem.contractor_id,
             work_id: workItem.id,
-          }),
-        ),
+          });
+        }),
       );
 
       agreementsCount = savedAgreements.length;
