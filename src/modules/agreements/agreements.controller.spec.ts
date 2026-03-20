@@ -23,7 +23,7 @@ describe('AgreementsController', () => {
   });
 
   it('create delegates to service', async () => {
-    const dto = { agreementno: 'A' } as Parameters<
+    const dto = { contractor_id: 'c1', work_id: 'w1' } as Parameters<
       AgreementsController['create']
     >[0];
     await controller.create(dto);

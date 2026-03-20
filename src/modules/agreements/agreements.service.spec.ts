@@ -47,8 +47,6 @@ describe('AgreementsService', () => {
 
     await expect(
       service.create({
-        agreementno: 'A',
-        agreementyear: '2024-2025',
         contractor_id: 'c1',
         work_id: 'w1',
       }),
