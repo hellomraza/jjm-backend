@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { RolesGuard } from '../../common/guards/roles.guard';
+import { AgreementsModule } from '../agreements/agreements.module';
 import { Component } from '../components/entities/component.entity';
 import { WorkItemComponent } from '../components/entities/work-item-component.entity';
 import { User } from '../users/entities/user.entity';
@@ -11,6 +12,7 @@ import { WorkItemsService } from './work-items.service';
 
 @Module({
   imports: [
+    AgreementsModule,
     TypeOrmModule.forFeature([
       WorkItem,
       Component,

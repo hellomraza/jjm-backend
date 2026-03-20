@@ -11,6 +11,7 @@ import {
   In,
   Repository,
 } from 'typeorm';
+import { AgreementsService } from '../agreements/agreements.service';
 import { Component } from '../components/entities/component.entity';
 import {
   WorkItemComponent,
@@ -35,6 +36,7 @@ export class WorkItemsService {
     private readonly workItemEmployeeAssignmentsRepository: Repository<WorkItemEmployeeAssignment>,
     @InjectRepository(User)
     private readonly usersRepository: Repository<User>,
+    private readonly agreementsService: AgreementsService,
     private readonly dataSource: DataSource,
   ) {}
 
@@ -86,6 +88,14 @@ export class WorkItemsService {
       });
 
       const savedWorkItem = await manager.save(WorkItem, workItem);
+
+      const agreementCreator: Pick<AgreementsService, 'createWithManager'> =
+        this.agreementsService;
+
+      await agreementCreator.createWithManager(manager, {
+        contractor_id: savedWorkItem.contractor_id,
+        work_id: savedWorkItem.id,
+      });
 
       const mappings = masterComponents.map((component) => {
         const mapping = new WorkItemComponent();

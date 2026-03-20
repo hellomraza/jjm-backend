@@ -4,7 +4,7 @@ import {
   UnprocessableEntityException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { EntityManager, Repository } from 'typeorm';
 import { User } from '../users/entities/user.entity';
 import { WorkItem } from '../work-items/entities/work-item.entity';
 import { CreateAgreementDto } from './dto/create-agreement.dto';
@@ -88,6 +88,60 @@ export class AgreementsService {
     });
     const savedAgreement = await this.agreementsRepository.save(agreement);
     return this.findOne(savedAgreement.id);
+  }
+
+  async createWithManager(
+    manager: EntityManager,
+    createAgreementDto: CreateAgreementDto,
+  ): Promise<Agreement> {
+    const contractor = await manager.findOne(User, {
+      where: { id: createAgreementDto.contractor_id },
+    });
+
+    if (!contractor) {
+      throw new UnprocessableEntityException(
+        `Contractor user #${createAgreementDto.contractor_id} not found`,
+      );
+    }
+
+    const workItem = await manager.findOne(WorkItem, {
+      where: { id: createAgreementDto.work_id },
+    });
+
+    if (!workItem) {
+      throw new UnprocessableEntityException(
+        `Work item #${createAgreementDto.work_id} not found`,
+      );
+    }
+
+    const agreementyear = this.getCurrentFinancialYear();
+    const latestAgreement = await manager.findOne(Agreement, {
+      where: { agreementyear },
+      order: { created_at: 'DESC' },
+    });
+
+    const lastSequence = latestAgreement?.agreementno.match(/(\d+)$/)?.[1];
+    const nextSequence = lastSequence ? Number(lastSequence) + 1 : 1;
+    const paddedSequence = String(nextSequence).padStart(4, '0');
+    const agreementno = `AGR-${agreementyear}-${paddedSequence}`;
+
+    const agreement = manager.create(Agreement, {
+      ...createAgreementDto,
+      agreementno,
+      agreementyear,
+    });
+    const savedAgreement = await manager.save(Agreement, agreement);
+
+    const reloadedAgreement = await manager.findOne(Agreement, {
+      where: { id: savedAgreement.id },
+      relations: this.agreementRelations,
+    });
+
+    if (!reloadedAgreement) {
+      throw new NotFoundException(`Agreement #${savedAgreement.id} not found`);
+    }
+
+    return reloadedAgreement;
   }
 
   async findAll(

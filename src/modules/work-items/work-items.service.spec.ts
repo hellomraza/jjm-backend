@@ -25,6 +25,9 @@ describe('WorkItemsService', () => {
   const usersRepository = {
     findOne: jest.fn(),
   } as unknown as Repository<User>;
+  const agreementsService = {
+    createWithManager: jest.fn(),
+  };
   const dataSource = { transaction: jest.fn() } as unknown as DataSource;
 
   beforeEach(() => {
@@ -34,6 +37,7 @@ describe('WorkItemsService', () => {
       workItemComponentsRepository,
       workItemEmployeeAssignmentsRepository,
       usersRepository,
+      agreementsService as any,
       dataSource,
     );
     jest.clearAllMocks();
@@ -49,6 +53,51 @@ describe('WorkItemsService', () => {
 
     expect(result.total).toBe(1);
     expect(result.data).toEqual([{ id: 'w1' }]);
+  });
+
+  it('create also creates an agreement for the work item', async () => {
+    const createDto = {
+      title: 'Work 1',
+      district_id: 'd1',
+      contractor_id: 'c1',
+      schemetype: 'PWS',
+      latitude: 25.5941,
+      longitude: 85.1376,
+    } as any;
+
+    const masterComponents = Array.from({ length: 12 }, (_, i) => ({
+      id: `comp-${i + 1}`,
+      order_number: i + 1,
+    }));
+
+    const manager = {
+      find: jest.fn().mockResolvedValue(masterComponents),
+      create: jest.fn((_: unknown, data: unknown) => data),
+      save: jest.fn((entity: unknown, data: any) => {
+        if (entity === WorkItem) {
+          return Promise.resolve({ id: 'w1', ...data });
+        }
+
+        return Promise.resolve(data);
+      }),
+      exists: jest.fn().mockResolvedValue(false),
+    };
+
+    (dataSource.transaction as jest.Mock).mockImplementation(async (callback) =>
+      callback(manager),
+    );
+    agreementsService.createWithManager.mockResolvedValue({ id: 'a1' });
+
+    const result = await service.create(createDto);
+
+    expect(result.id).toBe('w1');
+    expect(agreementsService.createWithManager).toHaveBeenCalledWith(
+      manager,
+      expect.objectContaining({
+        work_id: 'w1',
+        contractor_id: 'c1',
+      }),
+    );
   });
 
   it('findOne throws when missing', async () => {
@@ -111,11 +160,9 @@ describe('WorkItemsService', () => {
   });
 
   it('getMyWorkItems filters by assigned work items for EM', async () => {
-    (workItemEmployeeAssignmentsRepository.find as jest.Mock).mockResolvedValue([
-      { work_item_id: 'w2' },
-      { work_item_id: 'w3' },
-      { work_item_id: 'w2' },
-    ]);
+    (workItemEmployeeAssignmentsRepository.find as jest.Mock).mockResolvedValue(
+      [{ work_item_id: 'w2' }, { work_item_id: 'w3' }, { work_item_id: 'w2' }],
+    );
     (workItemsRepository.findAndCount as jest.Mock).mockResolvedValue([[], 0]);
 
     await service.getMyWorkItems('em1', UserRole.EM, 1, 20);
