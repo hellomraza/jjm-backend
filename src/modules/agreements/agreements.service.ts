@@ -22,6 +22,11 @@ export class AgreementsService {
     private readonly workItemsRepository: Repository<WorkItem>,
   ) {}
 
+  private readonly agreementRelations = {
+    contractor: true,
+    work: true,
+  } as const;
+
   private async validateForeignKeys(
     contractorId: string,
     workId: string,
@@ -52,7 +57,8 @@ export class AgreementsService {
     );
 
     const agreement = this.agreementsRepository.create(createAgreementDto);
-    return this.agreementsRepository.save(agreement);
+    const savedAgreement = await this.agreementsRepository.save(agreement);
+    return this.findOne(savedAgreement.id);
   }
 
   async findAll(
@@ -72,6 +78,7 @@ export class AgreementsService {
       skip: (safePage - 1) * safeLimit,
       take: safeLimit,
       order: { created_at: 'DESC' },
+      relations: this.agreementRelations,
     });
 
     return {
@@ -86,6 +93,7 @@ export class AgreementsService {
   async findOne(id: string): Promise<Agreement> {
     const agreement = await this.agreementsRepository.findOne({
       where: { id },
+      relations: this.agreementRelations,
     });
 
     if (!agreement) {
@@ -107,7 +115,8 @@ export class AgreementsService {
     await this.validateForeignKeys(contractorId, workId);
 
     Object.assign(agreement, updateAgreementDto);
-    return this.agreementsRepository.save(agreement);
+    const updatedAgreement = await this.agreementsRepository.save(agreement);
+    return this.findOne(updatedAgreement.id);
   }
 
   async remove(id: string): Promise<void> {
