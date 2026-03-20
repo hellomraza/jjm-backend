@@ -7,6 +7,7 @@ import {
   Patch,
   Post,
   Query,
+  Request,
   UseGuards,
 } from '@nestjs/common';
 import {
@@ -70,8 +71,17 @@ export class AgreementsController {
   @ApiQuery({ name: 'page', required: false, type: Number, example: 1 })
   @ApiQuery({ name: 'limit', required: false, type: Number, example: 20 })
   @ApiPaginatedResponse(AgreementResponseDto)
-  findAll(@Query('page') page: number = 1, @Query('limit') limit: number = 20) {
-    return this.agreementsService.findAll(page, limit);
+  findAll(
+    @Request() req: { user: { userId: string; role: UserRole } },
+    @Query('page') page: number = 1,
+    @Query('limit') limit: number = 20,
+  ) {
+    return this.agreementsService.findAllForUser(
+      req.user.userId,
+      req.user.role,
+      page,
+      limit,
+    );
   }
 
   @Get(':id')
@@ -83,8 +93,15 @@ export class AgreementsController {
   @ApiParam({ name: 'id', type: String, description: 'Agreement ID' })
   @ApiOkResponse({ description: 'Agreement found', type: AgreementResponseDto })
   @ApiNotFoundResponse({ description: 'Agreement not found' })
-  findOne(@Param('id') id: string) {
-    return this.agreementsService.findOne(id);
+  findOne(
+    @Request() req: { user: { userId: string; role: UserRole } },
+    @Param('id') id: string,
+  ) {
+    return this.agreementsService.findOneForUser(
+      id,
+      req.user.userId,
+      req.user.role,
+    );
   }
 
   @Patch(':id')

@@ -6,8 +6,8 @@ describe('AgreementsController', () => {
   let controller: AgreementsController;
   const agreementsService = {
     create: jest.fn(),
-    findAll: jest.fn(),
-    findOne: jest.fn(),
+    findAllForUser: jest.fn(),
+    findOneForUser: jest.fn(),
     update: jest.fn(),
     remove: jest.fn(),
   };
@@ -31,8 +31,14 @@ describe('AgreementsController', () => {
   });
 
   it('findAll delegates to service', async () => {
-    await controller.findAll(1, 20);
-    expect(agreementsService.findAll).toHaveBeenCalledWith(1, 20);
+    const req = { user: { userId: 'u1', role: 'HO' } } as any;
+    await controller.findAll(req, 1, 20);
+    expect(agreementsService.findAllForUser).toHaveBeenCalledWith(
+      'u1',
+      'HO',
+      1,
+      20,
+    );
   });
 
   it('remove delegates to service', async () => {

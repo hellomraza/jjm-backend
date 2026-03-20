@@ -4,8 +4,8 @@ import {
   UnprocessableEntityException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { EntityManager, Repository } from 'typeorm';
-import { User } from '../users/entities/user.entity';
+import { EntityManager, FindOptionsWhere, Repository } from 'typeorm';
+import { User, UserRole } from '../users/entities/user.entity';
 import { WorkItem } from '../work-items/entities/work-item.entity';
 import { CreateAgreementDto } from './dto/create-agreement.dto';
 import { UpdateAgreementDto } from './dto/update-agreement.dto';
@@ -171,6 +171,84 @@ export class AgreementsService {
       limit: safeLimit,
       totalPages: Math.ceil(total / safeLimit),
     };
+  }
+
+  private async getAccessWhereClause(
+    userId: string,
+    role: UserRole,
+  ): Promise<FindOptionsWhere<Agreement> | undefined> {
+    if (role === UserRole.HO) {
+      return undefined;
+    }
+
+    if (role === UserRole.CO) {
+      return { contractor_id: userId };
+    }
+
+    if (role === UserRole.DO) {
+      const user = await this.usersRepository.findOne({
+        where: { id: userId },
+      });
+      if (!user?.district_id) {
+        return { id: '__no_access__' };
+      }
+
+      return { work: { district_id: user.district_id } };
+    }
+
+    return { id: '__no_access__' };
+  }
+
+  async findAllForUser(
+    userId: string,
+    role: UserRole,
+    page: number = 1,
+    limit: number = 20,
+  ): Promise<{
+    data: Agreement[];
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+  }> {
+    const safePage = Number.isNaN(Number(page)) ? 1 : Number(page);
+    const safeLimit = Number.isNaN(Number(limit)) ? 20 : Number(limit);
+    const where = await this.getAccessWhereClause(userId, role);
+
+    const [items, total] = await this.agreementsRepository.findAndCount({
+      where,
+      skip: (safePage - 1) * safeLimit,
+      take: safeLimit,
+      order: { created_at: 'DESC' },
+      relations: this.agreementRelations,
+    });
+
+    return {
+      data: items,
+      total,
+      page: safePage,
+      limit: safeLimit,
+      totalPages: Math.ceil(total / safeLimit),
+    };
+  }
+
+  async findOneForUser(
+    id: string,
+    userId: string,
+    role: UserRole,
+  ): Promise<Agreement> {
+    const where = await this.getAccessWhereClause(userId, role);
+
+    const agreement = await this.agreementsRepository.findOne({
+      where: where ? { ...where, id } : { id },
+      relations: this.agreementRelations,
+    });
+
+    if (!agreement) {
+      throw new NotFoundException(`Agreement #${id} not found`);
+    }
+
+    return agreement;
   }
 
   async findOne(id: string): Promise<Agreement> {
