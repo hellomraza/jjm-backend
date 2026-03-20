@@ -50,13 +50,42 @@ export class AgreementsService {
     }
   }
 
+  private getCurrentFinancialYear(date: Date = new Date()): string {
+    const year = date.getFullYear();
+    const month = date.getMonth();
+    const startYear = month >= 3 ? year : year - 1;
+    return `${startYear}-${startYear + 1}`;
+  }
+
+  private async generateAgreementNumber(
+    financialYear: string,
+  ): Promise<string> {
+    const latestAgreement = await this.agreementsRepository.findOne({
+      where: { agreementyear: financialYear },
+      order: { created_at: 'DESC' },
+    });
+
+    const lastSequence = latestAgreement?.agreementno.match(/(\d+)$/)?.[1];
+    const nextSequence = lastSequence ? Number(lastSequence) + 1 : 1;
+    const paddedSequence = String(nextSequence).padStart(4, '0');
+
+    return `AGR-${financialYear}-${paddedSequence}`;
+  }
+
   async create(createAgreementDto: CreateAgreementDto): Promise<Agreement> {
     await this.validateForeignKeys(
       createAgreementDto.contractor_id,
       createAgreementDto.work_id,
     );
 
-    const agreement = this.agreementsRepository.create(createAgreementDto);
+    const agreementyear = this.getCurrentFinancialYear();
+    const agreementno = await this.generateAgreementNumber(agreementyear);
+
+    const agreement = this.agreementsRepository.create({
+      ...createAgreementDto,
+      agreementno,
+      agreementyear,
+    });
     const savedAgreement = await this.agreementsRepository.save(agreement);
     return this.findOne(savedAgreement.id);
   }
