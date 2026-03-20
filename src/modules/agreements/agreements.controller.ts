@@ -62,7 +62,7 @@ export class AgreementsController {
   }
 
   @Get()
-  @Roles(UserRole.HO, UserRole.DO, UserRole.CO, UserRole.EM)
+  @Roles(UserRole.HO, UserRole.DO, UserRole.CO)
   @ApiOperation({
     summary: 'List agreements',
     description: 'Returns paginated agreements list',
@@ -75,7 +75,7 @@ export class AgreementsController {
   }
 
   @Get(':id')
-  @Roles(UserRole.HO, UserRole.DO, UserRole.CO, UserRole.EM)
+  @Roles(UserRole.HO, UserRole.DO, UserRole.CO)
   @ApiOperation({
     summary: 'Get agreement by ID',
     description: 'Returns agreement details by agreement ID',
