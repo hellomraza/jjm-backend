@@ -773,6 +773,9 @@ async function seedMockData() {
       const mockWorkItemIds = existingMockWorkItems.map(
         (workItem) => workItem.id,
       );
+      if (hasAgreementsTable) {
+        await agreementRepo.delete({ work_id: In(mockWorkItemIds) });
+      }
       await workItemEmployeeAssignmentRepo.delete({
         work_item_id: In(mockWorkItemIds),
       });
