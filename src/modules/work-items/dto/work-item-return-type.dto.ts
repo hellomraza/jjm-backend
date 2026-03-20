@@ -6,6 +6,89 @@ export enum WorkItemStatus {
   COMPLETED = 'COMPLETED',
 }
 
+export class DistrictDetailsDto {
+  @ApiProperty({ example: 10 })
+  districtid: number;
+
+  @ApiProperty({ example: 'Patna' })
+  districtname: string;
+
+  @ApiProperty({ example: 'DIST-001' })
+  district_code: string;
+}
+
+export class BlockDetailsDto {
+  @ApiProperty({ example: 101 })
+  blockid: number;
+
+  @ApiProperty({ example: 'Phulwari' })
+  blockname: string;
+
+  @ApiProperty({ example: 'BLK-001' })
+  block_code: string;
+
+  @ApiProperty({ example: 10 })
+  district_id: number;
+}
+
+export class PanchayatDetailsDto {
+  @ApiProperty({ example: 201 })
+  panchayatid: number;
+
+  @ApiProperty({ example: 'Rampur' })
+  panchayatname: string;
+
+  @ApiProperty({ example: 'PAN-001' })
+  panchayat_code: string;
+}
+
+export class VillageDetailsDto {
+  @ApiProperty({ example: 301 })
+  villageid: number;
+
+  @ApiProperty({ example: 'Village A' })
+  villagename: string;
+
+  @ApiProperty({ example: 'VIL-001' })
+  village_code: string;
+
+  @ApiProperty({ example: 10 })
+  district_id: number;
+}
+
+export class SubdivisionDetailsDto {
+  @ApiProperty({ example: 401 })
+  subdivisionid: number;
+
+  @ApiProperty({ example: 'Subdivision A' })
+  subdivisionname: string;
+
+  @ApiProperty({ example: 'SUB-001' })
+  subdivision_code: string;
+}
+
+export class CircleDetailsDto {
+  @ApiProperty({ example: 501 })
+  circleid: number;
+
+  @ApiProperty({ example: 'Circle A' })
+  circlename: string;
+
+  @ApiProperty({ example: 'CIR-001' })
+  circle_code: string;
+}
+
+export class ZoneDetailsDto {
+  @ApiProperty({ example: 601 })
+  zoneid: number;
+
+  @ApiProperty({ example: 'Zone A' })
+  zonename: string;
+
+  @ApiProperty({ example: 'ZON-001' })
+  zone_code: string;
+}
+
 export class WorkItemResponseDto {
   @ApiProperty({
     description: 'Unique identifier for the work item',
@@ -38,10 +121,26 @@ export class WorkItemResponseDto {
   district_id: string;
 
   @ApiProperty({
+    description: 'District details mapped from district_id',
+    type: DistrictDetailsDto,
+    required: false,
+    nullable: true,
+  })
+  district?: DistrictDetailsDto;
+
+  @ApiProperty({
     description: 'ID of the block to which the work item belongs',
     example: 101,
   })
   block_id?: number;
+
+  @ApiProperty({
+    description: 'Block details mapped from block_id',
+    type: BlockDetailsDto,
+    required: false,
+    nullable: true,
+  })
+  block?: BlockDetailsDto;
 
   @ApiProperty({
     description: 'ID of the panchayat to which the work item belongs',
@@ -50,10 +149,26 @@ export class WorkItemResponseDto {
   panchayat_id?: number;
 
   @ApiProperty({
+    description: 'Panchayat details mapped from panchayat_id',
+    type: PanchayatDetailsDto,
+    required: false,
+    nullable: true,
+  })
+  panchayat?: PanchayatDetailsDto;
+
+  @ApiProperty({
     description: 'ID of the village to which the work item belongs',
     example: 301,
   })
   village_id?: number;
+
+  @ApiProperty({
+    description: 'Village details mapped from village_id',
+    type: VillageDetailsDto,
+    required: false,
+    nullable: true,
+  })
+  village?: VillageDetailsDto;
 
   @ApiProperty({
     description: 'ID of the subdivision to which the work item belongs',
@@ -62,16 +177,40 @@ export class WorkItemResponseDto {
   subdivision_id?: number;
 
   @ApiProperty({
+    description: 'Subdivision details mapped from subdivision_id',
+    type: SubdivisionDetailsDto,
+    required: false,
+    nullable: true,
+  })
+  subdivision?: SubdivisionDetailsDto;
+
+  @ApiProperty({
     description: 'ID of the circle to which the work item belongs',
     example: 501,
   })
   circle_id?: number;
 
   @ApiProperty({
+    description: 'Circle details mapped from circle_id',
+    type: CircleDetailsDto,
+    required: false,
+    nullable: true,
+  })
+  circle?: CircleDetailsDto;
+
+  @ApiProperty({
     description: 'ID of the zone to which the work item belongs',
     example: 601,
   })
   zone_id?: number;
+
+  @ApiProperty({
+    description: 'Zone details mapped from zone_id',
+    type: ZoneDetailsDto,
+    required: false,
+    nullable: true,
+  })
+  zone?: ZoneDetailsDto;
 
   @ApiProperty({
     description: 'Type of scheme under which the work item is categorized',

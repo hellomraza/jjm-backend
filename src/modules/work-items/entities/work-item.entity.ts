@@ -3,9 +3,18 @@ import {
   CreateDateColumn,
   Entity,
   Index,
+  JoinColumn,
+  ManyToOne,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
+import { Block } from '../../locations/entities/block.entity';
+import { Circle } from '../../locations/entities/circle.entity';
+import { District } from '../../locations/entities/district.entity';
+import { Panchayat } from '../../locations/entities/panchayat.entity';
+import { Subdivision } from '../../locations/entities/subdivision.entity';
+import { Village } from '../../locations/entities/village.entity';
+import { Zone } from '../../locations/entities/zone.entity';
 
 export enum WorkItemStatus {
   PENDING = 'PENDING',
@@ -73,6 +82,34 @@ export class WorkItem {
   @Index()
   @Column()
   contractor_id: string;
+
+  @ManyToOne(() => District, { nullable: true })
+  @JoinColumn({ name: 'district_id', referencedColumnName: 'districtid' })
+  district?: District;
+
+  @ManyToOne(() => Block, { nullable: true })
+  @JoinColumn({ name: 'block_id', referencedColumnName: 'blockid' })
+  block?: Block;
+
+  @ManyToOne(() => Panchayat, { nullable: true })
+  @JoinColumn({ name: 'panchayat_id', referencedColumnName: 'panchayatid' })
+  panchayat?: Panchayat;
+
+  @ManyToOne(() => Village, { nullable: true })
+  @JoinColumn({ name: 'village_id', referencedColumnName: 'villageid' })
+  village?: Village;
+
+  @ManyToOne(() => Subdivision, { nullable: true })
+  @JoinColumn({ name: 'subdivision_id', referencedColumnName: 'subdivisionid' })
+  subdivision?: Subdivision;
+
+  @ManyToOne(() => Circle, { nullable: true })
+  @JoinColumn({ name: 'circle_id', referencedColumnName: 'circleid' })
+  circle?: Circle;
+
+  @ManyToOne(() => Zone, { nullable: true })
+  @JoinColumn({ name: 'zone_id', referencedColumnName: 'zoneid' })
+  zone?: Zone;
 
   @Column({ type: 'decimal', precision: 10, scale: 7 })
   latitude: number;

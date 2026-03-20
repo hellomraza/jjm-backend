@@ -30,10 +30,6 @@ export class WorkItemsService {
   constructor(
     @InjectRepository(WorkItem)
     private readonly workItemsRepository: Repository<WorkItem>,
-    @InjectRepository(Component)
-    private readonly componentsRepository: Repository<Component>,
-    @InjectRepository(WorkItemComponent)
-    private readonly workItemComponentsRepository: Repository<WorkItemComponent>,
     @InjectRepository(WorkItemEmployeeAssignment)
     private readonly workItemEmployeeAssignmentsRepository: Repository<WorkItemEmployeeAssignment>,
     @InjectRepository(User)
@@ -41,6 +37,16 @@ export class WorkItemsService {
     private readonly agreementsService: AgreementsService,
     private readonly dataSource: DataSource,
   ) {}
+
+  private readonly locationRelations = {
+    district: true,
+    block: true,
+    panchayat: true,
+    village: true,
+    subdivision: true,
+    circle: true,
+    zone: true,
+  } as const;
 
   private buildNumericCodeBody(): string {
     const randomSuffix = Math.floor(Math.random() * 1000)
@@ -131,6 +137,7 @@ export class WorkItemsService {
       skip: (safePage - 1) * safeLimit,
       take: safeLimit,
       order: { created_at: 'DESC' },
+      relations: this.locationRelations,
     });
 
     return {
@@ -209,6 +216,7 @@ export class WorkItemsService {
       skip: (safePage - 1) * safeLimit,
       take: safeLimit,
       order: { created_at: 'DESC' },
+      relations: this.locationRelations,
     });
 
     return {
@@ -221,7 +229,10 @@ export class WorkItemsService {
   }
 
   async findOne(id: string): Promise<WorkItem> {
-    const workItem = await this.workItemsRepository.findOne({ where: { id } });
+    const workItem = await this.workItemsRepository.findOne({
+      where: { id },
+      relations: this.locationRelations,
+    });
     if (!workItem) {
       throw new NotFoundException(`Work item #${id} not found`);
     }
