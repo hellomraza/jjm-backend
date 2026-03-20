@@ -23,6 +23,7 @@ import {
   ApiQuery,
   ApiTags,
   ApiUnauthorizedResponse,
+  ApiUnprocessableEntityResponse,
 } from '@nestjs/swagger';
 import { PaginatedResponse } from 'src/common/types/response.type';
 import { ApiPaginatedResponse } from '../../common/decorators/paginated.responce.decorator';
@@ -30,6 +31,10 @@ import { Roles } from '../../common/decorators/roles.decorator';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { UserRole } from '../users/entities/user.entity';
+import {
+  AssignWorkItemEmployeeDto,
+  WorkItemEmployeeAssignmentResponseDto,
+} from './dto/assign-work-item-employee.dto';
 import { CreateWorkItemDto } from './dto/create-work-item.dto';
 import { UpdateWorkItemDto } from './dto/update-work-item.dto';
 import { WorkItemResponseDto } from './dto/work-item-return-type.dto';
@@ -81,6 +86,33 @@ export class WorkItemsController {
   @ApiBadRequestResponse({ description: 'Invalid request body' })
   create(@Body() createWorkItemDto: CreateWorkItemDto) {
     return this.workItemsService.create(createWorkItemDto);
+  }
+
+  @Post(':id/assign-employee')
+  @Roles(UserRole.CO)
+  @ApiOperation({
+    summary: 'Assign employee to work item',
+    description: 'Assigns an employee to a contractor-owned work item',
+  })
+  @ApiParam({ name: 'id', type: String, description: 'Work item ID' })
+  @ApiCreatedResponse({
+    description: 'Employee assigned to work item successfully',
+    type: WorkItemEmployeeAssignmentResponseDto,
+  })
+  @ApiNotFoundResponse({ description: 'Work item not found' })
+  @ApiUnprocessableEntityResponse({
+    description: 'employee_id does not exist or is not an employee user',
+  })
+  assignEmployee(
+    @Request() req: { user: { userId: string } },
+    @Param('id') id: string,
+    @Body() body: AssignWorkItemEmployeeDto,
+  ) {
+    return this.workItemsService.assignEmployeeToWorkItem(
+      req.user.userId,
+      id,
+      body.employee_id,
+    );
   }
 
   @Get()

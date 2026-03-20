@@ -43,7 +43,7 @@ export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
   @Post()
-  @Roles(UserRole.HO, UserRole.DO)
+  @Roles(UserRole.HO, UserRole.DO, UserRole.CO)
   @ApiOperation({
     summary: 'Create user',
     description: 'Creates a new user account with role and optional district',

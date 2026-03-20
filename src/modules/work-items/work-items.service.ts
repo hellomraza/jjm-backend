@@ -1,7 +1,9 @@
 import {
+  ForbiddenException,
   Injectable,
   InternalServerErrorException,
   NotFoundException,
+  UnprocessableEntityException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import {
@@ -225,6 +227,52 @@ export class WorkItemsService {
     }
 
     return workItem;
+  }
+
+  async assignEmployeeToWorkItem(
+    contractorId: string,
+    workItemId: string,
+    employeeId: string,
+  ): Promise<WorkItemEmployeeAssignment> {
+    const workItem = await this.workItemsRepository.findOne({
+      where: { id: workItemId },
+    });
+
+    if (!workItem) {
+      throw new NotFoundException(`Work item #${workItemId} not found`);
+    }
+
+    if (workItem.contractor_id !== contractorId) {
+      throw new ForbiddenException(
+        'You can only assign employees to your own work items',
+      );
+    }
+
+    const employee = await this.usersRepository.findOne({
+      where: { id: employeeId },
+    });
+
+    if (!employee || employee.role !== UserRole.EM) {
+      throw new UnprocessableEntityException(
+        `Employee user #${employeeId} not found`,
+      );
+    }
+
+    const existingAssignment =
+      await this.workItemEmployeeAssignmentsRepository.findOne({
+        where: { work_item_id: workItemId, employee_id: employeeId },
+      });
+
+    if (existingAssignment) {
+      return existingAssignment;
+    }
+
+    const assignment = this.workItemEmployeeAssignmentsRepository.create({
+      work_item_id: workItemId,
+      employee_id: employeeId,
+    });
+
+    return this.workItemEmployeeAssignmentsRepository.save(assignment);
   }
 
   async update(

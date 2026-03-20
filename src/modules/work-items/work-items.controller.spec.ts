@@ -8,6 +8,7 @@ describe('WorkItemsController', () => {
   let controller: WorkItemsController;
   const workItemsService = {
     create: jest.fn(),
+    assignEmployeeToWorkItem: jest.fn(),
     getMyWorkItems: jest.fn(),
     findAll: jest.fn(),
     findOne: jest.fn(),
@@ -35,6 +36,20 @@ describe('WorkItemsController', () => {
   it('findAll delegates to service', async () => {
     await controller.findAll(1, 20);
     expect(workItemsService.findAll).toHaveBeenCalledWith(1, 20);
+  });
+
+  it('assignEmployee delegates to service with auth user context', async () => {
+    const req = { user: { userId: 'co1' } } as Parameters<
+      WorkItemsController['assignEmployee']
+    >[0];
+
+    await controller.assignEmployee(req, 'w1', { employee_id: 'em1' });
+
+    expect(workItemsService.assignEmployeeToWorkItem).toHaveBeenCalledWith(
+      'co1',
+      'w1',
+      'em1',
+    );
   });
 
   it('getMyWorkItems delegates to service with auth user context', async () => {

@@ -1,4 +1,8 @@
-import { NotFoundException } from '@nestjs/common';
+import {
+  ForbiddenException,
+  NotFoundException,
+  UnprocessableEntityException,
+} from '@nestjs/common';
 import { DataSource, Repository } from 'typeorm';
 import { Component } from '../components/entities/component.entity';
 import { WorkItemComponent } from '../components/entities/work-item-component.entity';
@@ -20,7 +24,10 @@ describe('WorkItemsService', () => {
   const componentsRepository = {} as Repository<Component>;
   const workItemComponentsRepository = {} as Repository<WorkItemComponent>;
   const workItemEmployeeAssignmentsRepository = {
+    create: jest.fn(),
+    save: jest.fn(),
     find: jest.fn(),
+    findOne: jest.fn(),
   } as unknown as Repository<WorkItemEmployeeAssignment>;
   const usersRepository = {
     findOne: jest.fn(),
@@ -104,6 +111,95 @@ describe('WorkItemsService', () => {
     (workItemsRepository.findOne as jest.Mock).mockResolvedValue(null);
 
     await expect(service.findOne('missing')).rejects.toThrow(NotFoundException);
+  });
+
+  it('assignEmployeeToWorkItem throws when work item is missing', async () => {
+    (workItemsRepository.findOne as jest.Mock).mockResolvedValue(null);
+
+    await expect(
+      service.assignEmployeeToWorkItem('co1', 'missing', 'em1'),
+    ).rejects.toThrow(NotFoundException);
+  });
+
+  it('assignEmployeeToWorkItem throws when contractor does not own work item', async () => {
+    (workItemsRepository.findOne as jest.Mock).mockResolvedValue({
+      id: 'w1',
+      contractor_id: 'co2',
+    });
+
+    await expect(
+      service.assignEmployeeToWorkItem('co1', 'w1', 'em1'),
+    ).rejects.toThrow(ForbiddenException);
+  });
+
+  it('assignEmployeeToWorkItem throws when employee user is invalid', async () => {
+    (workItemsRepository.findOne as jest.Mock).mockResolvedValue({
+      id: 'w1',
+      contractor_id: 'co1',
+    });
+    (usersRepository.findOne as jest.Mock).mockResolvedValue({
+      id: 'do1',
+      role: UserRole.DO,
+    });
+
+    await expect(
+      service.assignEmployeeToWorkItem('co1', 'w1', 'do1'),
+    ).rejects.toThrow(UnprocessableEntityException);
+  });
+
+  it('assignEmployeeToWorkItem returns existing assignment if already present', async () => {
+    const assignment = { id: 'a1', work_item_id: 'w1', employee_id: 'em1' };
+    (workItemsRepository.findOne as jest.Mock).mockResolvedValue({
+      id: 'w1',
+      contractor_id: 'co1',
+    });
+    (usersRepository.findOne as jest.Mock).mockResolvedValue({
+      id: 'em1',
+      role: UserRole.EM,
+    });
+    (
+      workItemEmployeeAssignmentsRepository.findOne as jest.Mock
+    ).mockResolvedValue(assignment);
+
+    const result = await service.assignEmployeeToWorkItem('co1', 'w1', 'em1');
+
+    expect(result).toEqual(assignment);
+    expect(workItemEmployeeAssignmentsRepository.save).not.toHaveBeenCalled();
+  });
+
+  it('assignEmployeeToWorkItem creates assignment for valid contractor and employee', async () => {
+    (workItemsRepository.findOne as jest.Mock).mockResolvedValue({
+      id: 'w1',
+      contractor_id: 'co1',
+    });
+    (usersRepository.findOne as jest.Mock).mockResolvedValue({
+      id: 'em1',
+      role: UserRole.EM,
+    });
+    (
+      workItemEmployeeAssignmentsRepository.findOne as jest.Mock
+    ).mockResolvedValue(null);
+    (workItemEmployeeAssignmentsRepository.create as jest.Mock).mockReturnValue(
+      {
+        work_item_id: 'w1',
+        employee_id: 'em1',
+      },
+    );
+    (workItemEmployeeAssignmentsRepository.save as jest.Mock).mockResolvedValue(
+      {
+        id: 'a1',
+        work_item_id: 'w1',
+        employee_id: 'em1',
+      },
+    );
+
+    const result = await service.assignEmployeeToWorkItem('co1', 'w1', 'em1');
+
+    expect(result).toEqual({
+      id: 'a1',
+      work_item_id: 'w1',
+      employee_id: 'em1',
+    });
   });
 
   it('updateStatus sets progress to 100 for completed', async () => {
