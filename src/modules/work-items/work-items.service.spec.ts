@@ -4,8 +4,6 @@ import {
   UnprocessableEntityException,
 } from '@nestjs/common';
 import { DataSource, Repository } from 'typeorm';
-import { Component } from '../components/entities/component.entity';
-import { WorkItemComponent } from '../components/entities/work-item-component.entity';
 import { User, UserRole } from '../users/entities/user.entity';
 import { WorkItemEmployeeAssignment } from './entities/work-item-employee-assignment.entity';
 import { WorkItem, WorkItemStatus } from './entities/work-item.entity';
@@ -21,8 +19,6 @@ describe('WorkItemsService', () => {
     remove: jest.fn(),
   } as unknown as Repository<WorkItem>;
 
-  const componentsRepository = {} as Repository<Component>;
-  const workItemComponentsRepository = {} as Repository<WorkItemComponent>;
   const workItemEmployeeAssignmentsRepository = {
     create: jest.fn(),
     save: jest.fn(),
@@ -40,8 +36,6 @@ describe('WorkItemsService', () => {
   beforeEach(() => {
     service = new WorkItemsService(
       workItemsRepository,
-      componentsRepository,
-      workItemComponentsRepository,
       workItemEmployeeAssignmentsRepository,
       usersRepository,
       agreementsService as any,
