@@ -21,6 +21,17 @@
   <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
   [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
 
+## 📚 Documentation
+
+**Start here!** → [📖 Complete Documentation](./docs/README.md)
+
+### Quick Links
+- 🔐 **New**: [Hybrid Authentication System](./docs/authentication/INDEX.md)
+- ⚡ **Quick Start**: [QUICK_START.md](./QUICK_START.md)
+- 📋 **Development Guides**: [docs/guides](./docs/guides/)
+
+---
+
 ## Description
 
 [Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
