@@ -184,7 +184,14 @@ export class WorkItemsService {
         );
       }
 
-      where = { district_id: user.district_id };
+      const districtId = Number(user.district_id);
+      if (!Number.isInteger(districtId)) {
+        throw new InternalServerErrorException(
+          `User with role ${role} has invalid district assignment`,
+        );
+      }
+
+      where = { district_id: districtId };
     }
 
     if (role === UserRole.EM) {

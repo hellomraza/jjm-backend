@@ -59,7 +59,7 @@ describe('WorkItemsService', () => {
   it('create also creates an agreement for the work item', async () => {
     const createDto = {
       title: 'Work 1',
-      district_id: 'd1',
+      district_id: 10,
       contractor_id: 'c1',
       schemetype: 'PWS',
       latitude: 25.5941,
@@ -228,14 +228,14 @@ describe('WorkItemsService', () => {
   it('getMyWorkItems filters by district for DO', async () => {
     (usersRepository.findOne as jest.Mock).mockResolvedValue({
       id: 'do1',
-      district_id: '10',
+      district_id: 10,
     });
     (workItemsRepository.findAndCount as jest.Mock).mockResolvedValue([[], 0]);
 
     await service.getMyWorkItems('do1', UserRole.DO, 1, 20);
 
     expect(workItemsRepository.findAndCount).toHaveBeenCalledWith(
-      expect.objectContaining({ where: { district_id: '10' } }),
+      expect.objectContaining({ where: { district_id: 10 } }),
     );
   });
 
