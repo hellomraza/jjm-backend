@@ -37,8 +37,8 @@ export class WorkItem {
   description?: string;
 
   @Index()
-  @Column()
-  district_id: string;
+  @Column({ type: 'int' })
+  district_id: number;
 
   @Index()
   @Column({ type: 'int', nullable: true })

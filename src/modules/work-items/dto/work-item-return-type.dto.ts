@@ -116,9 +116,9 @@ export class WorkItemResponseDto {
 
   @ApiProperty({
     description: 'ID of the district to which the work item belongs',
-    example: 'district-123',
+    example: 10,
   })
-  district_id: string;
+  district_id: number;
 
   @ApiProperty({
     description: 'District details mapped from district_id',
