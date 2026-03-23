@@ -8,6 +8,7 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
+import { User } from '../../users/entities/user.entity';
 import { Block } from '../../locations/entities/block.entity';
 import { Circle } from '../../locations/entities/circle.entity';
 import { District } from '../../locations/entities/district.entity';
@@ -82,6 +83,10 @@ export class WorkItem {
   @Index()
   @Column()
   contractor_id: string;
+
+  @ManyToOne(() => User, { nullable: true, onDelete: 'SET NULL' })
+  @JoinColumn({ name: 'contractor_id', referencedColumnName: 'id' })
+  contractor?: User;
 
   @ManyToOne(() => District, { nullable: true })
   @JoinColumn({ name: 'district_id', referencedColumnName: 'districtid' })
