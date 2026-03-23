@@ -163,6 +163,14 @@ export class UsersService {
     await this.userRepository.remove(user);
   }
 
+  async getMyProfile(userId: string): Promise<Omit<User, 'password'>> {
+    const user = await this.userRepository.findOne({ where: { id: userId } });
+    if (!user) {
+      throw new NotFoundException(`User #${userId} not found`);
+    }
+    return this.stripPassword(user);
+  }
+
   async comparePasswords(
     plainPassword: string,
     hashedPassword: string,

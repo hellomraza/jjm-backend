@@ -7,6 +7,7 @@ import {
   Patch,
   Post,
   Query,
+  Request,
   UseGuards,
 } from '@nestjs/common';
 import {
@@ -56,6 +57,21 @@ export class UsersController {
   @ApiConflictResponse({ description: 'User with email already exists' })
   create(@Body() createUserDto: CreateUserDto) {
     return this.usersService.create(createUserDto);
+  }
+
+  @Get('my-profile')
+  @Roles(UserRole.HO, UserRole.DO, UserRole.CO, UserRole.EM)
+  @ApiOperation({
+    summary: 'Get my profile',
+    description:
+      'Returns the profile details of the currently authenticated user',
+  })
+  @ApiOkResponse({
+    description: 'Profile retrieved successfully',
+    type: UserResponseDto,
+  })
+  getMyProfile(@Request() req: { user: { userId: string } }) {
+    return this.usersService.getMyProfile(req.user.userId);
   }
 
   @Get()
