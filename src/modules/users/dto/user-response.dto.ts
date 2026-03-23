@@ -37,9 +37,9 @@ export class UserResponseDto {
     description: 'District identifier for district-bound users',
     required: false,
     nullable: true,
-    example: 'district-001',
+    example: 10,
   })
-  district_id?: string | null;
+  district_id?: number | null;
 
   @ApiProperty({
     description: 'Timestamp when the user was created',

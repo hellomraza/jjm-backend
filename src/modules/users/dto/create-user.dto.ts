@@ -2,10 +2,10 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
   IsEmail,
   IsEnum,
+  IsInt,
   IsNotEmpty,
   IsOptional,
   IsString,
-  IsUUID,
   MinLength,
 } from 'class-validator';
 import { UserRole } from '../entities/user.entity';
@@ -46,9 +46,9 @@ export class CreateUserDto {
 
   @ApiPropertyOptional({
     description: 'District ID for district-level users, nullable for HO',
-    example: '550e8400-e29b-41d4-a716-446655440000',
+    example: 10,
   })
   @IsOptional()
-  @IsUUID()
-  district_id?: string;
+  @IsInt()
+  district_id?: number;
 }

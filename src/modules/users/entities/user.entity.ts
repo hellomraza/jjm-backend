@@ -33,8 +33,8 @@ export class User {
   @Column({ type: 'enum', enum: UserRole, default: UserRole.EM })
   role: UserRole;
 
-  @Column({ nullable: true })
-  district_id: string;
+  @Column({ type: 'int', nullable: true })
+  district_id?: number;
 
   @CreateDateColumn()
   created_at: Date;
