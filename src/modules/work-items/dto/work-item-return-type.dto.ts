@@ -89,6 +89,40 @@ export class ZoneDetailsDto {
   zone_code: string;
 }
 
+export class ContractorDetailsDto {
+  @ApiProperty({
+    description: 'Unique identifier for the contractor user',
+    example: '550e8400-e29b-41d4-a716-446655440000',
+  })
+  id: string;
+
+  @ApiProperty({
+    description: 'Unique generated code for the contractor user',
+    example: 'CO123456789012',
+  })
+  code: string;
+
+  @ApiProperty({
+    description: 'Email address of the contractor user',
+    example: 'contractor@example.com',
+  })
+  email: string;
+
+  @ApiProperty({
+    description: 'Name of the contractor',
+    example: 'Ravi Kumar',
+  })
+  name: string;
+
+  @ApiProperty({
+    description: 'District ID for the contractor',
+    example: 10,
+    required: false,
+    nullable: true,
+  })
+  district_id?: number | null;
+}
+
 export class WorkItemResponseDto {
   @ApiProperty({
     description: 'Unique identifier for the work item',
@@ -248,6 +282,14 @@ export class WorkItemResponseDto {
     example: 'contractor-123',
   })
   contractor_id: string;
+
+  @ApiProperty({
+    description: 'Contractor details mapped from contractor_id',
+    type: ContractorDetailsDto,
+    required: false,
+    nullable: true,
+  })
+  contractor?: ContractorDetailsDto;
 
   @ApiProperty({
     description: 'Latitude coordinate of the work item location',

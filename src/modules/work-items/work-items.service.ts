@@ -39,6 +39,7 @@ export class WorkItemsService {
   ) {}
 
   private readonly locationRelations = {
+    contractor: true,
     district: true,
     block: true,
     panchayat: true,
