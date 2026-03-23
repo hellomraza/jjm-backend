@@ -144,6 +144,37 @@ export class WorkItemsController {
     return this.workItemsService.findOne(id);
   }
 
+  @Get(':id/do-info')
+  @Roles(UserRole.HO, UserRole.DO, UserRole.CO, UserRole.EM)
+  @ApiOperation({
+    summary: 'Get District Officer info by work item ID',
+    description:
+      'Returns the District Officer (DO) assigned to the district of the work item',
+  })
+  @ApiParam({ name: 'id', type: String, description: 'Work item ID' })
+  @ApiOkResponse({
+    description: 'District Officer found',
+    type: 'object',
+    schema: {
+      properties: {
+        id: { type: 'string' },
+        code: { type: 'string' },
+        email: { type: 'string' },
+        name: { type: 'string' },
+        role: { type: 'string' },
+        district_id: { type: 'number' },
+        created_at: { type: 'string', format: 'date-time' },
+        updated_at: { type: 'string', format: 'date-time' },
+      },
+    },
+  })
+  @ApiNotFoundResponse({
+    description: 'Work item or District Officer not found',
+  })
+  getDistrictOfficerByWorkItem(@Param('id') id: string) {
+    return this.workItemsService.getDistrictOfficerByWorkItem(id);
+  }
+
   @Patch(':id')
   @Roles(UserRole.HO, UserRole.DO, UserRole.CO)
   @ApiOperation({

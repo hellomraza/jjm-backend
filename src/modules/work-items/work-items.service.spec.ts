@@ -282,4 +282,55 @@ describe('WorkItemsService', () => {
     });
     expect(workItemsRepository.findAndCount).not.toHaveBeenCalled();
   });
+
+  it('getDistrictOfficerByWorkItem returns DO without password', async () => {
+    const workItem = { id: 'w1', district_id: 10 };
+    const districtOfficer = {
+      id: 'do1',
+      code: 'DO123',
+      email: 'do@example.com',
+      name: 'DO Name',
+      role: UserRole.DO,
+      district_id: 10,
+      password: 'hashed_password',
+      created_at: new Date(),
+      updated_at: new Date(),
+    };
+
+    (workItemsRepository.findOne as jest.Mock).mockResolvedValue(workItem);
+    (usersRepository.findOne as jest.Mock).mockResolvedValue(districtOfficer);
+
+    const result = await service.getDistrictOfficerByWorkItem('w1');
+
+    expect(result).toEqual({
+      id: 'do1',
+      code: 'DO123',
+      email: 'do@example.com',
+      name: 'DO Name',
+      role: UserRole.DO,
+      district_id: 10,
+      created_at: districtOfficer.created_at,
+      updated_at: districtOfficer.updated_at,
+    });
+    expect(result).not.toHaveProperty('password');
+  });
+
+  it('getDistrictOfficerByWorkItem throws when work item not found', async () => {
+    (workItemsRepository.findOne as jest.Mock).mockResolvedValue(null);
+
+    await expect(
+      service.getDistrictOfficerByWorkItem('missing'),
+    ).rejects.toThrow(NotFoundException);
+  });
+
+  it('getDistrictOfficerByWorkItem throws when DO not found for district', async () => {
+    const workItem = { id: 'w1', district_id: 10 };
+
+    (workItemsRepository.findOne as jest.Mock).mockResolvedValue(workItem);
+    (usersRepository.findOne as jest.Mock).mockResolvedValue(null);
+
+    await expect(service.getDistrictOfficerByWorkItem('w1')).rejects.toThrow(
+      NotFoundException,
+    );
+  });
 });

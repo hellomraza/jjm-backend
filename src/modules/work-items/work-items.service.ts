@@ -248,6 +248,34 @@ export class WorkItemsService {
     return workItem;
   }
 
+  async getDistrictOfficerByWorkItem(
+    workItemId: string,
+  ): Promise<Omit<User, 'password'>> {
+    const workItem = await this.workItemsRepository.findOne({
+      where: { id: workItemId },
+    });
+
+    if (!workItem) {
+      throw new NotFoundException(`Work item #${workItemId} not found`);
+    }
+
+    const districtId = workItem.district_id;
+
+    const districtOfficer = await this.usersRepository.findOne({
+      where: { district_id: districtId, role: UserRole.DO },
+    });
+
+    if (!districtOfficer) {
+      throw new NotFoundException(
+        `District Officer not found for district ${districtId}`,
+      );
+    }
+
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { password, ...userWithoutPassword } = districtOfficer;
+    return userWithoutPassword;
+  }
+
   async assignEmployeeToWorkItem(
     contractorId: string,
     workItemId: string,

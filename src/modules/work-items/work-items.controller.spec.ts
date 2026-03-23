@@ -12,6 +12,7 @@ describe('WorkItemsController', () => {
     getMyWorkItems: jest.fn(),
     findAll: jest.fn(),
     findOne: jest.fn(),
+    getDistrictOfficerByWorkItem: jest.fn(),
     update: jest.fn(),
     updateStatus: jest.fn(),
     remove: jest.fn(),
@@ -90,5 +91,12 @@ describe('WorkItemsController', () => {
   it('remove delegates to service', async () => {
     await controller.remove('w1');
     expect(workItemsService.remove).toHaveBeenCalledWith('w1');
+  });
+
+  it('getDistrictOfficerByWorkItem delegates to service', async () => {
+    await controller.getDistrictOfficerByWorkItem('w1');
+    expect(workItemsService.getDistrictOfficerByWorkItem).toHaveBeenCalledWith(
+      'w1',
+    );
   });
 });
