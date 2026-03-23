@@ -18,6 +18,9 @@ export const databaseConfig = (
     ssl: {
       rejectUnauthorized: false,
     },
+    extra: {
+      connectTimeout: 60000, // 60 sec
+    },
     migrations: [__dirname + '/../database/migrations/*{.ts,.js}'],
   };
 };
