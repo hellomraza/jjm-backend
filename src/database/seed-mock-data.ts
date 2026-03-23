@@ -28,7 +28,7 @@ type SeedUser = {
   email: string;
   name: string;
   role: UserRole;
-  district_id?: string;
+  district_id?: number;
 };
 
 type SeedComponent = {
@@ -111,7 +111,7 @@ const getCurrentFinancialYear = (date: Date = new Date()): string => {
   return `${startYear}-${startYear + 1}`;
 };
 
-async function seedMockData() {
+export async function seedMockData() {
   const app = await NestFactory.createApplicationContext(AppModule, {
     logger: ['error', 'warn'],
   });
@@ -318,6 +318,16 @@ async function seedMockData() {
       hasWorkCodeColumn = true;
     }
 
+    // Normalize legacy schemas where users.district_id might still be varchar
+    await queryRunner.query(
+      'ALTER TABLE users MODIFY COLUMN district_id int NULL',
+    );
+
+    // Normalize legacy schemas where district_id might still be varchar
+    await queryRunner.query(
+      'ALTER TABLE work_items MODIFY COLUMN district_id int NOT NULL',
+    );
+
     const hasBlockIdColumn = await queryRunner.hasColumn(
       'work_items',
       'block_id',
@@ -450,31 +460,31 @@ async function seedMockData() {
         email: 'do.mock@jjm.local',
         name: 'District Officer Mock',
         role: UserRole.DO,
-        district_id: '10',
+        district_id: 10,
       },
       {
         email: 'co.mock.1@jjm.local',
         name: 'Contractor Mock 1',
         role: UserRole.CO,
-        district_id: '10',
+        district_id: 10,
       },
       {
         email: 'co.mock.2@jjm.local',
         name: 'Contractor Mock 2',
         role: UserRole.CO,
-        district_id: '11',
+        district_id: 11,
       },
       {
         email: 'em.mock.1@jjm.local',
         name: 'Employee Mock 1',
         role: UserRole.EM,
-        district_id: '10',
+        district_id: 10,
       },
       {
         email: 'em.mock.2@jjm.local',
         name: 'Employee Mock 2',
         role: UserRole.EM,
-        district_id: '11',
+        district_id: 11,
       },
     ];
 
@@ -627,6 +637,11 @@ async function seedMockData() {
           district_id: seededDistricts[0].districtid,
         }),
         blockRepo.create({
+          blockname: 'Mock Block 10-B',
+          block_code: 'MOCK-BLK-10B',
+          district_id: seededDistricts[0].districtid,
+        }),
+        blockRepo.create({
           blockname: 'Mock Block 11-A',
           block_code: 'MOCK-BLK-11A',
           district_id: seededDistricts[1].districtid,
@@ -676,6 +691,11 @@ async function seedMockData() {
         villageRepo.create({
           villagename: 'Mock Village 10-A',
           village_code: 'MOCK-VIL-10A',
+          district_id: seededDistricts[0].districtid,
+        }),
+        villageRepo.create({
+          villagename: 'Mock Village 10-B',
+          village_code: 'MOCK-VIL-10B',
           district_id: seededDistricts[0].districtid,
         }),
         villageRepo.create({
@@ -791,7 +811,7 @@ async function seedMockData() {
           : {}),
         title: 'MOCK-Work Item 1',
         description: 'Mock data for district 10 - in progress',
-        district_id: '10',
+        district_id: 10,
         block_id: seededBlocks[0]?.blockid,
         panchayat_id: seededPanchayats[0]?.panchayatid,
         village_id: seededVillages[0]?.villageid,
@@ -815,10 +835,10 @@ async function seedMockData() {
           : {}),
         title: 'MOCK-Work Item 2',
         description: 'Mock data for district 11 - pending',
-        district_id: '11',
-        block_id: seededBlocks[1]?.blockid,
+        district_id: 11,
+        block_id: seededBlocks[2]?.blockid,
         panchayat_id: seededPanchayats[1]?.panchayatid,
-        village_id: seededVillages[1]?.villageid,
+        village_id: seededVillages[2]?.villageid,
         subdivision_id: seededSubdivisions[1]?.subdivisionid,
         circle_id: seededCircles[1]?.circleid,
         zone_id: seededZones[1]?.zoneid,
@@ -839,10 +859,10 @@ async function seedMockData() {
           : {}),
         title: 'MOCK-Work Item 3',
         description: 'Mock data for district 10 - completed',
-        district_id: '10',
-        block_id: seededBlocks[0]?.blockid,
+        district_id: 10,
+        block_id: seededBlocks[1]?.blockid,
         panchayat_id: seededPanchayats[0]?.panchayatid,
-        village_id: seededVillages[0]?.villageid,
+        village_id: seededVillages[1]?.villageid,
         subdivision_id: seededSubdivisions[0]?.subdivisionid,
         circle_id: seededCircles[0]?.circleid,
         zone_id: seededZones[0]?.zoneid,
@@ -1102,11 +1122,13 @@ async function seedMockData() {
   }
 }
 
-seedMockData()
-  .then(() => {
-    process.exit(0);
-  })
-  .catch((error) => {
-    console.error('❌ Failed to seed mock data:', error);
-    process.exit(1);
-  });
+if (require.main === module) {
+  seedMockData()
+    .then(() => {
+      process.exit(0);
+    })
+    .catch((error) => {
+      console.error('❌ Failed to seed mock data:', error);
+      process.exit(1);
+    });
+}
