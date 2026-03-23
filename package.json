@@ -10,6 +10,7 @@
     "start:db": "sh ./scripts/start-db.sh",
     "stop:db": "sh ./scripts/stop-db.sh",
     "mock-data": "yarn build && node dist/database/seed-mock-data.js",
+    "reset-mock-data": "yarn build && node dist/database/reset-and-seed-mock-data.js",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
     "start": "nest start",
     "start:dev": "nest start --watch",
