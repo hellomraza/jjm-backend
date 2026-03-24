@@ -7,6 +7,8 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import * as bcrypt from 'bcryptjs';
 import { Repository } from 'typeorm';
+import { WorkItemEmployeeAssignment } from '../work-items/entities/work-item-employee-assignment.entity';
+import { CreateEmployeeDto } from './dto/create-employee.dto';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { User, UserRole } from './entities/user.entity';
@@ -16,6 +18,8 @@ export class UsersService {
   constructor(
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
+    @InjectRepository(WorkItemEmployeeAssignment)
+    private readonly workItemEmployeeAssignmentRepository: Repository<WorkItemEmployeeAssignment>,
   ) {}
 
   private stripPassword(user: User): Omit<User, 'password'> {
@@ -80,6 +84,37 @@ export class UsersService {
 
     // Return user without password
     return this.stripPassword(savedUser);
+  }
+
+  async createEmployee(
+    createEmployeeDto: CreateEmployeeDto,
+  ): Promise<Omit<User, 'password'>> {
+    const { email, password, name } = createEmployeeDto;
+
+    // Check if user already exists
+    const existingUser = await this.userRepository.findOne({
+      where: { email },
+    });
+    if (existingUser) {
+      throw new ConflictException(`User with email ${email} already exists`);
+    }
+
+    // Hash password
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    // Create and save employee with EM role
+    const employee = this.userRepository.create({
+      code: await this.generateUniqueUserCode(UserRole.EM),
+      email,
+      password: hashedPassword,
+      name,
+      role: UserRole.EM,
+    });
+
+    const savedEmployee = await this.userRepository.save(employee);
+
+    // Return employee without password
+    return this.stripPassword(savedEmployee);
   }
 
   async findAll(
@@ -176,5 +211,31 @@ export class UsersService {
     hashedPassword: string,
   ): Promise<boolean> {
     return bcrypt.compare(plainPassword, hashedPassword);
+  }
+
+  async getAllEmployees(): Promise<Omit<User, 'password'>[]> {
+    const employees = await this.userRepository.find({
+      where: { role: UserRole.EM },
+      order: { created_at: 'DESC' },
+    });
+
+    // Remove password from all employees
+    return employees.map((employee) => this.stripPassword(employee));
+  }
+
+  async getEmployeesByWorkItemId(
+    workItemId: string,
+  ): Promise<Omit<User, 'password'>[]> {
+    const assignments = await this.workItemEmployeeAssignmentRepository.find({
+      where: { work_item_id: workItemId },
+      relations: ['employee'],
+    });
+
+    if (assignments.length === 0) {
+      return [];
+    }
+
+    const employees = assignments.map((assignment) => assignment.employee);
+    return employees.map((employee) => this.stripPassword(employee));
   }
 }

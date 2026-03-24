@@ -28,6 +28,7 @@ import { ApiPaginatedResponse } from '../../common/decorators/paginated.responce
 import { Roles } from '../../common/decorators/roles.decorator';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
+import { CreateEmployeeDto } from './dto/create-employee.dto';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { UserResponseDto } from './dto/user-response.dto';
@@ -59,6 +60,23 @@ export class UsersController {
     return this.usersService.create(createUserDto);
   }
 
+  @Post('employee')
+  @Roles(UserRole.CO)
+  @ApiOperation({
+    summary: 'Create employee',
+    description:
+      'Creates a new employee account with name, email, and password',
+  })
+  @ApiCreatedResponse({
+    description: 'Employee created successfully',
+    type: UserResponseDto,
+  })
+  @ApiBadRequestResponse({ description: 'Invalid request body' })
+  @ApiConflictResponse({ description: 'User with email already exists' })
+  createEmployee(@Body() createEmployeeDto: CreateEmployeeDto) {
+    return this.usersService.createEmployee(createEmployeeDto);
+  }
+
   @Get('my-profile')
   @Roles(UserRole.HO, UserRole.DO, UserRole.CO, UserRole.EM)
   @ApiOperation({
@@ -72,6 +90,41 @@ export class UsersController {
   })
   getMyProfile(@Request() req: { user: { userId: string } }) {
     return this.usersService.getMyProfile(req.user.userId);
+  }
+
+  @Get('employees')
+  @Roles(UserRole.HO, UserRole.DO, UserRole.CO)
+  @ApiOperation({
+    summary: 'Get all employees',
+    description:
+      'Returns a list of all employees (users with EM role) without password field',
+  })
+  @ApiOkResponse({
+    description: 'Employees retrieved successfully',
+    type: [UserResponseDto],
+  })
+  getAllEmployees() {
+    return this.usersService.getAllEmployees();
+  }
+
+  @Get('work-item/:workItemId/employees')
+  @Roles(UserRole.HO, UserRole.DO, UserRole.CO)
+  @ApiOperation({
+    summary: 'Get employees by work item',
+    description:
+      'Returns a list of all employees assigned to a specific work item',
+  })
+  @ApiParam({
+    name: 'workItemId',
+    type: String,
+    description: 'Work item ID',
+  })
+  @ApiOkResponse({
+    description: 'Employees retrieved successfully',
+    type: [UserResponseDto],
+  })
+  getEmployeesByWorkItemId(@Param('workItemId') workItemId: string) {
+    return this.usersService.getEmployeesByWorkItemId(workItemId);
   }
 
   @Get()

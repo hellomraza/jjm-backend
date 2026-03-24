@@ -48,11 +48,9 @@ describe('WorkItemsController', () => {
       employee_ids: ['em1', 'em2'],
     });
 
-    expect(workItemsService.assignMultipleEmployeesToWorkItem).toHaveBeenCalledWith(
-      'co1',
-      'w1',
-      ['em1', 'em2'],
-    );
+    expect(
+      workItemsService.assignMultipleEmployeesToWorkItem,
+    ).toHaveBeenCalledWith('co1', 'w1', ['em1', 'em2']);
   });
 
   it('getMyWorkItems delegates to service with auth user context', async () => {
