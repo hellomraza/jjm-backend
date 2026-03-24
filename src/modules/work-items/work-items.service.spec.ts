@@ -196,6 +196,104 @@ describe('WorkItemsService', () => {
     });
   });
 
+  it('assignMultipleEmployeesToWorkItem throws when work item is missing', async () => {
+    (workItemsRepository.findOne as jest.Mock).mockResolvedValue(null);
+
+    await expect(
+      service.assignMultipleEmployeesToWorkItem('co1', 'missing', ['em1']),
+    ).rejects.toThrow(NotFoundException);
+  });
+
+  it('assignMultipleEmployeesToWorkItem throws when contractor does not own work item', async () => {
+    (workItemsRepository.findOne as jest.Mock).mockResolvedValue({
+      id: 'w1',
+      contractor_id: 'co2',
+    });
+
+    await expect(
+      service.assignMultipleEmployeesToWorkItem('co1', 'w1', ['em1']),
+    ).rejects.toThrow(ForbiddenException);
+  });
+
+  it('assignMultipleEmployeesToWorkItem assigns valid employees and skips invalid ones', async () => {
+    (workItemsRepository.findOne as jest.Mock).mockResolvedValue({
+      id: 'w1',
+      contractor_id: 'co1',
+    });
+
+    const validEmployee = { id: 'em1', role: UserRole.EM };
+    const invalidEmployee = { id: 'do1', role: UserRole.DO };
+
+    let callCount = 0;
+    (usersRepository.findOne as jest.Mock).mockImplementation(async () => {
+      callCount++;
+      return callCount === 1 ? validEmployee : invalidEmployee;
+    });
+
+    (
+      workItemEmployeeAssignmentsRepository.findOne as jest.Mock
+    ).mockResolvedValue(null);
+
+    (workItemEmployeeAssignmentsRepository.create as jest.Mock).mockReturnValue(
+      {
+        work_item_id: 'w1',
+        employee_id: 'em1',
+      },
+    );
+
+    (workItemEmployeeAssignmentsRepository.save as jest.Mock).mockResolvedValue(
+      {
+        id: 'a1',
+        work_item_id: 'w1',
+        employee_id: 'em1',
+      },
+    );
+
+    const result = await service.assignMultipleEmployeesToWorkItem(
+      'co1',
+      'w1',
+      ['em1', 'do1'],
+    );
+
+    expect(result.created).toHaveLength(1);
+    expect(result.failed).toHaveLength(1);
+    expect(result.summary).toEqual({ total: 2, created: 1, failed: 1 });
+    expect(result.failed[0].employee_id).toBe('do1');
+  });
+
+  it('assignMultipleEmployeesToWorkItem handles existing assignments', async () => {
+    const existingAssignment = {
+      id: 'a1',
+      work_item_id: 'w1',
+      employee_id: 'em1',
+    };
+
+    (workItemsRepository.findOne as jest.Mock).mockResolvedValue({
+      id: 'w1',
+      contractor_id: 'co1',
+    });
+
+    (usersRepository.findOne as jest.Mock).mockResolvedValue({
+      id: 'em1',
+      role: UserRole.EM,
+    });
+
+    (
+      workItemEmployeeAssignmentsRepository.findOne as jest.Mock
+    ).mockResolvedValue(existingAssignment);
+
+    const result = await service.assignMultipleEmployeesToWorkItem(
+      'co1',
+      'w1',
+      ['em1'],
+    );
+
+    expect(result.created).toHaveLength(1);
+    expect(result.created[0]).toEqual(existingAssignment);
+    expect(result.failed).toHaveLength(0);
+    expect(workItemEmployeeAssignmentsRepository.save).not.toHaveBeenCalled();
+  });
+
   it('updateStatus sets progress to 100 for completed', async () => {
     (workItemsRepository.findOne as jest.Mock).mockResolvedValue({
       id: 'w1',

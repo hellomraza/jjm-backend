@@ -32,8 +32,8 @@ import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { UserRole } from '../users/entities/user.entity';
 import {
+  AssignMultipleEmployeesResponseDto,
   AssignWorkItemEmployeeDto,
-  WorkItemEmployeeAssignmentResponseDto,
 } from './dto/assign-work-item-employee.dto';
 import { CreateWorkItemDto } from './dto/create-work-item.dto';
 import { UpdateWorkItemDto } from './dto/update-work-item.dto';
@@ -91,27 +91,28 @@ export class WorkItemsController {
   @Post(':id/assign-employee')
   @Roles(UserRole.CO)
   @ApiOperation({
-    summary: 'Assign employee to work item',
-    description: 'Assigns an employee to a contractor-owned work item',
+    summary: 'Assign employees to work item',
+    description:
+      'Assigns one or more employees to a contractor-owned work item',
   })
   @ApiParam({ name: 'id', type: String, description: 'Work item ID' })
   @ApiCreatedResponse({
-    description: 'Employee assigned to work item successfully',
-    type: WorkItemEmployeeAssignmentResponseDto,
+    description: 'Employees assigned to work item',
+    type: AssignMultipleEmployeesResponseDto,
   })
   @ApiNotFoundResponse({ description: 'Work item not found' })
   @ApiUnprocessableEntityResponse({
-    description: 'employee_id does not exist or is not an employee user',
+    description: 'One or more employee_ids are invalid or not employee users',
   })
   assignEmployee(
     @Request() req: { user: { userId: string } },
     @Param('id') id: string,
     @Body() body: AssignWorkItemEmployeeDto,
-  ) {
-    return this.workItemsService.assignEmployeeToWorkItem(
+  ): Promise<AssignMultipleEmployeesResponseDto> {
+    return this.workItemsService.assignMultipleEmployeesToWorkItem(
       req.user.userId,
       id,
-      body.employee_id,
+      body.employee_ids,
     );
   }
 

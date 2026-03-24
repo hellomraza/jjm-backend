@@ -8,7 +8,7 @@ describe('WorkItemsController', () => {
   let controller: WorkItemsController;
   const workItemsService = {
     create: jest.fn(),
-    assignEmployeeToWorkItem: jest.fn(),
+    assignMultipleEmployeesToWorkItem: jest.fn(),
     getMyWorkItems: jest.fn(),
     findAll: jest.fn(),
     findOne: jest.fn(),
@@ -44,12 +44,14 @@ describe('WorkItemsController', () => {
       WorkItemsController['assignEmployee']
     >[0];
 
-    await controller.assignEmployee(req, 'w1', { employee_id: 'em1' });
+    await controller.assignEmployee(req, 'w1', {
+      employee_ids: ['em1', 'em2'],
+    });
 
-    expect(workItemsService.assignEmployeeToWorkItem).toHaveBeenCalledWith(
+    expect(workItemsService.assignMultipleEmployeesToWorkItem).toHaveBeenCalledWith(
       'co1',
       'w1',
-      'em1',
+      ['em1', 'em2'],
     );
   });
 

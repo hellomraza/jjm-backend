@@ -20,6 +20,7 @@ import {
   WorkItemComponentStatus,
 } from '../components/entities/work-item-component.entity';
 import { User, UserRole } from '../users/entities/user.entity';
+import { AssignMultipleEmployeesResponseDto } from './dto/assign-work-item-employee.dto';
 import { CreateWorkItemDto } from './dto/create-work-item.dto';
 import { UpdateWorkItemDto } from './dto/update-work-item.dto';
 import { WorkItemEmployeeAssignment } from './entities/work-item-employee-assignment.entity';
@@ -320,6 +321,79 @@ export class WorkItemsService {
     });
 
     return this.workItemEmployeeAssignmentsRepository.save(assignment);
+  }
+
+  async assignMultipleEmployeesToWorkItem(
+    contractorId: string,
+    workItemId: string,
+    employeeIds: string[],
+  ): Promise<AssignMultipleEmployeesResponseDto> {
+    const workItem = await this.workItemsRepository.findOne({
+      where: { id: workItemId },
+    });
+
+    if (!workItem) {
+      throw new NotFoundException(`Work item #${workItemId} not found`);
+    }
+
+    if (workItem.contractor_id !== contractorId) {
+      throw new ForbiddenException(
+        'You can only assign employees to your own work items',
+      );
+    }
+
+    const created: WorkItemEmployeeAssignment[] = [];
+    const failed: Array<{ employee_id: string; error: string }> = [];
+
+    for (const employeeId of employeeIds) {
+      try {
+        const employee = await this.usersRepository.findOne({
+          where: { id: employeeId },
+        });
+
+        if (!employee || employee.role !== UserRole.EM) {
+          failed.push({
+            employee_id: employeeId,
+            error: 'Employee not found or is not an employee user',
+          });
+          continue;
+        }
+
+        const existingAssignment =
+          await this.workItemEmployeeAssignmentsRepository.findOne({
+            where: { work_item_id: workItemId, employee_id: employeeId },
+          });
+
+        if (existingAssignment) {
+          created.push(existingAssignment);
+          continue;
+        }
+
+        const assignment = this.workItemEmployeeAssignmentsRepository.create({
+          work_item_id: workItemId,
+          employee_id: employeeId,
+        });
+
+        const savedAssignment =
+          await this.workItemEmployeeAssignmentsRepository.save(assignment);
+        created.push(savedAssignment);
+      } catch (error) {
+        failed.push({
+          employee_id: employeeId,
+          error: error instanceof Error ? error.message : 'Unknown error',
+        });
+      }
+    }
+
+    return {
+      created,
+      failed,
+      summary: {
+        total: employeeIds.length,
+        created: created.length,
+        failed: failed.length,
+      },
+    };
   }
 
   async update(
