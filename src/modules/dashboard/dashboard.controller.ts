@@ -1,6 +1,7 @@
-import { Controller, Get, UseGuards } from '@nestjs/common';
+import { Controller, Get, Request, UseGuards } from '@nestjs/common';
 import {
   ApiBearerAuth,
+  ApiExtraModels,
   ApiForbiddenResponse,
   ApiOkResponse,
   ApiOperation,
@@ -12,7 +13,10 @@ import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { UserRole } from '../users/entities/user.entity';
 import { DashboardService } from './dashboard.service';
-import { DashboardStatsDto } from './dto/dashboard-stats.dto';
+import {
+  DashboardStatsDto,
+  DistrictDashboardDto,
+} from './dto/dashboard-stats.dto';
 
 @ApiTags('Dashboard')
 @ApiBearerAuth('access-token')
@@ -24,17 +28,25 @@ export class DashboardController {
   constructor(private readonly dashboardService: DashboardService) {}
 
   @Get('stats')
-  @Roles(UserRole.HO)
+  @Roles(UserRole.HO, UserRole.DO)
   @ApiOperation({
-    summary: 'Get application statistics',
+    summary: 'Get dashboard statistics',
     description:
-      'Returns comprehensive statistics about the application including work items, users, and agreements. Only accessible by Head Office (HO) users.',
+      'Returns statistics based on user role. HO users get comprehensive application statistics. DO users get district-specific statistics with work items and progress percentages.',
   })
+  @ApiExtraModels(DistrictDashboardDto, DashboardStatsDto)
   @ApiOkResponse({
     description: 'Statistics retrieved successfully',
-    type: DashboardStatsDto,
+    schema: {
+      oneOf: [
+        { $ref: '#/components/schemas/DashboardStatsDto' },
+        { $ref: '#/components/schemas/DistrictDashboardDto' },
+      ],
+    },
   })
-  getStats(): Promise<DashboardStatsDto> {
-    return this.dashboardService.getStats();
+  getStats(
+    @Request() req: { user: { userId: string; role: UserRole } },
+  ): Promise<DashboardStatsDto | DistrictDashboardDto> {
+    return this.dashboardService.getStats(req.user.userId, req.user.role);
   }
 }
