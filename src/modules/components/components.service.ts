@@ -202,10 +202,7 @@ export class ComponentsService {
     );
 
     componentMapping.progress = newProgress;
-    componentMapping.status =
-      newProgress < quantity
-        ? WorkItemComponentStatus.IN_PROGRESS
-        : componentMapping.status;
+    componentMapping.status = WorkItemComponentStatus.IN_PROGRESS;
     await this.workItemComponentRepo.save(componentMapping);
 
     return savedPhoto;
