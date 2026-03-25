@@ -1,4 +1,4 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { Injectable, ForbiddenException, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { User, UserRole } from '../users/entities/user.entity';
 import { UsersService } from '../users/users.service';
@@ -41,6 +41,35 @@ export class AuthService {
   login(user: Omit<User, 'password'>) {
     if (!user) {
       throw new UnauthorizedException('Invalid credentials');
+    }
+
+    const payload: JwtPayload = {
+      sub: user.id,
+      email: user.email,
+      role: user.role,
+    };
+
+    return {
+      access_token: this.jwtService.sign(payload),
+      user: {
+        id: user.id,
+        email: user.email,
+        role: user.role,
+      },
+    };
+  }
+
+  dashboardLogin(user: Omit<User, 'password'>) {
+    if (!user) {
+      throw new UnauthorizedException('Invalid credentials');
+    }
+
+    // Only allow HO, CO, and DO roles for dashboard login
+    const allowedRoles = [UserRole.HO, UserRole.CO, UserRole.DO];
+    if (!allowedRoles.includes(user.role)) {
+      throw new ForbiddenException(
+        'Your role does not have access to the dashboard',
+      );
     }
 
     const payload: JwtPayload = {
