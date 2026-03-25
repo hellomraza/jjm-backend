@@ -148,3 +148,94 @@ export class DistrictDashboardDto {
   })
   generatedAt: Date;
 }
+
+export class ComponentStatusCountDto {
+  @ApiProperty({
+    description: 'Number of pending components',
+    example: 5,
+  })
+  pending: number;
+
+  @ApiProperty({
+    description: 'Number of submitted components',
+    example: 3,
+  })
+  submitted: number;
+
+  @ApiProperty({
+    description: 'Number of in-progress components',
+    example: 2,
+  })
+  inProgress: number;
+
+  @ApiProperty({
+    description: 'Number of approved components',
+    example: 7,
+  })
+  approved: number;
+
+  @ApiProperty({
+    description: 'Number of rejected components',
+    example: 1,
+  })
+  rejected: number;
+}
+
+export class ContractorWorkItemDto {
+  @ApiProperty({
+    description: 'Work item unique identifier',
+    example: '550e8400-e29b-41d4-a716-446655440000',
+  })
+  id: string;
+
+  @ApiProperty({
+    description: 'Work item code',
+    example: 'WI-001',
+  })
+  work_code: string;
+
+  @ApiProperty({
+    description: 'Work item title',
+    example: 'Water Pipeline Construction',
+  })
+  title: string;
+
+  @ApiProperty({
+    description: 'Current status of work item',
+    enum: ['PENDING', 'IN_PROGRESS', 'COMPLETED'],
+    example: 'IN_PROGRESS',
+  })
+  status: string;
+
+  @ApiProperty({
+    description: 'Component status breakdown',
+    type: ComponentStatusCountDto,
+  })
+  componentStats: ComponentStatusCountDto;
+
+  @ApiProperty({
+    description: 'Number of employees assigned to this work item',
+    example: 5,
+  })
+  assignedEmployees: number;
+}
+
+export class ContractorDashboardDto {
+  @ApiProperty({
+    description: 'Total number of work items assigned to contractor',
+    example: 10,
+  })
+  totalWorkItems: number;
+
+  @ApiProperty({
+    description: 'List of work items with component and employee details',
+    type: [ContractorWorkItemDto],
+  })
+  workItems: ContractorWorkItemDto[];
+
+  @ApiProperty({
+    description: 'Timestamp when the statistics were generated',
+    example: '2026-03-25T10:30:00.000Z',
+  })
+  generatedAt: Date;
+}
