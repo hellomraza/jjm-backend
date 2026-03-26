@@ -28,6 +28,7 @@ import { ApiPaginatedResponse } from '../../common/decorators/paginated.responce
 import { Roles } from '../../common/decorators/roles.decorator';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
+import { CreateContractorDto } from './dto/create-contractor.dto';
 import { CreateEmployeeDto } from './dto/create-employee.dto';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
@@ -75,6 +76,23 @@ export class UsersController {
   @ApiConflictResponse({ description: 'User with email already exists' })
   createEmployee(@Body() createEmployeeDto: CreateEmployeeDto) {
     return this.usersService.createEmployee(createEmployeeDto);
+  }
+
+  @Post('contractor')
+  @Roles(UserRole.DO)
+  @ApiOperation({
+    summary: 'Create contractor',
+    description:
+      'Creates a new contractor account with name, email, and password',
+  })
+  @ApiCreatedResponse({
+    description: 'Contractor created successfully',
+    type: UserResponseDto,
+  })
+  @ApiBadRequestResponse({ description: 'Invalid request body' })
+  @ApiConflictResponse({ description: 'User with email already exists' })
+  createContractor(@Body() createContractorDto: CreateContractorDto) {
+    return this.usersService.createContractor(createContractorDto);
   }
 
   @Get('my-profile')

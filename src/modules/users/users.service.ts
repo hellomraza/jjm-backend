@@ -8,6 +8,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import * as bcrypt from 'bcryptjs';
 import { Repository } from 'typeorm';
 import { WorkItemEmployeeAssignment } from '../work-items/entities/work-item-employee-assignment.entity';
+import { CreateContractorDto } from './dto/create-contractor.dto';
 import { CreateEmployeeDto } from './dto/create-employee.dto';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
@@ -115,6 +116,37 @@ export class UsersService {
 
     // Return employee without password
     return this.stripPassword(savedEmployee);
+  }
+
+  async createContractor(
+    createContractorDto: CreateContractorDto,
+  ): Promise<Omit<User, 'password'>> {
+    const { email, password, name } = createContractorDto;
+
+    // Check if user already exists
+    const existingUser = await this.userRepository.findOne({
+      where: { email },
+    });
+    if (existingUser) {
+      throw new ConflictException(`User with email ${email} already exists`);
+    }
+
+    // Hash password
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    // Create and save contractor with CO role
+    const contractor = this.userRepository.create({
+      code: await this.generateUniqueUserCode(UserRole.CO),
+      email,
+      password: hashedPassword,
+      name,
+      role: UserRole.CO,
+    });
+
+    const savedContractor = await this.userRepository.save(contractor);
+
+    // Return contractor without password
+    return this.stripPassword(savedContractor);
   }
 
   async findAll(
