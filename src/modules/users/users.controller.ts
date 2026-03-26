@@ -29,6 +29,7 @@ import { Roles } from '../../common/decorators/roles.decorator';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { CreateContractorDto } from './dto/create-contractor.dto';
+import { CreateDODto } from './dto/create-do.dto';
 import { CreateEmployeeDto } from './dto/create-employee.dto';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
@@ -95,6 +96,23 @@ export class UsersController {
     return this.usersService.createContractor(createContractorDto);
   }
 
+  @Post('do')
+  @Roles(UserRole.HO)
+  @ApiOperation({
+    summary: 'Create district office manager',
+    description:
+      'Creates a new district office account with name, email, password, and optional district',
+  })
+  @ApiCreatedResponse({
+    description: 'District office created successfully',
+    type: UserResponseDto,
+  })
+  @ApiBadRequestResponse({ description: 'Invalid request body' })
+  @ApiConflictResponse({ description: 'User with email already exists' })
+  createDO(@Body() createDODto: CreateDODto) {
+    return this.usersService.createDO(createDODto);
+  }
+
   @Get('my-profile')
   @Roles(UserRole.HO, UserRole.DO, UserRole.CO, UserRole.EM)
   @ApiOperation({
@@ -138,6 +156,21 @@ export class UsersController {
   })
   getAllContractors() {
     return this.usersService.getAllContractors();
+  }
+
+  @Get('dos')
+  @Roles(UserRole.HO)
+  @ApiOperation({
+    summary: 'Get all district offices',
+    description:
+      'Returns a list of all district office managers (users with DO role) without password field',
+  })
+  @ApiOkResponse({
+    description: 'District offices retrieved successfully',
+    type: [UserResponseDto],
+  })
+  getAllDOs() {
+    return this.usersService.getAllDOs();
   }
 
   @Get('work-item/:workItemId/employees')

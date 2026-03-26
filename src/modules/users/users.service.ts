@@ -9,6 +9,7 @@ import * as bcrypt from 'bcryptjs';
 import { Repository } from 'typeorm';
 import { WorkItemEmployeeAssignment } from '../work-items/entities/work-item-employee-assignment.entity';
 import { CreateContractorDto } from './dto/create-contractor.dto';
+import { CreateDODto } from './dto/create-do.dto';
 import { CreateEmployeeDto } from './dto/create-employee.dto';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
@@ -149,6 +150,36 @@ export class UsersService {
     return this.stripPassword(savedContractor);
   }
 
+  async createDO(createDODto: CreateDODto): Promise<Omit<User, 'password'>> {
+    const { email, password, name, district_id } = createDODto;
+
+    // Check if user already exists
+    const existingUser = await this.userRepository.findOne({
+      where: { email },
+    });
+    if (existingUser) {
+      throw new ConflictException(`User with email ${email} already exists`);
+    }
+
+    // Hash password
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    // Create and save DO with DO role
+    const districtOffice = this.userRepository.create({
+      code: await this.generateUniqueUserCode(UserRole.DO),
+      email,
+      password: hashedPassword,
+      name,
+      role: UserRole.DO,
+      district_id,
+    });
+
+    const savedDO = await this.userRepository.save(districtOffice);
+
+    // Return DO without password
+    return this.stripPassword(savedDO);
+  }
+
   async findAll(
     page: number = 1,
     limit: number = 20,
@@ -263,6 +294,16 @@ export class UsersService {
 
     // Remove password from all contractors
     return contractors.map((contractor) => this.stripPassword(contractor));
+  }
+
+  async getAllDOs(): Promise<Omit<User, 'password'>[]> {
+    const dos = await this.userRepository.find({
+      where: { role: UserRole.DO },
+      order: { created_at: 'DESC' },
+    });
+
+    // Remove password from all DOs
+    return dos.map((districtOffice) => this.stripPassword(districtOffice));
   }
 
   async getEmployeesByWorkItemId(
