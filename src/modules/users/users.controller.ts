@@ -125,6 +125,21 @@ export class UsersController {
     return this.usersService.getAllEmployees();
   }
 
+  @Get('contractors')
+  @Roles(UserRole.HO, UserRole.DO)
+  @ApiOperation({
+    summary: 'Get all contractors',
+    description:
+      'Returns a list of all contractors (users with CO role) without password field',
+  })
+  @ApiOkResponse({
+    description: 'Contractors retrieved successfully',
+    type: [UserResponseDto],
+  })
+  getAllContractors() {
+    return this.usersService.getAllContractors();
+  }
+
   @Get('work-item/:workItemId/employees')
   @Roles(UserRole.HO, UserRole.DO, UserRole.CO)
   @ApiOperation({

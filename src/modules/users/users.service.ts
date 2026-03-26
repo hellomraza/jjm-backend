@@ -255,6 +255,16 @@ export class UsersService {
     return employees.map((employee) => this.stripPassword(employee));
   }
 
+  async getAllContractors(): Promise<Omit<User, 'password'>[]> {
+    const contractors = await this.userRepository.find({
+      where: { role: UserRole.CO },
+      order: { created_at: 'DESC' },
+    });
+
+    // Remove password from all contractors
+    return contractors.map((contractor) => this.stripPassword(contractor));
+  }
+
   async getEmployeesByWorkItemId(
     workItemId: string,
   ): Promise<Omit<User, 'password'>[]> {
