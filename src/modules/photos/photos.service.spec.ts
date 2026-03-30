@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   InternalServerErrorException,
   NotFoundException,
 } from '@nestjs/common';
@@ -94,5 +95,54 @@ describe('PhotosService', () => {
       }),
     );
     expect(result.image_url).toBe('https://example-storage.com/key.jpg');
+  });
+
+  it('uploadPhotoUrl throws when photoUrl is empty', async () => {
+    await expect(
+      service.uploadPhotoUrl(
+        {
+          photoUrl: '   ',
+          latitude: 1,
+          longitude: 1,
+          timestamp: new Date(),
+          component_id: 'c1',
+          work_item_id: 'w1',
+        },
+        'em1',
+      ),
+    ).rejects.toThrow(BadRequestException);
+  });
+
+  it('uploadPhotoUrl stores provided url as image_url', async () => {
+    (photoRepo.create as jest.Mock).mockImplementation((payload) => payload);
+    (photoRepo.save as jest.Mock).mockImplementation(async (photo) => ({
+      id: 'p-url-1',
+      ...photo,
+    }));
+
+    const result = await service.uploadPhotoUrl(
+      {
+        photoUrl:
+          'https://res.cloudinary.com/demo/image/upload/v123/sample.jpg',
+        latitude: 1,
+        longitude: 1,
+        timestamp: new Date(),
+        component_id: 'c1',
+        work_item_id: 'w1',
+      },
+      'em1',
+    );
+
+    expect(photoRepo.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        image_url:
+          'https://res.cloudinary.com/demo/image/upload/v123/sample.jpg',
+        component_id: 'c1',
+        work_item_id: 'w1',
+      }),
+    );
+    expect(result.image_url).toBe(
+      'https://res.cloudinary.com/demo/image/upload/v123/sample.jpg',
+    );
   });
 });
