@@ -6,12 +6,14 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, EntityManager, Repository } from 'typeorm';
+import { UploadPhotoUrlDto } from '../photos/dto/upload-photo-url.dto';
 import { UploadPhotoDto } from '../photos/dto/upload-photo.dto';
 import { Photo } from '../photos/entities/photo.entity';
 import { PhotosService } from '../photos/photos.service';
 import { User, UserRole } from '../users/entities/user.entity';
 import { WorkItem } from '../work-items/entities/work-item.entity';
 import { UpdateWorkItemComponentDto } from './dto/update-work-item-component.dto';
+import { UploadComponentPhotoUrlDto } from './dto/upload-component-photo-url.dto';
 import { UploadComponentPhotoDto } from './dto/upload-component-photo.dto';
 import { Component } from './entities/component.entity';
 import {
@@ -132,6 +134,71 @@ export class ComponentsService {
     uploadDto: UploadComponentPhotoDto,
     employeeId: string,
   ): Promise<Photo> {
+    const { componentMapping, newProgress } =
+      await this.validateUploadPhotoInput(
+        componentId,
+        uploadDto.progress,
+        employeeId,
+      );
+
+    const uploadPhotoDto: UploadPhotoDto = {
+      latitude: uploadDto.latitude,
+      longitude: uploadDto.longitude,
+      timestamp: uploadDto.timestamp,
+      component_id: componentId,
+      work_item_id: componentMapping.work_item_id,
+    };
+
+    const savedPhoto = await this.photosService.uploadPhoto(
+      file,
+      uploadPhotoDto,
+      employeeId,
+    );
+
+    await this.persistComponentProgress(componentMapping, newProgress);
+
+    return savedPhoto;
+  }
+
+  async uploadPhotoUrl(
+    componentId: string,
+    uploadDto: UploadComponentPhotoUrlDto,
+    employeeId: string,
+  ): Promise<Photo> {
+    const { componentMapping, newProgress } =
+      await this.validateUploadPhotoInput(
+        componentId,
+        uploadDto.progress,
+        employeeId,
+      );
+
+    const uploadPhotoUrlDto: UploadPhotoUrlDto = {
+      photoUrl: uploadDto.photoUrl,
+      latitude: uploadDto.latitude,
+      longitude: uploadDto.longitude,
+      timestamp: uploadDto.timestamp,
+      component_id: componentId,
+      work_item_id: componentMapping.work_item_id,
+    };
+
+    const savedPhoto = await this.photosService.uploadPhotoUrl(
+      uploadPhotoUrlDto,
+      employeeId,
+    );
+
+    await this.persistComponentProgress(componentMapping, newProgress);
+
+    return savedPhoto;
+  }
+
+  private async validateUploadPhotoInput(
+    componentId: string,
+    progressInput: string,
+    employeeId: string,
+  ): Promise<{
+    componentMapping: WorkItemComponent;
+    newProgress: number;
+  }> {
     const componentMapping = await this.workItemComponentRepo.findOne({
       where: { id: componentId },
       relations: ['workItem'],
@@ -171,7 +238,7 @@ export class ComponentsService {
 
     const quantity = Number(componentMapping.quantity);
     const currentProgress = Number(componentMapping.progress ?? 0);
-    const newProgress = Number(uploadDto.progress);
+    const newProgress = Number(progressInput);
 
     if (Number.isNaN(newProgress) || newProgress <= 0) {
       throw new BadRequestException('Progress must be greater than 0');
@@ -187,25 +254,16 @@ export class ComponentsService {
       throw new BadRequestException('Progress must not decrease');
     }
 
-    const uploadPhotoDto: UploadPhotoDto = {
-      latitude: uploadDto.latitude,
-      longitude: uploadDto.longitude,
-      timestamp: uploadDto.timestamp,
-      component_id: componentId,
-      work_item_id: componentMapping.work_item_id,
-    };
+    return { componentMapping, newProgress };
+  }
 
-    const savedPhoto = await this.photosService.uploadPhoto(
-      file,
-      uploadPhotoDto,
-      employeeId,
-    );
-
+  private async persistComponentProgress(
+    componentMapping: WorkItemComponent,
+    newProgress: number,
+  ): Promise<void> {
     componentMapping.progress = newProgress;
     componentMapping.status = WorkItemComponentStatus.IN_PROGRESS;
     await this.workItemComponentRepo.save(componentMapping);
-
-    return savedPhoto;
   }
 
   private async validateProgressSequence(

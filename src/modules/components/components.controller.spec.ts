@@ -7,6 +7,7 @@ describe('ComponentsController', () => {
   const componentsService = {
     findMasterComponents: jest.fn(),
     uploadPhoto: jest.fn(),
+    uploadPhotoUrl: jest.fn(),
     getComponentPhotos: jest.fn(),
     selectPhoto: jest.fn(),
     approveComponent: jest.fn(),
@@ -42,7 +43,7 @@ describe('ComponentsController', () => {
       originalname: 'a.jpg',
     } as unknown as Parameters<ComponentsController['uploadComponentPhoto']>[1];
     const dto = {
-      progress: 10,
+      progress: '10',
       latitude: 1,
       longitude: 1,
       timestamp: new Date(),
@@ -69,6 +70,26 @@ describe('ComponentsController', () => {
       'c1',
       'p1',
       'co1',
+    );
+  });
+
+  it('uploadComponentPhotoUrl delegates to service', async () => {
+    const req = { user: { userId: 'em1' } } as Parameters<
+      ComponentsController['uploadComponentPhotoUrl']
+    >[2];
+    const dto = {
+      photoUrl: 'https://res.cloudinary.com/demo/image/upload/v123/sample.jpg',
+      progress: '10',
+      latitude: 1,
+      longitude: 1,
+      timestamp: new Date(),
+    } as Parameters<ComponentsController['uploadComponentPhotoUrl']>[1];
+
+    await controller.uploadComponentPhotoUrl('c1', dto, req);
+    expect(componentsService.uploadPhotoUrl).toHaveBeenCalledWith(
+      'c1',
+      dto,
+      'em1',
     );
   });
 });

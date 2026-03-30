@@ -6,6 +6,7 @@ describe('PhotosController', () => {
   let controller: PhotosController;
   const photosService = {
     uploadPhoto: jest.fn(),
+    uploadPhotoUrl: jest.fn(),
     findAll: jest.fn(),
     reviewByComponent: jest.fn(),
     selectBestPhoto: jest.fn(),
@@ -43,6 +44,23 @@ describe('PhotosController', () => {
   it('findAll delegates to service', async () => {
     await controller.findAll(1, 20);
     expect(photosService.findAll).toHaveBeenCalledWith(1, 20);
+  });
+
+  it('uploadUrl delegates to service', async () => {
+    const dto = {
+      photoUrl: 'https://res.cloudinary.com/demo/image/upload/v123/sample.jpg',
+      latitude: 1,
+      longitude: 1,
+      component_id: 'c1',
+      work_item_id: 'w1',
+      timestamp: new Date(),
+    } as Parameters<PhotosController['uploadUrl']>[0];
+    const req = { user: { userId: 'em1' } } as Parameters<
+      PhotosController['uploadUrl']
+    >[1];
+
+    await controller.uploadUrl(dto, req);
+    expect(photosService.uploadPhotoUrl).toHaveBeenCalledWith(dto, 'em1');
   });
 
   it('selectBestPhoto delegates to service', async () => {

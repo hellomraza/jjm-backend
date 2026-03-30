@@ -41,6 +41,7 @@ describe('ComponentsService', () => {
 
   const photosService = {
     uploadPhoto: jest.fn(),
+    uploadPhotoUrl: jest.fn(),
   } as unknown as PhotosService;
 
   const dataSource = {
@@ -208,6 +209,67 @@ describe('ComponentsService', () => {
       ),
     ).rejects.toThrow(
       'Only one component can be in progress at a time for a work item',
+    );
+  });
+
+  it('uploadPhotoUrl saves photo metadata and updates progress', async () => {
+    const mapping = {
+      id: 'wc1',
+      status: WorkItemComponentStatus.PENDING,
+      quantity: 10,
+      progress: 0,
+      work_item_id: 'w1',
+    };
+
+    const savedPhoto = { id: 'p1' };
+
+    (workItemComponentRepo.findOne as jest.Mock).mockResolvedValue(mapping);
+    (workItemComponentRepo.find as jest.Mock).mockResolvedValue([
+      {
+        ...mapping,
+        component: { order_number: 1 },
+      },
+    ]);
+    (userRepo.findOne as jest.Mock).mockResolvedValue({ role: UserRole.EM });
+    (photosService.uploadPhotoUrl as jest.Mock).mockResolvedValue(savedPhoto);
+    (workItemComponentRepo.save as jest.Mock).mockResolvedValue({
+      ...mapping,
+      progress: 8,
+      status: WorkItemComponentStatus.IN_PROGRESS,
+    });
+
+    const timestamp = new Date();
+    const result = await service.uploadPhotoUrl(
+      'wc1',
+      {
+        photoUrl:
+          'https://res.cloudinary.com/demo/image/upload/v1234567890/sample.jpg',
+        progress: '8',
+        latitude: 1,
+        longitude: 1,
+        timestamp,
+      },
+      'em1',
+    );
+
+    expect(result).toEqual(savedPhoto);
+    expect(photosService.uploadPhotoUrl).toHaveBeenCalledWith(
+      {
+        photoUrl:
+          'https://res.cloudinary.com/demo/image/upload/v1234567890/sample.jpg',
+        latitude: 1,
+        longitude: 1,
+        timestamp,
+        component_id: 'wc1',
+        work_item_id: 'w1',
+      },
+      'em1',
+    );
+    expect(workItemComponentRepo.save).toHaveBeenCalledWith(
+      expect.objectContaining({
+        progress: 8,
+        status: WorkItemComponentStatus.IN_PROGRESS,
+      }),
     );
   });
 });

@@ -1,11 +1,14 @@
 import {
   BadRequestException,
+  HttpException,
   Injectable,
+  InternalServerErrorException,
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { UploadService } from '../../common/upload/upload.service';
+import { UploadPhotoUrlDto } from './dto/upload-photo-url.dto';
 import { UploadPhotoDto } from './dto/upload-photo.dto';
 import { Photo } from './entities/photo.entity';
 
@@ -22,17 +25,57 @@ export class PhotosService {
     uploadPhotoDto: UploadPhotoDto,
     employeeId: string,
   ): Promise<Photo> {
-    const sanitizedName = file.originalname.replace(/\s+/g, '-');
-    const objectKey = `work-items/${uploadPhotoDto.work_item_id}/components/${uploadPhotoDto.component_id}/${Date.now()}-${sanitizedName}`;
+    try {
+      const sanitizedName = file.originalname.replace(/\s+/g, '-');
+      const objectKey = `work-items/${uploadPhotoDto.work_item_id}/components/${uploadPhotoDto.component_id}/${Date.now()}-${sanitizedName}`;
 
-    const uploadResult = await this.uploadService.uploadObject({
-      objectKey,
-      body: file.buffer,
-      contentType: file.mimetype,
-    });
+      const uploadResult = await this.uploadService.uploadObject({
+        objectKey,
+        body: file.buffer,
+        contentType: file.mimetype,
+      });
 
+      return await this.persistPhoto(
+        uploadResult.url,
+        uploadPhotoDto,
+        employeeId,
+      );
+    } catch (error) {
+      if (error instanceof HttpException) {
+        throw error;
+      }
+
+      throw new InternalServerErrorException('Failed to upload photo');
+    }
+  }
+
+  async uploadPhotoUrl(
+    uploadPhotoUrlDto: UploadPhotoUrlDto,
+    employeeId: string,
+  ): Promise<Photo> {
+    const photoUrl = uploadPhotoUrlDto.photoUrl?.trim();
+    if (!photoUrl) {
+      throw new BadRequestException('photoUrl is required');
+    }
+
+    try {
+      return await this.persistPhoto(photoUrl, uploadPhotoUrlDto, employeeId);
+    } catch (error) {
+      if (error instanceof HttpException) {
+        throw error;
+      }
+
+      throw new InternalServerErrorException('Failed to store photo metadata');
+    }
+  }
+
+  private async persistPhoto(
+    imageUrl: string,
+    uploadPhotoDto: UploadPhotoDto,
+    employeeId: string,
+  ): Promise<Photo> {
     const photo = this.photoRepo.create({
-      image_url: uploadResult.url,
+      image_url: imageUrl,
       latitude: uploadPhotoDto.latitude,
       longitude: uploadPhotoDto.longitude,
       timestamp: uploadPhotoDto.timestamp,

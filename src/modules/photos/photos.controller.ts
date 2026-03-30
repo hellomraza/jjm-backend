@@ -34,6 +34,7 @@ import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { UserRole } from '../users/entities/user.entity';
 import { PhotoResponseDto } from './dto/photo-response.dto';
+import { UploadPhotoUrlDto } from './dto/upload-photo-url.dto';
 import { UploadPhotoDto } from './dto/upload-photo.dto';
 import { PhotosService } from './photos.service';
 
@@ -111,6 +112,29 @@ export class PhotosController {
     return this.photosService.uploadPhoto(
       file,
       uploadPhotoDto,
+      req.user.userId,
+    );
+  }
+
+  @Post('upload-url')
+  @Roles(UserRole.EM)
+  @ApiOperation({
+    summary: 'Upload photo metadata with Cloudinary URL',
+    description:
+      'Stores photo metadata using a client-uploaded Cloudinary URL and employee evidence fields',
+  })
+  @ApiBody({ type: UploadPhotoUrlDto })
+  @ApiCreatedResponse({
+    description: 'Photo metadata stored successfully using URL payload',
+    type: PhotoResponseDto,
+  })
+  @ApiBadRequestResponse({ description: 'Invalid upload-url payload' })
+  uploadUrl(
+    @Body() uploadPhotoUrlDto: UploadPhotoUrlDto,
+    @Request() req: AuthenticatedRequest,
+  ) {
+    return this.photosService.uploadPhotoUrl(
+      uploadPhotoUrlDto,
       req.user.userId,
     );
   }

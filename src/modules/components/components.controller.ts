@@ -43,6 +43,7 @@ import {
 import { SelectPhotoDto } from './dto/select-photo.dto';
 import { SubmitPhotoDto } from './dto/submit-photo.dto';
 import { UpdateWorkItemComponentDto } from './dto/update-work-item-component.dto';
+import { UploadComponentPhotoUrlDto } from './dto/upload-component-photo-url.dto';
 import { UploadComponentPhotoDto } from './dto/upload-component-photo.dto';
 
 type AuthenticatedRequest = {
@@ -134,6 +135,36 @@ export class ComponentsController {
       componentId,
       file,
       uploadComponentPhotoDto,
+      req.user.userId,
+    );
+  }
+
+  @Post(':componentId/photos-url')
+  @Roles(UserRole.EM)
+  @ApiOperation({
+    summary: 'Upload photo URL for a component',
+    description:
+      'Employee submits a Cloudinary URL for a work item component mapping and updates component progress',
+  })
+  @ApiParam({
+    name: 'componentId',
+    type: String,
+    description: 'Work item component mapping ID',
+  })
+  @ApiBody({ type: UploadComponentPhotoUrlDto })
+  @ApiCreatedResponse({
+    description: 'Photo URL stored successfully',
+    type: PhotoResponseDto,
+  })
+  @ApiBadRequestResponse({ description: 'Invalid upload payload' })
+  uploadComponentPhotoUrl(
+    @Param('componentId') componentId: string,
+    @Body() uploadComponentPhotoUrlDto: UploadComponentPhotoUrlDto,
+    @Request() req: AuthenticatedRequest,
+  ) {
+    return this.componentsService.uploadPhotoUrl(
+      componentId,
+      uploadComponentPhotoUrlDto,
       req.user.userId,
     );
   }
