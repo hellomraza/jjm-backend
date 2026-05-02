@@ -75,6 +75,9 @@ export class Photo {
   @Column({ type: 'datetime', nullable: true })
   forwarded_at: Date | null;
 
+  @Column({ type: 'datetime', nullable: true })
+  approved_at: Date | null;
+
   @CreateDateColumn()
   created_at: Date;
 }
