@@ -318,7 +318,7 @@ export class ComponentsService {
 
   async getComponentPhotos(
     componentId: string,
-    contractorId: string,
+    userId: string,
     page: number,
     limit: number,
   ): Promise<{
@@ -339,8 +339,22 @@ export class ComponentsService {
       );
     }
 
-    if (componentMapping.workItem.contractor_id !== contractorId) {
-      throw new ForbiddenException('Contractor does not own this work item');
+    // Fetch user to check their role
+    const user = await this.userRepo.findOne({ where: { id: userId } });
+    if (!user) {
+      throw new NotFoundException(`User with ID ${userId} not found`);
+    }
+
+    // Authorization: Allow if user is contractor owning work item OR is an employee
+    const isContractorOwner =
+      user.role === UserRole.CO &&
+      componentMapping.workItem.contractor_id === userId;
+    const isEmployee = user.role === UserRole.EM;
+
+    if (!isContractorOwner && !isEmployee) {
+      throw new ForbiddenException(
+        'Only the contractor or employees can access component photos',
+      );
     }
 
     const [data, total] = await this.photoRepo.findAndCount({

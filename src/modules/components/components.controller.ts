@@ -170,7 +170,7 @@ export class ComponentsController {
   }
 
   @Get(':componentId/photos')
-  @Roles(UserRole.CO)
+  @Roles(UserRole.CO, UserRole.EM)
   @ApiOperation({
     summary: 'Get photos uploaded for a component',
     description: 'Contractor views all photos uploaded for a component',
