@@ -8,7 +8,6 @@ import { AppModule } from 'src/app.module';
 let server;
 
 async function bootstrap() {
-  console.log('Bootstrapping NestJS application...');
   const app = await NestFactory.create(AppModule);
 
   app.use(helmet());
