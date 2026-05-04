@@ -42,6 +42,38 @@ export class UserResponseDto {
   district_id?: number | null;
 
   @ApiProperty({
+    description: 'Mobile phone number',
+    required: false,
+    nullable: true,
+    example: '9123456789',
+  })
+  mobile?: string | null;
+
+  @ApiProperty({
+    description: 'PAN number',
+    required: false,
+    nullable: true,
+    example: 'ABCDE1234F',
+  })
+  pan_number?: string | null;
+
+  @ApiProperty({
+    description: 'District name',
+    required: false,
+    nullable: true,
+    example: 'Jaipur',
+  })
+  district_name?: string | null;
+
+  @ApiProperty({
+    description: 'Postal address of the user',
+    required: false,
+    nullable: true,
+    example: '123 Main St, Village, District',
+  })
+  address?: string | null;
+
+  @ApiProperty({
     description: 'Timestamp when the user was created',
     example: '2026-03-07T10:30:00.000Z',
   })

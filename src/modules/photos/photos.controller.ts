@@ -153,7 +153,7 @@ export class PhotosController {
   }
 
   @Get('component/:componentId/review')
-  @Roles(UserRole.CO)
+  @Roles(UserRole.CO, UserRole.HO, UserRole.DO)
   @ApiOperation({
     summary: 'Review component photos',
     description: 'Contractor reviews paginated photos for a specific component',
