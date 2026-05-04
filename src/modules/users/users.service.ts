@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ConflictException,
   Injectable,
   InternalServerErrorException,
@@ -13,10 +14,18 @@ import { CreateDODto } from './dto/create-do.dto';
 import { CreateEmployeeDto } from './dto/create-employee.dto';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
+import { ContractorContract } from './entities/contractor-contract.entity';
+import { EmployeeContract } from './entities/employee-contract.entity';
 import { User, UserRole } from './entities/user.entity';
 
 @Injectable()
 export class UsersService {
+  @InjectRepository(ContractorContract)
+  private readonly contractorContractRepository!: Repository<ContractorContract>;
+
+  @InjectRepository(EmployeeContract)
+  private readonly employeeContractRepository!: Repository<EmployeeContract>;
+
   constructor(
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
@@ -57,6 +66,36 @@ export class UsersService {
     );
   }
 
+  private async recordEmployeeContract(
+    createdUser: User,
+    creatorUserId: string,
+    creatorRole: UserRole,
+  ): Promise<void> {
+    await this.employeeContractRepository.save(
+      this.employeeContractRepository.create({
+        created_by_id: creatorUserId,
+        created_user_id: createdUser.id,
+        created_by_role: creatorRole,
+        created_user_role: createdUser.role,
+      }),
+    );
+  }
+
+  private async recordContractorContract(
+    createdUser: User,
+    creatorUserId: string,
+    creatorRole: UserRole,
+  ): Promise<void> {
+    await this.contractorContractRepository.save(
+      this.contractorContractRepository.create({
+        created_by_id: creatorUserId,
+        created_user_id: createdUser.id,
+        created_by_role: creatorRole,
+        created_user_role: createdUser.role,
+      }),
+    );
+  }
+
   async create(createUserDto: CreateUserDto): Promise<Omit<User, 'password'>> {
     const { email, password, name, role, district_id } = createUserDto;
     const resolvedRole = role ?? UserRole.EM;
@@ -90,6 +129,8 @@ export class UsersService {
 
   async createEmployee(
     createEmployeeDto: CreateEmployeeDto,
+    creatorUserId: string,
+    creatorRole: UserRole,
   ): Promise<Omit<User, 'password'>> {
     const { email, password, name } = createEmployeeDto;
 
@@ -115,12 +156,20 @@ export class UsersService {
 
     const savedEmployee = await this.userRepository.save(employee);
 
+    await this.recordEmployeeContract(
+      savedEmployee,
+      creatorUserId,
+      creatorRole,
+    );
+
     // Return employee without password
     return this.stripPassword(savedEmployee);
   }
 
   async createContractor(
     createContractorDto: CreateContractorDto,
+    creatorUserId: string,
+    creatorRole: UserRole,
   ): Promise<Omit<User, 'password'>> {
     const { email, password, name } = createContractorDto;
 
@@ -145,6 +194,12 @@ export class UsersService {
     });
 
     const savedContractor = await this.userRepository.save(contractor);
+
+    await this.recordContractorContract(
+      savedContractor,
+      creatorUserId,
+      creatorRole,
+    );
 
     // Return contractor without password
     return this.stripPassword(savedContractor);
@@ -178,6 +233,51 @@ export class UsersService {
 
     // Return DO without password
     return this.stripPassword(savedDO);
+  }
+
+  async getMyCreatedUsers(
+    creatorUserId: string,
+    creatorRole: UserRole,
+    page: number = 1,
+    limit: number = 20,
+  ): Promise<{
+    data: Omit<User, 'password'>[];
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+  }> {
+    if (creatorRole !== UserRole.CO && creatorRole !== UserRole.DO) {
+      throw new BadRequestException(
+        'Only contractor and district office users can access created users',
+      );
+    }
+
+    const contractRepository =
+      creatorRole === UserRole.CO
+        ? this.employeeContractRepository
+        : this.contractorContractRepository;
+
+    const [contracts, total] = await contractRepository
+      .createQueryBuilder('contract')
+      .innerJoinAndSelect('contract.createdUser', 'user')
+      .where('contract.created_by_id = :creatorUserId', { creatorUserId })
+      .orderBy('contract.created_at', 'DESC')
+      .skip((page - 1) * limit)
+      .take(limit)
+      .getManyAndCount();
+
+    const usersWithoutPassword = contracts.map((contract) =>
+      this.stripPassword(contract.createdUser),
+    );
+
+    return {
+      data: usersWithoutPassword,
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+    };
   }
 
   async findAll(

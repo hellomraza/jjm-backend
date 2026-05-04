@@ -37,6 +37,13 @@ import { UserResponseDto } from './dto/user-response.dto';
 import { UserRole } from './entities/user.entity';
 import { UsersService } from './users.service';
 
+type AuthenticatedRequest = {
+  user: {
+    userId: string;
+    role: UserRole;
+  };
+};
+
 @ApiTags('Users')
 @ApiBearerAuth('access-token')
 @ApiUnauthorizedResponse({ description: 'Missing or invalid JWT token' })
@@ -75,8 +82,15 @@ export class UsersController {
   })
   @ApiBadRequestResponse({ description: 'Invalid request body' })
   @ApiConflictResponse({ description: 'User with email already exists' })
-  createEmployee(@Body() createEmployeeDto: CreateEmployeeDto) {
-    return this.usersService.createEmployee(createEmployeeDto);
+  createEmployee(
+    @Body() createEmployeeDto: CreateEmployeeDto,
+    @Request() req: AuthenticatedRequest,
+  ) {
+    return this.usersService.createEmployee(
+      createEmployeeDto,
+      req.user.userId,
+      req.user.role,
+    );
   }
 
   @Post('contractor')
@@ -92,8 +106,15 @@ export class UsersController {
   })
   @ApiBadRequestResponse({ description: 'Invalid request body' })
   @ApiConflictResponse({ description: 'User with email already exists' })
-  createContractor(@Body() createContractorDto: CreateContractorDto) {
-    return this.usersService.createContractor(createContractorDto);
+  createContractor(
+    @Body() createContractorDto: CreateContractorDto,
+    @Request() req: AuthenticatedRequest,
+  ) {
+    return this.usersService.createContractor(
+      createContractorDto,
+      req.user.userId,
+      req.user.role,
+    );
   }
 
   @Post('do')
@@ -111,6 +132,29 @@ export class UsersController {
   @ApiConflictResponse({ description: 'User with email already exists' })
   createDO(@Body() createDODto: CreateDODto) {
     return this.usersService.createDO(createDODto);
+  }
+
+  @Get('my-created-users')
+  @Roles(UserRole.DO, UserRole.CO)
+  @ApiOperation({
+    summary: 'Get users created by me',
+    description:
+      'Returns paginated users created by the current contractor or district office user',
+  })
+  @ApiQuery({ name: 'page', required: false, type: Number, example: 1 })
+  @ApiQuery({ name: 'limit', required: false, type: Number, example: 20 })
+  @ApiPaginatedResponse(UserResponseDto)
+  getMyCreatedUsers(
+    @Request() req: AuthenticatedRequest,
+    @Query('page') page: number = 1,
+    @Query('limit') limit: number = 20,
+  ) {
+    return this.usersService.getMyCreatedUsers(
+      req.user.userId,
+      req.user.role,
+      page,
+      limit,
+    );
   }
 
   @Get('my-profile')
