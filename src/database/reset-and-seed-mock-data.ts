@@ -21,13 +21,39 @@ async function resetAllData(): Promise<void> {
       `);
 
       const excludedTables = new Set(['migrations', 'typeorm_metadata']);
+      const cleanupOrder = [
+        'photos',
+        'agreements',
+        'work_item_employee_assignments',
+        'work_item_components',
+        'work_items',
+        'users',
+        'blocks',
+        'panchayats',
+        'villages',
+        'subdivisions',
+        'circles',
+        'zones',
+        'components',
+        'districts',
+      ];
+
+      const tablePriority = new Map(
+        cleanupOrder.map((tableName, index) => [tableName, index]),
+      );
+
+      tables.sort((left, right) => {
+        const leftPriority = tablePriority.get(left.table_name) ?? 999;
+        const rightPriority = tablePriority.get(right.table_name) ?? 999;
+        return leftPriority - rightPriority;
+      });
 
       for (const { table_name: tableName } of tables) {
         if (excludedTables.has(tableName)) {
           continue;
         }
 
-        await manager.query(`TRUNCATE TABLE \`${tableName}\``);
+        await manager.query(`DELETE FROM \`${tableName}\``);
       }
 
       await manager.query('SET FOREIGN_KEY_CHECKS = 1');

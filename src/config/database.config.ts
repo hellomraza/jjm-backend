@@ -15,6 +15,7 @@ export const databaseConfig = (
     database: configService.get('DB_DATABASE'),
     entities: [__dirname + '/../**/*.entity{.ts,.js}'],
     synchronize,
+    migrationsRun: true,
     ssl: {
       rejectUnauthorized: false,
     },

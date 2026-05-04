@@ -86,6 +86,14 @@ export class WorkItemComponentResponseDto {
   approved_photo_id?: string | null;
 
   @ApiProperty({
+    description: 'Timestamp when the component was approved',
+    required: false,
+    nullable: true,
+    example: '2026-03-08T12:30:00.000Z',
+  })
+  approved_at?: Date | null;
+
+  @ApiProperty({
     description: 'Timestamp when the mapping was created',
     example: '2026-03-07T10:30:00.000Z',
   })

@@ -1,10 +1,30 @@
 import { MigrationInterface, QueryRunner, Table, TableIndex } from 'typeorm';
 
-export class RefactorComponentsArchitecture1741436000000
-  implements MigrationInterface
-{
+export class RefactorComponentsArchitecture1741436000000 implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {
+    const workItemComponentsExists = await queryRunner.hasTable(
+      'work_item_components',
+    );
+    if (workItemComponentsExists) {
+      return;
+    }
+
     // Step 1: Drop existing components table (old per-work-item schema)
+    const workItemComponentsTable = await queryRunner.getTable(
+      'work_item_components',
+    );
+    const componentForeignKey =
+      workItemComponentsTable?.foreignKeys.find((foreignKey) =>
+        foreignKey.columnNames.includes('component_id'),
+      ) ?? null;
+
+    if (componentForeignKey) {
+      await queryRunner.dropForeignKey(
+        'work_item_components',
+        componentForeignKey,
+      );
+    }
+
     await queryRunner.dropTable('components', true);
 
     // Step 2: Create new components table (master static data)

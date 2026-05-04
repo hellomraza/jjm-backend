@@ -555,6 +555,7 @@ export class ComponentsService {
         }
       }
 
+      componentMapping.approved_at = new Date();
       componentMapping.status = WorkItemComponentStatus.APPROVED;
       await manager.save(WorkItemComponent, componentMapping);
       await this.recalculateProgress(componentMapping.work_item_id, manager);

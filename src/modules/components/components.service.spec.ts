@@ -272,4 +272,51 @@ describe('ComponentsService', () => {
       }),
     );
   });
+
+  it('approveComponent sets approved_at when approving a component', async () => {
+    const manager = {
+      findOne: jest.fn(),
+      save: jest.fn(),
+      count: jest.fn().mockResolvedValueOnce(1).mockResolvedValueOnce(1),
+      update: jest.fn(),
+    };
+
+    (dataSource.transaction as jest.Mock).mockImplementation(async (callback) =>
+      callback(manager),
+    );
+
+    const mapping = {
+      id: 'wc1',
+      status: WorkItemComponentStatus.SUBMITTED,
+      approved_photo_id: 'photo-1',
+      work_item_id: 'w1',
+      progress: 5,
+      quantity: 10,
+      workItem: {
+        district_id: 'd1',
+      },
+    };
+
+    (manager.findOne as jest.Mock)
+      .mockResolvedValueOnce({
+        id: 'do1',
+        role: UserRole.DO,
+        district_id: 'd1',
+      })
+      .mockResolvedValueOnce(mapping)
+      .mockResolvedValueOnce({ id: 'photo-1', component_id: 'wc1' });
+
+    await expect(service.approveComponent('wc1', 'do1')).resolves.toEqual({
+      success: true,
+      message: 'Component approved successfully',
+    });
+
+    expect(manager.save).toHaveBeenCalledWith(
+      WorkItemComponent,
+      expect.objectContaining({
+        status: WorkItemComponentStatus.APPROVED,
+        approved_at: expect.any(Date),
+      }),
+    );
+  });
 });

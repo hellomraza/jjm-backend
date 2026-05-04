@@ -304,6 +304,27 @@ export async function seedMockData() {
     const hasCirclesTable = true;
     const hasZonesTable = true;
 
+    const deleteMockWorkItems = async (): Promise<void> => {
+      const existingWorkItems = await workItemRepo.find({ select: ['id'] });
+
+      if (existingWorkItems.length === 0) {
+        return;
+      }
+
+      const workItemIds = existingWorkItems.map((workItem) => workItem.id);
+
+      if (hasAgreementsTable) {
+        await agreementRepo.delete({ work_id: In(workItemIds) });
+      }
+
+      await workItemEmployeeAssignmentRepo.delete({
+        work_item_id: In(workItemIds),
+      });
+      await photoRepo.delete({ work_item_id: In(workItemIds) });
+      await workItemComponentRepo.delete({ work_item_id: In(workItemIds) });
+      await workItemRepo.delete({ id: In(workItemIds) });
+    };
+
     if (!hasUserCodeColumn) {
       await queryRunner.query(
         'ALTER TABLE users ADD COLUMN code varchar(14) NULL',
@@ -442,6 +463,16 @@ export async function seedMockData() {
     if (!hasComponentProgressColumn) {
       await queryRunner.query(
         'ALTER TABLE work_item_components ADD COLUMN progress decimal(12,2) NOT NULL DEFAULT 0',
+      );
+    }
+
+    const hasApprovedAtColumn = await queryRunner.hasColumn(
+      'work_item_components',
+      'approved_at',
+    );
+    if (!hasApprovedAtColumn) {
+      await queryRunner.query(
+        'ALTER TABLE work_item_components ADD COLUMN approved_at datetime NULL',
       );
     }
 
@@ -618,6 +649,7 @@ export async function seedMockData() {
       });
     }
 
+    await deleteMockWorkItems();
     if (hasBlocksTable && seededDistricts.length > 0) {
       const existingBlocks = await blockRepo
         .createQueryBuilder('block')
@@ -954,6 +986,10 @@ export async function seedMockData() {
         mapping.remarks = undefined;
         mapping.status = mappingStatus;
         mapping.approved_photo_id = undefined;
+        mapping.approved_at =
+          mappingStatus === WorkItemComponentStatus.APPROVED
+            ? new Date()
+            : undefined;
 
         workItemComponentsToCreate.push(mapping);
       }

@@ -12,7 +12,7 @@ import {
 @Unique('UQ_COMPONENT_ORDER_NUMBER', ['order_number'])
 @Index('IDX_COMPONENT_ORDER_NUMBER', ['order_number'])
 export class Component {
-  @PrimaryGeneratedColumn('uuid')
+  @PrimaryGeneratedColumn()
   id: string;
 
   @Column()

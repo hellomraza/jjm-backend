@@ -5,10 +5,12 @@ import {
   Index,
   JoinColumn,
   ManyToOne,
+  OneToMany,
   PrimaryGeneratedColumn,
   Unique,
   UpdateDateColumn,
 } from 'typeorm';
+import { Photo } from '../../photos/entities/photo.entity';
 import { WorkItem } from '../../work-items/entities/work-item.entity';
 import { Component } from './component.entity';
 
@@ -46,6 +48,9 @@ export class WorkItemComponent {
   @JoinColumn({ name: 'component_id' })
   component: Component;
 
+  @OneToMany(() => Photo, (photo) => photo.workItemComponent)
+  photos: Photo[];
+
   @Column({ type: 'decimal', precision: 12, scale: 2, nullable: true })
   quantity?: number;
 
@@ -65,6 +70,9 @@ export class WorkItemComponent {
   @Column({ nullable: true })
   @Index('IDX_WORK_ITEM_COMPONENT_APPROVED_PHOTO_ID')
   approved_photo_id?: string;
+
+  @Column({ type: 'datetime', nullable: true })
+  approved_at?: Date;
 
   @CreateDateColumn()
   created_at: Date;
