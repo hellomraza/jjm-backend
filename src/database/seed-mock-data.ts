@@ -998,7 +998,6 @@ export async function seedMockData() {
           selected_at: new Date(),
           is_forwarded_to_do: true,
           forwarded_at: new Date(),
-          approved_at: new Date(),
         }),
       );
 

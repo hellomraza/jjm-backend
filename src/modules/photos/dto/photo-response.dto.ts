@@ -87,14 +87,6 @@ export class PhotoResponseDto {
   forwarded_at?: Date | null;
 
   @ApiProperty({
-    description: 'Timestamp when this photo was approved',
-    required: false,
-    nullable: true,
-    example: '2026-03-08T12:30:00.000Z',
-  })
-  approved_at?: Date | null;
-
-  @ApiProperty({
     description: 'Timestamp when this record was created',
     example: '2026-03-07T10:35:00.000Z',
   })

@@ -543,9 +543,6 @@ export class ComponentsService {
         );
       }
 
-      selectedPhoto.approved_at = new Date();
-      await manager.save(Photo, selectedPhoto);
-
       if (
         componentMapping.quantity !== null &&
         componentMapping.quantity !== undefined
