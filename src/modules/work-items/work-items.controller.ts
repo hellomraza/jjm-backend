@@ -37,7 +37,10 @@ import {
 } from './dto/assign-work-item-employee.dto';
 import { CreateWorkItemDto } from './dto/create-work-item.dto';
 import { UpdateWorkItemDto } from './dto/update-work-item.dto';
-import { WorkItemResponseDto } from './dto/work-item-return-type.dto';
+import {
+  EmployeeResponseDto,
+  WorkItemResponseDto,
+} from './dto/work-item-return-type.dto';
 import { WorkItem, WorkItemStatus } from './entities/work-item.entity';
 import { WorkItemsService } from './work-items.service';
 
@@ -86,6 +89,24 @@ export class WorkItemsController {
   @ApiBadRequestResponse({ description: 'Invalid request body' })
   create(@Body() createWorkItemDto: CreateWorkItemDto) {
     return this.workItemsService.create(createWorkItemDto);
+  }
+
+  @Get(':id/employees')
+  @Roles(UserRole.HO, UserRole.DO, UserRole.CO, UserRole.EM)
+  @ApiOperation({
+    summary: 'Get employees assigned to work item',
+    description: 'Returns list of employees assigned to a specific work item',
+  })
+  @ApiParam({ name: 'id', type: String, description: 'Work item ID' })
+  @ApiOkResponse({
+    description: 'Employees assigned to work item',
+    type: [EmployeeResponseDto],
+  })
+  @ApiNotFoundResponse({ description: 'Work item not found' })
+  getAssignedEmployees(
+    @Param('id') id: string,
+  ): Promise<EmployeeResponseDto[]> {
+    return this.workItemsService.getAssignedEmployees(id);
   }
 
   @Post(':id/assign-employee')

@@ -323,6 +323,20 @@ export class WorkItemsService {
     return this.workItemEmployeeAssignmentsRepository.save(assignment);
   }
 
+  async getAssignedEmployees(
+    workItemId: string,
+  ): Promise<Omit<User, 'password'>[]> {
+    const assignments = await this.workItemEmployeeAssignmentsRepository.find({
+      where: { work_item_id: workItemId },
+      relations: ['employee'],
+    });
+
+    return assignments.map((assignment) => {
+      const { password, ...employeeWithoutPassword } = assignment.employee;
+      return employeeWithoutPassword;
+    });
+  }
+
   async assignMultipleEmployeesToWorkItem(
     contractorId: string,
     workItemId: string,
