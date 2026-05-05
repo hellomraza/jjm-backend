@@ -99,14 +99,6 @@ export class WorkItemsService {
 
       const savedWorkItem = await manager.save(WorkItem, workItem);
 
-      const agreementCreator: Pick<AgreementsService, 'createWithManager'> =
-        this.agreementsService;
-
-      await agreementCreator.createWithManager(manager, {
-        contractor_id: savedWorkItem.contractor_id,
-        work_id: savedWorkItem.id,
-      });
-
       const mappings = masterComponents.map((component) => {
         const mapping = new WorkItemComponent();
         mapping.work_item_id = savedWorkItem.id;
@@ -321,6 +313,20 @@ export class WorkItemsService {
     });
 
     return this.workItemEmployeeAssignmentsRepository.save(assignment);
+  }
+
+  async getAssignedEmployees(
+    workItemId: string,
+  ): Promise<Omit<User, 'password'>[]> {
+    const assignments = await this.workItemEmployeeAssignmentsRepository.find({
+      where: { work_item_id: workItemId },
+      relations: ['employee'],
+    });
+
+    return assignments.map((assignment) => {
+      const { password, ...employeeWithoutPassword } = assignment.employee;
+      return employeeWithoutPassword;
+    });
   }
 
   async assignMultipleEmployeesToWorkItem(

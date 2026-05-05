@@ -327,3 +327,23 @@ export class WorkItemResponseDto {
   })
   updated_at: Date;
 }
+
+export class EmployeeResponseDto {
+  @ApiProperty({
+    description: 'Unique identifier for the employee user',
+    example: '550e8400-e29b-41d4-a716-446655440010',
+  })
+  id: string;
+
+  @ApiProperty({
+    description: 'Unique generated code for the employee user',
+    example: 'EM123456789012',
+  })
+  code: string;
+
+  @ApiProperty({
+    description: 'Email address of the employee user',
+    example: 'employee@example.com',
+  })
+  email: string;
+}

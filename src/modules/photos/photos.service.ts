@@ -11,6 +11,7 @@ import { UploadService } from '../../common/upload/upload.service';
 import { UploadPhotoUrlDto } from './dto/upload-photo-url.dto';
 import { UploadPhotoDto } from './dto/upload-photo.dto';
 import { Photo } from './entities/photo.entity';
+import { PhotoStatusService } from './photo-status.service';
 
 @Injectable()
 export class PhotosService {
@@ -18,6 +19,7 @@ export class PhotosService {
     @InjectRepository(Photo)
     private photoRepo: Repository<Photo>,
     private readonly uploadService: UploadService,
+    private readonly photoStatusService: PhotoStatusService,
   ) {}
 
   async uploadPhoto(
@@ -84,7 +86,16 @@ export class PhotosService {
       work_item_id: uploadPhotoDto.work_item_id,
     });
 
-    return await this.photoRepo.save(photo);
+    const savedPhoto = await this.photoRepo.save(photo);
+
+    // Auto-create photo status record
+    await this.photoStatusService.recordPhotoUpload(
+      savedPhoto.id,
+      savedPhoto.work_item_id,
+      savedPhoto.component_id,
+    );
+
+    return savedPhoto;
   }
 
   async findAll(
