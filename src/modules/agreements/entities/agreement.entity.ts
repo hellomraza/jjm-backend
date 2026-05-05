@@ -31,6 +31,9 @@ export class Agreement {
   @Column({ type: 'varchar', length: 36 })
   work_id: string;
 
+  @Column({ type: 'int', nullable: true })
+  division_code: number;
+
   @ManyToOne(() => User, { onDelete: 'RESTRICT', onUpdate: 'CASCADE' })
   @JoinColumn({ name: 'contractor_id', referencedColumnName: 'id' })
   contractor: User;
