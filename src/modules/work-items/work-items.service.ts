@@ -99,14 +99,6 @@ export class WorkItemsService {
 
       const savedWorkItem = await manager.save(WorkItem, workItem);
 
-      const agreementCreator: Pick<AgreementsService, 'createWithManager'> =
-        this.agreementsService;
-
-      await agreementCreator.createWithManager(manager, {
-        contractor_id: savedWorkItem.contractor_id,
-        work_id: savedWorkItem.id,
-      });
-
       const mappings = masterComponents.map((component) => {
         const mapping = new WorkItemComponent();
         mapping.work_item_id = savedWorkItem.id;
