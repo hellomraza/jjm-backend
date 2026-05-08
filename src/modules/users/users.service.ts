@@ -152,6 +152,9 @@ export class UsersService {
       password: hashedPassword,
       name,
       role: UserRole.EM,
+      address: createEmployeeDto.address,
+      district_name: createEmployeeDto.district_name,
+      mobile: createEmployeeDto.mobile,
     });
 
     const savedEmployee = await this.userRepository.save(employee);
@@ -191,6 +194,10 @@ export class UsersService {
       password: hashedPassword,
       name,
       role: UserRole.CO,
+      address: createContractorDto.address,
+      district_name: createContractorDto.district_name,
+      mobile: createContractorDto.mobile,
+      pan_number: createContractorDto.pan_number,
     });
 
     const savedContractor = await this.userRepository.save(contractor);
@@ -391,6 +398,7 @@ export class UsersService {
       where: { role: UserRole.CO },
       order: { created_at: 'DESC' },
     });
+    console.log(`Found ${contractors.length} contractors`); // Debug log
 
     // Remove password from all contractors
     return contractors.map((contractor) => this.stripPassword(contractor));

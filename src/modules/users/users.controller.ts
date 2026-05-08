@@ -32,6 +32,8 @@ import { CreateContractorDto } from './dto/create-contractor.dto';
 import { CreateDODto } from './dto/create-do.dto';
 import { CreateEmployeeDto } from './dto/create-employee.dto';
 import { CreateUserDto } from './dto/create-user.dto';
+import { UpdateContractorDto } from './dto/update-contractor.dto';
+import { UpdateEmployeeDto } from './dto/update-employee.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { UserResponseDto } from './dto/user-response.dto';
 import { UserRole } from './entities/user.entity';
@@ -86,11 +88,32 @@ export class UsersController {
     @Body() createEmployeeDto: CreateEmployeeDto,
     @Request() req: AuthenticatedRequest,
   ) {
+    console.log('createEmployeeDto', createEmployeeDto);
     return this.usersService.createEmployee(
       createEmployeeDto,
       req.user.userId,
       req.user.role,
     );
+  }
+
+  @Patch('employee/:id')
+  @Roles(UserRole.CO)
+  @ApiOperation({
+    summary: 'Edit employee',
+    description: 'Edits an existing employee account (CO only)',
+  })
+  @ApiParam({ name: 'id', type: String, description: 'Employee ID' })
+  @ApiOkResponse({
+    description: 'Employee updated successfully',
+    type: UserResponseDto,
+  })
+  @ApiBadRequestResponse({ description: 'Invalid request body' })
+  @ApiNotFoundResponse({ description: 'Employee not found' })
+  updateEmployee(
+    @Param('id') id: string,
+    @Body() updateEmployeeDto: UpdateEmployeeDto,
+  ) {
+    return this.usersService.update(id, updateEmployeeDto);
   }
 
   @Post('contractor')
@@ -110,11 +133,32 @@ export class UsersController {
     @Body() createContractorDto: CreateContractorDto,
     @Request() req: AuthenticatedRequest,
   ) {
+    console.log('createContractorDto', createContractorDto);
     return this.usersService.createContractor(
       createContractorDto,
       req.user.userId,
       req.user.role,
     );
+  }
+
+  @Patch('contractor/:id')
+  @Roles(UserRole.DO)
+  @ApiOperation({
+    summary: 'Edit contractor',
+    description: 'Edits an existing contractor account (DO only)',
+  })
+  @ApiParam({ name: 'id', type: String, description: 'Contractor ID' })
+  @ApiOkResponse({
+    description: 'Contractor updated successfully',
+    type: UserResponseDto,
+  })
+  @ApiBadRequestResponse({ description: 'Invalid request body' })
+  @ApiNotFoundResponse({ description: 'Contractor not found' })
+  updateContractor(
+    @Param('id') id: string,
+    @Body() updateContractorDto: UpdateContractorDto,
+  ) {
+    return this.usersService.update(id, updateContractorDto);
   }
 
   @Post('do')
