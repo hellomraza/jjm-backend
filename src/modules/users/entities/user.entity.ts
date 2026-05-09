@@ -18,8 +18,17 @@ export class User {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
+  @Column({ unique: true, length: 36, nullable: true })
+  auid?: string; // auid
+
+  @Column({ type: 'varchar', length: 255, nullable: true })
+  designation?: string; // designation
+
+  @Column({ type: 'varchar', length: 255, nullable: true })
+  contractorid?: string; // contractorname
+
   @Column({ unique: true })
-  code: string;
+  code: string; // userid,
 
   @Column({ unique: true })
   email: string;
@@ -39,11 +48,22 @@ export class User {
   @Column({ type: 'varchar', length: 20, nullable: true })
   mobile?: string;
 
-  @Column({ name: 'pan_number', type: 'varchar', length: 10, nullable: true, unique: true })
+  @Column({
+    name: 'pan_number',
+    type: 'varchar',
+    length: 10,
+    nullable: true,
+    unique: true,
+  })
   pan_number?: string;
 
-  @Column({ name: 'district_name', type: 'varchar', length: 255, nullable: true })
-  district_name?: string;
+  @Column({
+    name: 'district_name',
+    type: 'varchar',
+    length: 255,
+    nullable: true,
+  })
+  district_name?: string; // districtname
 
   @Column({ type: 'text', nullable: true })
   address?: string;

@@ -88,7 +88,6 @@ export class UsersController {
     @Body() createEmployeeDto: CreateEmployeeDto,
     @Request() req: AuthenticatedRequest,
   ) {
-    console.log('createEmployeeDto', createEmployeeDto);
     return this.usersService.createEmployee(
       createEmployeeDto,
       req.user.userId,
@@ -133,7 +132,6 @@ export class UsersController {
     @Body() createContractorDto: CreateContractorDto,
     @Request() req: AuthenticatedRequest,
   ) {
-    console.log('createContractorDto', createContractorDto);
     return this.usersService.createContractor(
       createContractorDto,
       req.user.userId,

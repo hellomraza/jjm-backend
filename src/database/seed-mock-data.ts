@@ -3,12 +3,7 @@ import * as bcrypt from 'bcryptjs';
 import 'reflect-metadata';
 import { DataSource, In } from 'typeorm';
 import { AppModule } from '../app.module';
-import { Agreement } from '../modules/agreements/entities/agreement.entity';
 import { Component } from '../modules/components/entities/component.entity';
-import {
-  WorkItemComponent,
-  WorkItemComponentStatus,
-} from '../modules/components/entities/work-item-component.entity';
 import { Block } from '../modules/locations/entities/block.entity';
 import { Circle } from '../modules/locations/entities/circle.entity';
 import { District } from '../modules/locations/entities/district.entity';
@@ -16,13 +11,7 @@ import { Panchayat } from '../modules/locations/entities/panchayat.entity';
 import { Subdivision } from '../modules/locations/entities/subdivision.entity';
 import { Village } from '../modules/locations/entities/village.entity';
 import { Zone } from '../modules/locations/entities/zone.entity';
-import { Photo } from '../modules/photos/entities/photo.entity';
 import { User, UserRole } from '../modules/users/entities/user.entity';
-import { WorkItemEmployeeAssignment } from '../modules/work-items/entities/work-item-employee-assignment.entity';
-import {
-  WorkItem,
-  WorkItemStatus,
-} from '../modules/work-items/entities/work-item.entity';
 
 type SeedUser = {
   email: string;
@@ -104,13 +93,6 @@ const buildSeedNumericCode = (offset: number): string => {
   return `${Date.now()}${offset.toString().padStart(4, '0')}`.slice(-12);
 };
 
-const getCurrentFinancialYear = (date: Date = new Date()): string => {
-  const year = date.getFullYear();
-  const month = date.getMonth();
-  const startYear = month >= 3 ? year : year - 1;
-  return `${startYear}-${startYear + 1}`;
-};
-
 export async function seedMockData() {
   const app = await NestFactory.createApplicationContext(AppModule, {
     logger: ['error', 'warn'],
@@ -120,14 +102,7 @@ export async function seedMockData() {
     const dataSource = app.get(DataSource);
 
     const userRepo = dataSource.getRepository(User);
-    const workItemRepo = dataSource.getRepository(WorkItem);
     const componentRepo = dataSource.getRepository(Component);
-    const workItemComponentRepo = dataSource.getRepository(WorkItemComponent);
-    const photoRepo = dataSource.getRepository(Photo);
-    const workItemEmployeeAssignmentRepo = dataSource.getRepository(
-      WorkItemEmployeeAssignment,
-    );
-    const agreementRepo = dataSource.getRepository(Agreement);
     const districtRepo = dataSource.getRepository(District);
     const blockRepo = dataSource.getRepository(Block);
     const panchayatRepo = dataSource.getRepository(Panchayat);
@@ -138,13 +113,7 @@ export async function seedMockData() {
 
     let queryRunner = dataSource.createQueryRunner();
 
-    const requiredBaseTables = [
-      'users',
-      'work_items',
-      'components',
-      'work_item_components',
-      'photos',
-    ];
+    const requiredBaseTables = ['users', 'components'];
 
     const getMissingBaseTables = async (): Promise<string[]> => {
       const missing: string[] = [];
@@ -177,10 +146,6 @@ export async function seedMockData() {
     }
 
     let hasUserCodeColumn = await queryRunner.hasColumn('users', 'code');
-    let hasWorkCodeColumn = await queryRunner.hasColumn(
-      'work_items',
-      'work_code',
-    );
 
     // Create location master tables inline if migrations haven't been run yet
     await queryRunner.query(`
@@ -248,54 +213,7 @@ export async function seedMockData() {
       )
     `);
 
-    await queryRunner.query(`
-      CREATE TABLE IF NOT EXISTS agreements (
-        id VARCHAR(36) NOT NULL PRIMARY KEY,
-        agreementno VARCHAR(100) NOT NULL,
-        agreementyear VARCHAR(9) NOT NULL,
-        contractor_id VARCHAR(36) NOT NULL,
-        work_id VARCHAR(36) NOT NULL,
-        created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
-        updated_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
-        INDEX IDX_AGREEMENTS_NO (agreementno),
-        INDEX IDX_AGREEMENTS_CONTRACTOR (contractor_id),
-        INDEX IDX_AGREEMENTS_WORK (work_id)
-      )
-    `);
-
-    await queryRunner.query(`
-      CREATE TABLE IF NOT EXISTS work_item_employee_assignments (
-        id VARCHAR(36) NOT NULL PRIMARY KEY,
-        work_item_id VARCHAR(36) NOT NULL,
-        employee_id VARCHAR(36) NOT NULL,
-        created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
-        UNIQUE KEY UQ_WORK_ITEM_EMPLOYEE_ASSIGNMENT (work_item_id, employee_id),
-        INDEX IDX_WORK_ITEM_EMPLOYEE_ASSIGNMENT_WORK_ITEM_ID (work_item_id),
-        INDEX IDX_WORK_ITEM_EMPLOYEE_ASSIGNMENT_EMPLOYEE_ID (employee_id)
-      )
-    `);
-
     // Guard: add missing timestamp columns if table existed without them
-    const hasAgrCreatedAt = await queryRunner.hasColumn(
-      'agreements',
-      'created_at',
-    );
-    if (!hasAgrCreatedAt) {
-      await queryRunner.query(
-        'ALTER TABLE agreements ADD COLUMN created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6)',
-      );
-    }
-    const hasAgrUpdatedAt = await queryRunner.hasColumn(
-      'agreements',
-      'updated_at',
-    );
-    if (!hasAgrUpdatedAt) {
-      await queryRunner.query(
-        'ALTER TABLE agreements ADD COLUMN updated_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6)',
-      );
-    }
-
-    const hasAgreementsTable = true;
     const hasDistrictsTable = true;
     const hasBlocksTable = true;
     const hasPanchayatsTable = true;
@@ -304,27 +222,6 @@ export async function seedMockData() {
     const hasCirclesTable = true;
     const hasZonesTable = true;
 
-    const deleteMockWorkItems = async (): Promise<void> => {
-      const existingWorkItems = await workItemRepo.find({ select: ['id'] });
-
-      if (existingWorkItems.length === 0) {
-        return;
-      }
-
-      const workItemIds = existingWorkItems.map((workItem) => workItem.id);
-
-      if (hasAgreementsTable) {
-        await agreementRepo.delete({ work_id: In(workItemIds) });
-      }
-
-      await workItemEmployeeAssignmentRepo.delete({
-        work_item_id: In(workItemIds),
-      });
-      await photoRepo.delete({ work_item_id: In(workItemIds) });
-      await workItemComponentRepo.delete({ work_item_id: In(workItemIds) });
-      await workItemRepo.delete({ id: In(workItemIds) });
-    };
-
     if (!hasUserCodeColumn) {
       await queryRunner.query(
         'ALTER TABLE users ADD COLUMN code varchar(14) NULL',
@@ -332,149 +229,10 @@ export async function seedMockData() {
       hasUserCodeColumn = true;
     }
 
-    if (!hasWorkCodeColumn) {
-      await queryRunner.query(
-        'ALTER TABLE work_items ADD COLUMN work_code varchar(13) NULL',
-      );
-      hasWorkCodeColumn = true;
-    }
-
     // Normalize legacy schemas where users.district_id might still be varchar
     await queryRunner.query(
       'ALTER TABLE users MODIFY COLUMN district_id int NULL',
     );
-
-    // Normalize legacy schemas where district_id might still be varchar
-    await queryRunner.query(
-      'ALTER TABLE work_items MODIFY COLUMN district_id int NOT NULL',
-    );
-
-    const hasBlockIdColumn = await queryRunner.hasColumn(
-      'work_items',
-      'block_id',
-    );
-    if (!hasBlockIdColumn) {
-      await queryRunner.query(
-        'ALTER TABLE work_items ADD COLUMN block_id int NULL',
-      );
-    }
-
-    const hasPanchayatIdColumn = await queryRunner.hasColumn(
-      'work_items',
-      'panchayat_id',
-    );
-    if (!hasPanchayatIdColumn) {
-      await queryRunner.query(
-        'ALTER TABLE work_items ADD COLUMN panchayat_id int NULL',
-      );
-    }
-
-    const hasVillageIdColumn = await queryRunner.hasColumn(
-      'work_items',
-      'village_id',
-    );
-    if (!hasVillageIdColumn) {
-      await queryRunner.query(
-        'ALTER TABLE work_items ADD COLUMN village_id int NULL',
-      );
-    }
-
-    const hasSubdivisionIdColumn = await queryRunner.hasColumn(
-      'work_items',
-      'subdivision_id',
-    );
-    if (!hasSubdivisionIdColumn) {
-      await queryRunner.query(
-        'ALTER TABLE work_items ADD COLUMN subdivision_id int NULL',
-      );
-    }
-
-    const hasCircleIdColumn = await queryRunner.hasColumn(
-      'work_items',
-      'circle_id',
-    );
-    if (!hasCircleIdColumn) {
-      await queryRunner.query(
-        'ALTER TABLE work_items ADD COLUMN circle_id int NULL',
-      );
-    }
-
-    const hasZoneIdColumn = await queryRunner.hasColumn(
-      'work_items',
-      'zone_id',
-    );
-    if (!hasZoneIdColumn) {
-      await queryRunner.query(
-        'ALTER TABLE work_items ADD COLUMN zone_id int NULL',
-      );
-    }
-
-    const hasSchemetypeColumn = await queryRunner.hasColumn(
-      'work_items',
-      'schemetype',
-    );
-    if (!hasSchemetypeColumn) {
-      await queryRunner.query(
-        "ALTER TABLE work_items ADD COLUMN schemetype varchar(100) NOT NULL DEFAULT 'UNKNOWN'",
-      );
-    }
-
-    const hasNofhtcColumn = await queryRunner.hasColumn('work_items', 'nofhtc');
-    if (!hasNofhtcColumn) {
-      await queryRunner.query(
-        'ALTER TABLE work_items ADD COLUMN nofhtc varchar(110) NULL',
-      );
-    }
-
-    const hasAmountApprovedColumn = await queryRunner.hasColumn(
-      'work_items',
-      'amount_approved',
-    );
-    if (!hasAmountApprovedColumn) {
-      await queryRunner.query(
-        'ALTER TABLE work_items ADD COLUMN amount_approved double NULL',
-      );
-    }
-
-    const hasPaymentAmountColumn = await queryRunner.hasColumn(
-      'work_items',
-      'payment_amount',
-    );
-    if (!hasPaymentAmountColumn) {
-      await queryRunner.query(
-        'ALTER TABLE work_items ADD COLUMN payment_amount double NULL',
-      );
-    }
-
-    const hasSerialNoColumn = await queryRunner.hasColumn(
-      'work_items',
-      'serial_no',
-    );
-    if (!hasSerialNoColumn) {
-      await queryRunner.query(
-        'ALTER TABLE work_items ADD COLUMN serial_no int NULL',
-      );
-    }
-
-    const hasComponentProgressColumn = await queryRunner.hasColumn(
-      'work_item_components',
-      'progress',
-    );
-    if (!hasComponentProgressColumn) {
-      await queryRunner.query(
-        'ALTER TABLE work_item_components ADD COLUMN progress decimal(12,2) NOT NULL DEFAULT 0',
-      );
-    }
-
-    const hasApprovedAtColumn = await queryRunner.hasColumn(
-      'work_item_components',
-      'approved_at',
-    );
-    if (!hasApprovedAtColumn) {
-      await queryRunner.query(
-        'ALTER TABLE work_item_components ADD COLUMN approved_at datetime NULL',
-      );
-    }
 
     await queryRunner.release();
 
@@ -483,39 +241,63 @@ export async function seedMockData() {
 
     const seedUsers: SeedUser[] = [
       {
-        email: 'ho.mock@jjm.local',
-        name: 'Head Office Mock',
+        email: 'rajesh.ho@gmail.com',
+        name: 'Rajesh Kumar Sharma',
         role: UserRole.HO,
       },
       {
-        email: 'do.mock@jjm.local',
-        name: 'District Officer Mock',
+        email: 'vikram.do@gmail.com',
+        name: 'Vikram Singh Patel',
         role: UserRole.DO,
         district_id: 10,
       },
       {
-        email: 'co.mock.1@jjm.local',
-        name: 'Contractor Mock 1',
+        email: 'arjun.contractor@gmail.com',
+        name: 'Arjun Verma',
         role: UserRole.CO,
         district_id: 10,
       },
       {
-        email: 'co.mock.2@jjm.local',
-        name: 'Contractor Mock 2',
+        email: 'amit.contractor@gmail.com',
+        name: 'Amit Kumar Mishra',
         role: UserRole.CO,
         district_id: 11,
       },
       {
-        email: 'em.mock.1@jjm.local',
-        name: 'Employee Mock 1',
+        email: 'deepak.contractor@gmail.com',
+        name: 'Deepak Singh',
+        role: UserRole.CO,
+        district_id: 12,
+      },
+      {
+        email: 'suresh.contractor@gmail.com',
+        name: 'Suresh Pandey',
+        role: UserRole.CO,
+        district_id: 13,
+      },
+      {
+        email: 'pradeep.em@gmail.com',
+        name: 'Pradeep Gupta',
         role: UserRole.EM,
         district_id: 10,
       },
       {
-        email: 'em.mock.2@jjm.local',
-        name: 'Employee Mock 2',
+        email: 'anil.em@gmail.com',
+        name: 'Anil Kumar Yadav',
         role: UserRole.EM,
         district_id: 11,
+      },
+      {
+        email: 'naveen.em@gmail.com',
+        name: 'Naveen Singh Chauhan',
+        role: UserRole.EM,
+        district_id: 12,
+      },
+      {
+        email: 'sanjay.em@gmail.com',
+        name: 'Sanjay Nath',
+        role: UserRole.EM,
+        district_id: 13,
       },
     ];
 
@@ -543,18 +325,28 @@ export async function seedMockData() {
       allMockUsers.map((user) => [user.email, user]),
     );
 
-    const contractor1 = usersByEmail.get('co.mock.1@jjm.local');
-    const contractor2 = usersByEmail.get('co.mock.2@jjm.local');
-    const employee1 = usersByEmail.get('em.mock.1@jjm.local');
-    const employee2 = usersByEmail.get('em.mock.2@jjm.local');
-    const districtOfficer = usersByEmail.get('do.mock@jjm.local');
+    const ho = usersByEmail.get('rajesh.ho@gmail.com');
+    const do_officer = usersByEmail.get('vikram.do@gmail.com');
+    const contractor1 = usersByEmail.get('arjun.contractor@gmail.com');
+    const contractor2 = usersByEmail.get('amit.contractor@gmail.com');
+    const contractor3 = usersByEmail.get('deepak.contractor@gmail.com');
+    const contractor4 = usersByEmail.get('suresh.contractor@gmail.com');
+    const employee1 = usersByEmail.get('pradeep.em@gmail.com');
+    const employee2 = usersByEmail.get('anil.em@gmail.com');
+    const employee3 = usersByEmail.get('naveen.em@gmail.com');
+    const employee4 = usersByEmail.get('sanjay.em@gmail.com');
 
     if (
+      !ho ||
+      !do_officer ||
       !contractor1 ||
       !contractor2 ||
+      !contractor3 ||
+      !contractor4 ||
       !employee1 ||
       !employee2 ||
-      !districtOfficer
+      !employee3 ||
+      !employee4
     ) {
       throw new Error('Failed to resolve seeded users');
     }
@@ -649,11 +441,10 @@ export async function seedMockData() {
       });
     }
 
-    await deleteMockWorkItems();
     if (hasBlocksTable && seededDistricts.length > 0) {
       const existingBlocks = await blockRepo
         .createQueryBuilder('block')
-        .where('block.block_code LIKE :prefix', { prefix: 'MOCK-%' })
+        .where('block.block_code LIKE :prefix', { prefix: 'BLK-%' })
         .getMany();
 
       if (existingBlocks.length > 0) {
@@ -662,29 +453,95 @@ export async function seedMockData() {
         });
       }
 
-      seededBlocks = await blockRepo.save([
-        blockRepo.create({
-          blockname: 'Mock Block 10-A',
-          block_code: 'MOCK-BLK-10A',
-          district_id: seededDistricts[0].districtid,
-        }),
-        blockRepo.create({
-          blockname: 'Mock Block 10-B',
-          block_code: 'MOCK-BLK-10B',
-          district_id: seededDistricts[0].districtid,
-        }),
-        blockRepo.create({
-          blockname: 'Mock Block 11-A',
-          block_code: 'MOCK-BLK-11A',
-          district_id: seededDistricts[1].districtid,
-        }),
-      ]);
+      // Real Chhattisgarh blocks for selected districts
+      const realBlocks = [
+        // Raipur blocks
+        {
+          blockname: 'Abhanpur',
+          block_code: 'BLK-RPR-001',
+          districtname: 'Raipur',
+        },
+        {
+          blockname: 'Arang',
+          block_code: 'BLK-RPR-002',
+          districtname: 'Raipur',
+        },
+        {
+          blockname: 'Asind',
+          block_code: 'BLK-RPR-003',
+          districtname: 'Raipur',
+        },
+        // Durg blocks
+        { blockname: 'Durg', block_code: 'BLK-DRG-001', districtname: 'Durg' },
+        {
+          blockname: 'Dhamdha',
+          block_code: 'BLK-DRG-002',
+          districtname: 'Durg',
+        },
+        {
+          blockname: 'Bhilai',
+          block_code: 'BLK-DRG-003',
+          districtname: 'Durg',
+        },
+        // Bilaspur blocks
+        {
+          blockname: 'Bilaspur',
+          block_code: 'BLK-BLS-001',
+          districtname: 'Bilaspur',
+        },
+        {
+          blockname: 'Takhatpur',
+          block_code: 'BLK-BLS-002',
+          districtname: 'Bilaspur',
+        },
+        {
+          blockname: 'Gaurela',
+          block_code: 'BLK-BLS-003',
+          districtname: 'Bilaspur',
+        },
+        // Korba blocks
+        {
+          blockname: 'Korba',
+          block_code: 'BLK-KRB-001',
+          districtname: 'Korba',
+        },
+        {
+          blockname: 'Katghora',
+          block_code: 'BLK-KRB-002',
+          districtname: 'Korba',
+        },
+        {
+          blockname: 'Karmgarh',
+          block_code: 'BLK-KRB-003',
+          districtname: 'Korba',
+        },
+      ];
+
+      for (const block of realBlocks) {
+        const district = seededDistricts.find(
+          (d) => d.districtname === block.districtname,
+        );
+        if (district) {
+          await blockRepo.save(
+            blockRepo.create({
+              blockname: block.blockname,
+              block_code: block.block_code,
+              district_id: district.districtid,
+            }),
+          );
+        }
+      }
+
+      seededBlocks = await blockRepo.find({
+        take: 12,
+        order: { blockid: 'ASC' },
+      });
     }
 
     if (hasPanchayatsTable) {
       const existingPanchayats = await panchayatRepo
         .createQueryBuilder('panchayat')
-        .where('panchayat.panchayat_code LIKE :prefix', { prefix: 'MOCK-%' })
+        .where('panchayat.panchayat_code LIKE :prefix', { prefix: 'PAN-%' })
         .getMany();
 
       if (existingPanchayats.length > 0) {
@@ -695,22 +552,35 @@ export async function seedMockData() {
         });
       }
 
-      seededPanchayats = await panchayatRepo.save([
-        panchayatRepo.create({
-          panchayatname: 'Mock Panchayat 10-A',
-          panchayat_code: 'MOCK-PAN-10A',
-        }),
-        panchayatRepo.create({
-          panchayatname: 'Mock Panchayat 11-A',
-          panchayat_code: 'MOCK-PAN-11A',
-        }),
-      ]);
+      const realPanchayats = [
+        { panchayatname: 'Abhanpur', panchayat_code: 'PAN-001' },
+        { panchayatname: 'Arang', panchayat_code: 'PAN-002' },
+        { panchayatname: 'Asind', panchayat_code: 'PAN-003' },
+        { panchayatname: 'Durg', panchayat_code: 'PAN-004' },
+        { panchayatname: 'Dhamdha', panchayat_code: 'PAN-005' },
+        { panchayatname: 'Bhilai', panchayat_code: 'PAN-006' },
+        { panchayatname: 'Bilaspur', panchayat_code: 'PAN-007' },
+        { panchayatname: 'Takhatpur', panchayat_code: 'PAN-008' },
+        { panchayatname: 'Katghora', panchayat_code: 'PAN-009' },
+        { panchayatname: 'Raigarh', panchayat_code: 'PAN-010' },
+        { panchayatname: 'Manendragarh', panchayat_code: 'PAN-011' },
+        { panchayatname: 'Surguja', panchayat_code: 'PAN-012' },
+      ];
+
+      seededPanchayats = await panchayatRepo.save(
+        realPanchayats.map((p) =>
+          panchayatRepo.create({
+            panchayatname: p.panchayatname,
+            panchayat_code: p.panchayat_code,
+          }),
+        ),
+      );
     }
 
     if (hasVillagesTable && seededDistricts.length > 0) {
       const existingVillages = await villageRepo
         .createQueryBuilder('village')
-        .where('village.village_code LIKE :prefix', { prefix: 'MOCK-%' })
+        .where('village.village_code LIKE :prefix', { prefix: 'VIL-%' })
         .getMany();
 
       if (existingVillages.length > 0) {
@@ -719,30 +589,92 @@ export async function seedMockData() {
         });
       }
 
-      seededVillages = await villageRepo.save([
-        villageRepo.create({
-          villagename: 'Mock Village 10-A',
-          village_code: 'MOCK-VIL-10A',
-          district_id: seededDistricts[0].districtid,
-        }),
-        villageRepo.create({
-          villagename: 'Mock Village 10-B',
-          village_code: 'MOCK-VIL-10B',
-          district_id: seededDistricts[0].districtid,
-        }),
-        villageRepo.create({
-          villagename: 'Mock Village 11-A',
-          village_code: 'MOCK-VIL-11A',
-          district_id: seededDistricts[1].districtid,
-        }),
-      ]);
+      // Real Chhattisgarh villages
+      const realVillages = [
+        {
+          villagename: 'Abhanpur',
+          village_code: 'VIL-001',
+          districtname: 'Raipur',
+        },
+        {
+          villagename: 'Arang',
+          village_code: 'VIL-002',
+          districtname: 'Raipur',
+        },
+        {
+          villagename: 'Asind',
+          village_code: 'VIL-003',
+          districtname: 'Raipur',
+        },
+        {
+          villagename: 'Khamharia',
+          village_code: 'VIL-004',
+          districtname: 'Raipur',
+        },
+        {
+          villagename: 'Durg City',
+          village_code: 'VIL-005',
+          districtname: 'Durg',
+        },
+        {
+          villagename: 'Dhamdha',
+          village_code: 'VIL-006',
+          districtname: 'Durg',
+        },
+        {
+          villagename: 'Bhilai',
+          village_code: 'VIL-007',
+          districtname: 'Durg',
+        },
+        { villagename: 'Jamul', village_code: 'VIL-008', districtname: 'Durg' },
+        {
+          villagename: 'Bilaspur City',
+          village_code: 'VIL-009',
+          districtname: 'Bilaspur',
+        },
+        {
+          villagename: 'Takhatpur',
+          village_code: 'VIL-010',
+          districtname: 'Bilaspur',
+        },
+        {
+          villagename: 'Korba City',
+          village_code: 'VIL-011',
+          districtname: 'Korba',
+        },
+        {
+          villagename: 'Katghora',
+          village_code: 'VIL-012',
+          districtname: 'Korba',
+        },
+      ];
+
+      for (const village of realVillages) {
+        const district = seededDistricts.find(
+          (d) => d.districtname === village.districtname,
+        );
+        if (district) {
+          await villageRepo.save(
+            villageRepo.create({
+              villagename: village.villagename,
+              village_code: village.village_code,
+              district_id: district.districtid,
+            }),
+          );
+        }
+      }
+
+      seededVillages = await villageRepo.find({
+        take: 12,
+        order: { villageid: 'ASC' },
+      });
     }
 
     if (hasSubdivisionsTable) {
       const existingSubdivisions = await subdivisionRepo
         .createQueryBuilder('subdivision')
         .where('subdivision.subdivision_code LIKE :prefix', {
-          prefix: 'MOCK-%',
+          prefix: 'SUB-%',
         })
         .getMany();
 
@@ -756,22 +688,35 @@ export async function seedMockData() {
         });
       }
 
-      seededSubdivisions = await subdivisionRepo.save([
-        subdivisionRepo.create({
-          subdivisionname: 'Mock Subdivision 10-A',
-          subdivision_code: 'MOCK-SUB-10A',
-        }),
-        subdivisionRepo.create({
-          subdivisionname: 'Mock Subdivision 11-A',
-          subdivision_code: 'MOCK-SUB-11A',
-        }),
-      ]);
+      const realSubdivisions = [
+        { subdivisionname: 'Raipur Sadar', subdivision_code: 'SUB-001' },
+        { subdivisionname: 'Durg', subdivision_code: 'SUB-002' },
+        { subdivisionname: 'Bilaspur', subdivision_code: 'SUB-003' },
+        { subdivisionname: 'Korba', subdivision_code: 'SUB-004' },
+        { subdivisionname: 'Raigarh', subdivision_code: 'SUB-005' },
+        { subdivisionname: 'Janjgir-Champa', subdivision_code: 'SUB-006' },
+        { subdivisionname: 'Jashpur', subdivision_code: 'SUB-007' },
+        { subdivisionname: 'Surguja', subdivision_code: 'SUB-008' },
+        { subdivisionname: 'Bastar', subdivision_code: 'SUB-009' },
+        { subdivisionname: 'Rajnandgaon', subdivision_code: 'SUB-010' },
+        { subdivisionname: 'Dhamtari', subdivision_code: 'SUB-011' },
+        { subdivisionname: 'Mahasamund', subdivision_code: 'SUB-012' },
+      ];
+
+      seededSubdivisions = await subdivisionRepo.save(
+        realSubdivisions.map((s) =>
+          subdivisionRepo.create({
+            subdivisionname: s.subdivisionname,
+            subdivision_code: s.subdivision_code,
+          }),
+        ),
+      );
     }
 
     if (hasCirclesTable) {
       const existingCircles = await circleRepo
         .createQueryBuilder('circle')
-        .where('circle.circle_code LIKE :prefix', { prefix: 'MOCK-%' })
+        .where('circle.circle_code LIKE :prefix', { prefix: 'CIR-%' })
         .getMany();
 
       if (existingCircles.length > 0) {
@@ -780,22 +725,35 @@ export async function seedMockData() {
         });
       }
 
-      seededCircles = await circleRepo.save([
-        circleRepo.create({
-          circlename: 'Mock Circle 10-A',
-          circle_code: 'MOCK-CIR-10A',
-        }),
-        circleRepo.create({
-          circlename: 'Mock Circle 11-A',
-          circle_code: 'MOCK-CIR-11A',
-        }),
-      ]);
+      const realCircles = [
+        { circlename: 'Raipur Circle', circle_code: 'CIR-001' },
+        { circlename: 'Durg Circle', circle_code: 'CIR-002' },
+        { circlename: 'Bilaspur Circle', circle_code: 'CIR-003' },
+        { circlename: 'Korba Circle', circle_code: 'CIR-004' },
+        { circlename: 'Raigarh Circle', circle_code: 'CIR-005' },
+        { circlename: 'Janjgir Circle', circle_code: 'CIR-006' },
+        { circlename: 'Jashpur Circle', circle_code: 'CIR-007' },
+        { circlename: 'Surguja Circle', circle_code: 'CIR-008' },
+        { circlename: 'Bastar Circle', circle_code: 'CIR-009' },
+        { circlename: 'Rajnandgaon Circle', circle_code: 'CIR-010' },
+        { circlename: 'Dhamtari Circle', circle_code: 'CIR-011' },
+        { circlename: 'Mahasamund Circle', circle_code: 'CIR-012' },
+      ];
+
+      seededCircles = await circleRepo.save(
+        realCircles.map((c) =>
+          circleRepo.create({
+            circlename: c.circlename,
+            circle_code: c.circle_code,
+          }),
+        ),
+      );
     }
 
     if (hasZonesTable) {
       const existingZones = await zoneRepo
         .createQueryBuilder('zone')
-        .where('zone.zone_code LIKE :prefix', { prefix: 'MOCK-%' })
+        .where('zone.zone_code LIKE :prefix', { prefix: 'ZON-%' })
         .getMany();
 
       if (existingZones.length > 0) {
@@ -804,112 +762,30 @@ export async function seedMockData() {
         });
       }
 
-      seededZones = await zoneRepo.save([
-        zoneRepo.create({
-          zonename: 'Mock Zone 10-A',
-          zone_code: 'MOCK-ZON-10A',
-        }),
-        zoneRepo.create({
-          zonename: 'Mock Zone 11-A',
-          zone_code: 'MOCK-ZON-11A',
-        }),
-      ]);
-    }
+      const realZones = [
+        { zonename: 'Raipur Zone', zone_code: 'ZON-001' },
+        { zonename: 'Durg Zone', zone_code: 'ZON-002' },
+        { zonename: 'Bilaspur Zone', zone_code: 'ZON-003' },
+        { zonename: 'Korba Zone', zone_code: 'ZON-004' },
+        { zonename: 'Raigarh Zone', zone_code: 'ZON-005' },
+        { zonename: 'Janjgir Zone', zone_code: 'ZON-006' },
+        { zonename: 'Jashpur Zone', zone_code: 'ZON-007' },
+        { zonename: 'Surguja Zone', zone_code: 'ZON-008' },
+        { zonename: 'Bastar Zone', zone_code: 'ZON-009' },
+        { zonename: 'Rajnandgaon Zone', zone_code: 'ZON-010' },
+        { zonename: 'Dhamtari Zone', zone_code: 'ZON-011' },
+        { zonename: 'Mahasamund Zone', zone_code: 'ZON-012' },
+      ];
 
-    const existingMockWorkItems = await workItemRepo
-      .createQueryBuilder('work_item')
-      .where('work_item.title LIKE :prefix', { prefix: 'MOCK-%' })
-      .getMany();
-
-    if (existingMockWorkItems.length > 0) {
-      const mockWorkItemIds = existingMockWorkItems.map(
-        (workItem) => workItem.id,
+      seededZones = await zoneRepo.save(
+        realZones.map((z) =>
+          zoneRepo.create({
+            zonename: z.zonename,
+            zone_code: z.zone_code,
+          }),
+        ),
       );
-      if (hasAgreementsTable) {
-        await agreementRepo.delete({ work_id: In(mockWorkItemIds) });
-      }
-      await workItemEmployeeAssignmentRepo.delete({
-        work_item_id: In(mockWorkItemIds),
-      });
-      await photoRepo.delete({ work_item_id: In(mockWorkItemIds) });
-      await workItemComponentRepo.delete({ work_item_id: In(mockWorkItemIds) });
-      await workItemRepo.delete({ id: In(mockWorkItemIds) });
     }
-
-    const workItems = await workItemRepo.save([
-      workItemRepo.create({
-        ...(hasWorkCodeColumn
-          ? { work_code: `W${buildSeedNumericCode(101)}` }
-          : {}),
-        title: 'MOCK-Work Item 1',
-        description: 'Mock data for district 10 - in progress',
-        district_id: 10,
-        block_id: seededBlocks[0]?.blockid,
-        panchayat_id: seededPanchayats[0]?.panchayatid,
-        village_id: seededVillages[0]?.villageid,
-        subdivision_id: seededSubdivisions[0]?.subdivisionid,
-        circle_id: seededCircles[0]?.circleid,
-        zone_id: seededZones[0]?.zoneid,
-        schemetype: 'PWS',
-        nofhtc: '1250',
-        amount_approved: 1250000,
-        payment_amount: 450000,
-        serial_no: 1,
-        contractor_id: contractor1.id,
-        latitude: 25.5941,
-        longitude: 85.1376,
-        progress_percentage: 33.33,
-        status: WorkItemStatus.IN_PROGRESS,
-      }),
-      workItemRepo.create({
-        ...(hasWorkCodeColumn
-          ? { work_code: `W${buildSeedNumericCode(102)}` }
-          : {}),
-        title: 'MOCK-Work Item 2',
-        description: 'Mock data for district 11 - pending',
-        district_id: 11,
-        block_id: seededBlocks[2]?.blockid,
-        panchayat_id: seededPanchayats[1]?.panchayatid,
-        village_id: seededVillages[2]?.villageid,
-        subdivision_id: seededSubdivisions[1]?.subdivisionid,
-        circle_id: seededCircles[1]?.circleid,
-        zone_id: seededZones[1]?.zoneid,
-        schemetype: 'SVS',
-        nofhtc: '980',
-        amount_approved: 980000,
-        payment_amount: 125000,
-        serial_no: 2,
-        contractor_id: contractor2.id,
-        latitude: 25.3176,
-        longitude: 82.9739,
-        progress_percentage: 0,
-        status: WorkItemStatus.PENDING,
-      }),
-      workItemRepo.create({
-        ...(hasWorkCodeColumn
-          ? { work_code: `W${buildSeedNumericCode(103)}` }
-          : {}),
-        title: 'MOCK-Work Item 3',
-        description: 'Mock data for district 10 - completed',
-        district_id: 10,
-        block_id: seededBlocks[1]?.blockid,
-        panchayat_id: seededPanchayats[0]?.panchayatid,
-        village_id: seededVillages[1]?.villageid,
-        subdivision_id: seededSubdivisions[0]?.subdivisionid,
-        circle_id: seededCircles[0]?.circleid,
-        zone_id: seededZones[0]?.zoneid,
-        schemetype: 'PWS',
-        nofhtc: '1570',
-        amount_approved: 1570000,
-        payment_amount: 1570000,
-        serial_no: 3,
-        contractor_id: contractor1.id,
-        latitude: 28.6139,
-        longitude: 77.209,
-        progress_percentage: 100,
-        status: WorkItemStatus.COMPLETED,
-      }),
-    ]);
 
     // Ensure all 12 master components exist with correct order_number/unit
     // (repair existing bad data as well, e.g. all order_number = 0)
@@ -936,206 +812,6 @@ export async function seedMockData() {
 
     await componentRepo.save(componentsToSave);
 
-    // Fetch all 12 master components to create mappings
-    const masterComponents = await componentRepo.find({
-      where: { name: In(STATIC_COMPONENTS.map((component) => component.name)) },
-      order: { order_number: 'ASC' },
-    });
-
-    if (masterComponents.length !== 12) {
-      throw new Error(
-        `Expected 12 master components, found ${masterComponents.length}. Run seed-component-templates first.`,
-      );
-    }
-
-    // Create work_item_components mappings
-    const workItemComponentsToCreate: WorkItemComponent[] = [];
-    for (const workItem of workItems) {
-      for (const masterComponent of masterComponents) {
-        // Determine mapping status based on work item status
-        let mappingStatus: WorkItemComponentStatus;
-        if (workItem.status === WorkItemStatus.COMPLETED) {
-          mappingStatus = WorkItemComponentStatus.APPROVED;
-        } else if (
-          workItem.status === WorkItemStatus.IN_PROGRESS &&
-          masterComponent.order_number === 1
-        ) {
-          mappingStatus = WorkItemComponentStatus.APPROVED;
-        } else if (
-          workItem.status === WorkItemStatus.IN_PROGRESS &&
-          masterComponent.order_number === 2
-        ) {
-          mappingStatus = WorkItemComponentStatus.IN_PROGRESS;
-        } else {
-          mappingStatus = WorkItemComponentStatus.PENDING;
-        }
-
-        const mapping = new WorkItemComponent();
-        mapping.work_item_id = workItem.id;
-        mapping.component_id = masterComponent.id;
-        mapping.quantity =
-          masterComponent.unit === 'Mtr.'
-            ? 100 + masterComponent.order_number * 10
-            : 1 + masterComponent.order_number;
-        mapping.progress =
-          mappingStatus === WorkItemComponentStatus.APPROVED
-            ? mapping.quantity
-            : mappingStatus === WorkItemComponentStatus.IN_PROGRESS
-              ? Number((mapping.quantity * 0.5).toFixed(2))
-              : 0;
-        mapping.remarks = undefined;
-        mapping.status = mappingStatus;
-        mapping.approved_photo_id = undefined;
-        mapping.approved_at =
-          mappingStatus === WorkItemComponentStatus.APPROVED
-            ? new Date()
-            : undefined;
-
-        workItemComponentsToCreate.push(mapping);
-      }
-    }
-
-    const savedWorkItemComponents = await workItemComponentRepo.save(
-      workItemComponentsToCreate,
-    );
-
-    // Create photos linked to work_item_components mappings
-    const photosToCreate: Photo[] = [];
-
-    for (const workItem of workItems) {
-      // Get mappings for this work item
-      const workItemMappings = savedWorkItemComponents.filter(
-        (m) => m.work_item_id === workItem.id,
-      );
-
-      if (workItemMappings.length !== 12) {
-        throw new Error(
-          `Expected 12 mappings for work item ${workItem.id}, found ${workItemMappings.length}`,
-        );
-      }
-
-      const mapping1 = workItemMappings[0]; // First component
-      const mapping2 = workItemMappings[1]; // Second component
-
-      const baseLat = Number(workItem.latitude) || 25.0;
-      const baseLong = Number(workItem.longitude) || 85.0;
-
-      photosToCreate.push(
-        photoRepo.create({
-          image_url: `https://mock-bucket.s3.ap-south-1.amazonaws.com/work-items/${workItem.id}/component-${mapping1.id}/photo-1.jpg`,
-          latitude: baseLat,
-          longitude: baseLong,
-          timestamp: new Date(),
-          employee_id: employee1.id,
-          component_id: mapping1.id,
-          work_item_id: workItem.id,
-          is_selected: true,
-          selected_by: workItem.contractor_id,
-          selected_at: new Date(),
-          is_forwarded_to_do: true,
-          forwarded_at: new Date(),
-        }),
-      );
-
-      photosToCreate.push(
-        photoRepo.create({
-          image_url: `https://mock-bucket.s3.ap-south-1.amazonaws.com/work-items/${workItem.id}/component-${mapping1.id}/photo-2.jpg`,
-          latitude: baseLat + 0.0005,
-          longitude: baseLong + 0.0005,
-          timestamp: new Date(),
-          employee_id: employee2.id,
-          component_id: mapping1.id,
-          work_item_id: workItem.id,
-          is_selected: false,
-          selected_by: null,
-          selected_at: null,
-          is_forwarded_to_do: false,
-          forwarded_at: null,
-        }),
-      );
-
-      photosToCreate.push(
-        photoRepo.create({
-          image_url: `https://mock-bucket.s3.ap-south-1.amazonaws.com/work-items/${workItem.id}/component-${mapping2.id}/photo-1.jpg`,
-          latitude: baseLat + 0.001,
-          longitude: baseLong + 0.001,
-          timestamp: new Date(),
-          employee_id: employee1.id,
-          component_id: mapping2.id,
-          work_item_id: workItem.id,
-          is_selected: false,
-          selected_by: null,
-          selected_at: null,
-          is_forwarded_to_do: false,
-          forwarded_at: null,
-        }),
-      );
-    }
-
-    const savedPhotos = await photoRepo.save(photosToCreate);
-
-    const workItemEmployeeAssignmentsToCreate: WorkItemEmployeeAssignment[] = [
-      workItemEmployeeAssignmentRepo.create({
-        work_item_id: workItems[0].id,
-        employee_id: employee1.id,
-      }),
-      workItemEmployeeAssignmentRepo.create({
-        work_item_id: workItems[1].id,
-        employee_id: employee2.id,
-      }),
-      workItemEmployeeAssignmentRepo.create({
-        work_item_id: workItems[2].id,
-        employee_id: employee1.id,
-      }),
-    ];
-
-    const savedWorkItemEmployeeAssignments =
-      await workItemEmployeeAssignmentRepo.save(
-        workItemEmployeeAssignmentsToCreate,
-      );
-
-    let agreementsCount = 0;
-    if (hasAgreementsTable) {
-      const financialYear = getCurrentFinancialYear();
-
-      const existingWorkItemAgreements = await agreementRepo.find({
-        where: {
-          work_id: In(workItems.map((workItem) => workItem.id)),
-        },
-      });
-
-      if (existingWorkItemAgreements.length > 0) {
-        await agreementRepo.delete({
-          id: In(existingWorkItemAgreements.map((agreement) => agreement.id)),
-        });
-      }
-
-      const latestAgreementInYear = await agreementRepo.findOne({
-        where: { agreementyear: financialYear },
-        order: { created_at: 'DESC' },
-      });
-
-      const lastSequence =
-        latestAgreementInYear?.agreementno.match(/(\d+)$/)?.[1];
-      let nextSequence = lastSequence ? Number(lastSequence) + 1 : 1;
-
-      const savedAgreements = await agreementRepo.save(
-        workItems.map((workItem) => {
-          const agreementno = `AGR-${financialYear}-${String(nextSequence).padStart(4, '0')}`;
-          nextSequence += 1;
-
-          return agreementRepo.create({
-            agreementno,
-            agreementyear: financialYear,
-            contractor_id: workItem.contractor_id,
-            work_id: workItem.id,
-          });
-        }),
-      );
-
-      agreementsCount = savedAgreements.length;
-    }
-
     console.log('✅ Mock data seeded successfully');
     console.log(`Users: ${allMockUsers.length}`);
     console.log(`Districts: ${seededDistricts.length}`);
@@ -1145,13 +821,7 @@ export async function seedMockData() {
     console.log(`Subdivisions: ${seededSubdivisions.length}`);
     console.log(`Circles: ${seededCircles.length}`);
     console.log(`Zones: ${seededZones.length}`);
-    console.log(`Work Items: ${workItems.length}`);
-    console.log(`Agreements: ${agreementsCount}`);
-    console.log(`Work Item Components: ${savedWorkItemComponents.length}`);
-    console.log(
-      `Work Item Employee Assignments: ${savedWorkItemEmployeeAssignments.length}`,
-    );
-    console.log(`Photos: ${savedPhotos.length}`);
+    console.log(`Components: ${componentsToSave.length}`);
     console.log('Mock user password:', passwordPlain);
   } finally {
     await app.close();

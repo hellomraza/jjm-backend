@@ -8,7 +8,6 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
-import { User } from '../../users/entities/user.entity';
 import { Block } from '../../locations/entities/block.entity';
 import { Circle } from '../../locations/entities/circle.entity';
 import { District } from '../../locations/entities/district.entity';
@@ -16,6 +15,7 @@ import { Panchayat } from '../../locations/entities/panchayat.entity';
 import { Subdivision } from '../../locations/entities/subdivision.entity';
 import { Village } from '../../locations/entities/village.entity';
 import { Zone } from '../../locations/entities/zone.entity';
+import { User } from '../../users/entities/user.entity';
 
 export enum WorkItemStatus {
   PENDING = 'PENDING',
@@ -26,28 +26,28 @@ export enum WorkItemStatus {
 @Entity('work_items')
 export class WorkItem {
   @PrimaryGeneratedColumn('uuid')
-  id: string;
+  id: string; // workcodeid
 
   @Column({ unique: true })
-  work_code: string;
+  work_code: string; // workcode
 
   @Column()
-  title: string;
+  title: string; // unknown
 
   @Column({ type: 'text', nullable: true })
-  description?: string;
+  description?: string; // unknown
 
   @Index()
   @Column({ type: 'int' })
-  district_id: number;
+  district_id: number; // district_code
 
   @Index()
   @Column({ type: 'int', nullable: true })
-  block_id?: number;
+  block_id?: number; // block_code
 
   @Index()
   @Column({ type: 'int', nullable: true })
-  panchayat_id?: number;
+  panchayat_id?: number; // panchayat_code
 
   @Index()
   @Column({ type: 'int', nullable: true })
@@ -66,23 +66,23 @@ export class WorkItem {
   zone_id?: number;
 
   @Column({ type: 'varchar', length: 100 })
-  schemetype: string;
+  schemetype: string; // schemetype
 
   @Column({ type: 'varchar', length: 110, nullable: true, default: null })
-  nofhtc?: string;
+  nofhtc?: string; //nofhtc
 
   @Column({ type: 'double', nullable: true })
-  amount_approved?: number;
+  amount_approved?: number; // aa_amount
 
   @Column({ type: 'double', nullable: true })
-  payment_amount?: number;
+  payment_amount?: number; // payment_rs
 
   @Column({ type: 'int', nullable: true })
-  serial_no?: number;
+  serial_no?: number; // sr
 
   @Index()
-  @Column()
-  contractor_id: string;
+  @Column({ nullable: true })
+  contractor_id: string; // contractor_code
 
   @ManyToOne(() => User, { nullable: true, onDelete: 'SET NULL' })
   @JoinColumn({ name: 'contractor_id', referencedColumnName: 'id' })
@@ -133,8 +133,14 @@ export class WorkItem {
   status: WorkItemStatus;
 
   @CreateDateColumn()
-  created_at: Date;
+  created_at: Date; // systemdate
 
   @UpdateDateColumn()
-  updated_at: Date;
+  updated_at: Date; // systemdate
+
+  @Column({ type: 'varchar', length: 100, nullable: true })
+  schemecategory?: string; // schemecategory
+
+  @Column({ type: 'varchar', length: 255, nullable: true })
+  excel: string; // excel
 }

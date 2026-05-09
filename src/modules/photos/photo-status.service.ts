@@ -87,7 +87,6 @@ export class PhotoStatusService {
     const workItem = await this.workItemRepository.findOne({
       where: { id: photoStatus.work_item_id },
     });
-    console.log(workItem, contractorId);
     if (!workItem || workItem.contractor_id !== contractorId) {
       throw new BadRequestException(
         'You can only select photos for your own work items',

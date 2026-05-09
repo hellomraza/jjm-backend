@@ -398,7 +398,6 @@ export class UsersService {
       where: { role: UserRole.CO },
       order: { created_at: 'DESC' },
     });
-    console.log(`Found ${contractors.length} contractors`); // Debug log
 
     // Remove password from all contractors
     return contractors.map((contractor) => this.stripPassword(contractor));
