@@ -19,6 +19,10 @@ import {
   WorkItemComponent,
   WorkItemComponentStatus,
 } from '../components/entities/work-item-component.entity';
+import {
+  importWorkItemMapping,
+  type WorkItemImport,
+} from '../import/import.service';
 import { User, UserRole } from '../users/entities/user.entity';
 import { AssignMultipleEmployeesResponseDto } from './dto/assign-work-item-employee.dto';
 import { CreateWorkItemDto } from './dto/create-work-item.dto';
@@ -124,6 +128,120 @@ export class WorkItemsService {
 
       await manager.save(WorkItemComponent, mappings);
       return savedWorkItem;
+    });
+  }
+
+  async bulkCreateFromImport(
+    workItemImports: WorkItemImport[],
+  ): Promise<WorkItem[]> {
+    return this.dataSource.transaction(async (manager) => {
+      const createdWorkItems: WorkItem[] = [];
+
+      for (const workItemImport of workItemImports) {
+        const contractorCode = workItemImport.contractor_code;
+        let contractorId: string | null = null;
+
+        if (contractorCode) {
+          const contractor = await manager.findOne(User, {
+            where: { code: contractorCode, role: UserRole.CO },
+          });
+
+          if (!contractor) {
+            throw new UnprocessableEntityException(
+              `Contractor user code #${contractorCode} not found`,
+            );
+          }
+
+          contractorId = contractor.id;
+        }
+
+        const workCode = workItemImport.workcode?.trim();
+        const schemetype = workItemImport.schemetype?.trim();
+
+        if (!workCode) {
+          throw new UnprocessableEntityException(
+            'workcode is required for work item import',
+          );
+        }
+
+        if (!schemetype) {
+          throw new UnprocessableEntityException(
+            'schemetype is required for work item import',
+          );
+        }
+
+        const mappedWorkItem: Partial<WorkItem> = {};
+
+        for (const [entityKey, importKey] of Object.entries(
+          importWorkItemMapping,
+        ) as Array<[keyof WorkItem, keyof WorkItemImport]>) {
+          const rawValue = workItemImport[importKey];
+
+          if (rawValue === null || rawValue === undefined) {
+            continue;
+          }
+
+          switch (entityKey) {
+            case 'district_id':
+            case 'block_id':
+            case 'panchayat_id':
+            case 'serial_no':
+              mappedWorkItem[entityKey] =
+                typeof rawValue === 'number' ? rawValue : Number(rawValue);
+              break;
+            case 'amount_approved':
+            case 'payment_amount':
+            case 'latitude':
+            case 'longitude':
+            case 'progress_percentage':
+              mappedWorkItem[entityKey] =
+                typeof rawValue === 'number' ? rawValue : Number(rawValue);
+              break;
+            case 'nofhtc':
+              mappedWorkItem[entityKey] = String(rawValue);
+              break;
+            case 'created_at':
+              mappedWorkItem[entityKey] =
+                rawValue instanceof Date ? rawValue : new Date(rawValue);
+              break;
+            case 'work_code':
+            case 'excel':
+            case 'schemecategory':
+            case 'schemetype':
+              mappedWorkItem[entityKey] = String(rawValue);
+              break;
+          }
+        }
+
+        const workItem = manager.create(WorkItem, {
+          ...mappedWorkItem,
+          title: workCode,
+          work_code: workCode,
+          contractor_id: contractorId ?? undefined,
+          latitude: Number.isFinite(Number(mappedWorkItem.latitude))
+            ? Number(mappedWorkItem.latitude)
+            : 0,
+          longitude: Number.isFinite(Number(mappedWorkItem.longitude))
+            ? Number(mappedWorkItem.longitude)
+            : 0,
+          progress_percentage: Number.isFinite(
+            Number(mappedWorkItem.progress_percentage),
+          )
+            ? Number(mappedWorkItem.progress_percentage)
+            : 0,
+          status: WorkItemStatus.PENDING,
+          district_id:
+            mappedWorkItem.district_id === undefined ||
+            mappedWorkItem.district_id === null
+              ? (0 as number)
+              : (mappedWorkItem.district_id as number),
+        } as Partial<WorkItem>);
+
+        const savedWorkItem = await manager.save(WorkItem, workItem);
+        createdWorkItems.push(savedWorkItem);
+      }
+
+      return createdWorkItems;
     });
   }
 

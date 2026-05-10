@@ -1,8 +1,11 @@
 import {
   BadRequestException,
+  Body,
   Controller,
+  ParseEnumPipe,
   ParseFilePipeBuilder,
   Post,
+  Query,
   UploadedFile,
   UseInterceptors,
 } from '@nestjs/common';
@@ -13,20 +16,43 @@ import {
   ApiConsumes,
   ApiCreatedResponse,
   ApiOperation,
+  ApiQuery,
   ApiTags,
 } from '@nestjs/swagger';
-import { ImportService } from './import.service';
+import { AgreementsService } from '../agreements/agreements.service';
+import { UsersService } from '../users/users.service';
+import { WorkItemsService } from '../work-items/work-items.service';
+import {
+  type AgreementImport,
+  ImportService,
+  ImportType,
+  type ImportUploadFile,
+  type WorkItemImport,
+} from './import.service';
 
 @ApiTags('Import')
 @Controller('import')
 export class ImportController {
-  constructor(private readonly importService: ImportService) {}
+  constructor(
+    private readonly importService: ImportService,
+    private readonly usersService: UsersService,
+    private readonly agreementsService: AgreementsService,
+    private readonly workItemsService: WorkItemsService,
+  ) {}
 
   @Post('upload')
   @UseInterceptors(FileInterceptor('file'))
   @ApiOperation({
     summary: 'Upload and read an Excel file',
-    description: 'Accepts an .xlsx file and parses it in the backend for preview',
+    description:
+      'Accepts an .xlsx file and parses it in the backend for preview',
+  })
+  @ApiQuery({
+    name: 'type',
+    required: true,
+    enum: ImportType,
+    description:
+      'Type of workbook to parse. Supported: agreement, workitem, contractor.',
   })
   @ApiConsumes('multipart/form-data')
   @ApiBody({
@@ -45,6 +71,7 @@ export class ImportController {
   @ApiCreatedResponse({ description: 'Workbook parsed successfully' })
   @ApiBadRequestResponse({ description: 'Invalid or unsupported file upload' })
   upload(
+    @Query('type', new ParseEnumPipe(ImportType)) type: ImportType,
     @UploadedFile(
       new ParseFilePipeBuilder()
         .addFileTypeValidator({
@@ -59,8 +86,46 @@ export class ImportController {
             new BadRequestException('file must be a valid .xlsx workbook'),
         }),
     )
-    file: Express.Multer.File,
+    file: ImportUploadFile,
   ) {
-    return this.importService.parseWorkbook(file);
+    return this.importService.parseWorkbook(file, type);
+  }
+
+  @Post('contractors/bulk')
+  @ApiOperation({ summary: 'Bulk insert contractors from parsed rows' })
+  @ApiBody({
+    schema: {
+      type: 'array',
+      items: { type: 'object' },
+    },
+  })
+  async bulkInsertContractors(@Body() contractors: unknown[]) {
+    return this.usersService.bulkCreateContractorsFromImport(
+      contractors as Record<string, any>[],
+    );
+  }
+
+  @Post('agreements/bulk')
+  @ApiOperation({ summary: 'Bulk insert agreements from imported rows' })
+  @ApiBody({
+    schema: {
+      type: 'array',
+      items: { type: 'object' },
+    },
+  })
+  async bulkInsertAgreements(@Body() agreements: AgreementImport[]) {
+    return this.agreementsService.bulkCreateFromImport(agreements);
+  }
+
+  @Post('work-items/bulk')
+  @ApiOperation({ summary: 'Bulk insert work items from imported rows' })
+  @ApiBody({
+    schema: {
+      type: 'array',
+      items: { type: 'object' },
+    },
+  })
+  async bulkInsertWorkItems(@Body() workItems: WorkItemImport[]) {
+    return this.workItemsService.bulkCreateFromImport(workItems);
   }
 }

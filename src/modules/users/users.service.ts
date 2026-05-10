@@ -8,6 +8,7 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import * as bcrypt from 'bcryptjs';
 import { Repository } from 'typeorm';
+import { importContractorMapping } from '../import/import.service';
 import { WorkItemEmployeeAssignment } from '../work-items/entities/work-item-employee-assignment.entity';
 import { CreateContractorDto } from './dto/create-contractor.dto';
 import { CreateDODto } from './dto/create-do.dto';
@@ -210,6 +211,67 @@ export class UsersService {
 
     // Return contractor without password
     return this.stripPassword(savedContractor);
+  }
+
+  async bulkCreateContractorsFromImport(
+    contractors: Record<string, any>[],
+  ): Promise<{
+    inserted: Omit<User, 'password'>[];
+    errors: { index: number; reason: string; item: Record<string, any> }[];
+  }> {
+    const inserted: Omit<User, 'password'>[] = [];
+    const errors: {
+      index: number;
+      reason: string;
+      item: Record<string, any>;
+    }[] = [];
+
+    for (let i = 0; i < contractors.length; i++) {
+      const item = contractors[i] ?? {};
+
+      try {
+        const userPayload: any = {};
+
+        // Map fields from contractor -> user using mapping
+        for (const [userKey, contractorKey] of Object.entries(
+          importContractorMapping,
+        ) as Array<[string, string]>) {
+          if (contractorKey in item && item[contractorKey] != null) {
+            userPayload[userKey] = item[contractorKey];
+          }
+        }
+
+        // Ensure role is contractor
+        userPayload.role = UserRole.CO;
+
+        // Ensure code exists; generate if missing
+        if (!userPayload.code) {
+          userPayload.code = await this.generateUniqueUserCode(UserRole.CO);
+        }
+
+        // Password: must hash
+        const rawPassword =
+          userPayload.password ?? userPayload.contractorpass ?? null;
+        if (!rawPassword) {
+          throw new Error('missing password');
+        }
+
+        const hashed = await bcrypt.hash(String(rawPassword), 10);
+        userPayload.password = hashed;
+
+        // Create and save
+        const userEntity = this.userRepository.create(
+          userPayload as Partial<User>,
+        );
+        const saved = await this.userRepository.save(userEntity);
+
+        inserted.push(this.stripPassword(saved));
+      } catch (err) {
+        errors.push({ index: i, reason: String(err?.message ?? err), item });
+      }
+    }
+
+    return { inserted, errors };
   }
 
   async createDO(createDODto: CreateDODto): Promise<Omit<User, 'password'>> {

@@ -5,6 +5,10 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { EntityManager, FindOptionsWhere, Repository } from 'typeorm';
+import {
+  importAgreementMapping,
+  type AgreementImport,
+} from '../import/import.service';
 import { User, UserRole } from '../users/entities/user.entity';
 import { WorkItem } from '../work-items/entities/work-item.entity';
 import { CreateAgreementDto } from './dto/create-agreement.dto';
@@ -70,6 +74,24 @@ export class AgreementsService {
     const paddedSequence = String(nextSequence).padStart(4, '0');
 
     return `AGR-${financialYear}-${paddedSequence}`;
+  }
+
+  private mapImportedAgreement(
+    agreementImport: AgreementImport,
+  ): Partial<Agreement> {
+    const mappedAgreement: Record<string, unknown> = {};
+
+    for (const [agreementKey, importKey] of Object.entries(
+      importAgreementMapping,
+    ) as Array<[keyof Agreement, keyof AgreementImport]>) {
+      const value = agreementImport[importKey];
+
+      if (value !== undefined) {
+        mappedAgreement[agreementKey as string] = value;
+      }
+    }
+
+    return mappedAgreement as Partial<Agreement>;
   }
 
   async create(createAgreementDto: CreateAgreementDto): Promise<Agreement> {
@@ -142,6 +164,86 @@ export class AgreementsService {
     }
 
     return reloadedAgreement;
+  }
+
+  async bulkCreateFromImport(
+    agreementImports: AgreementImport[],
+  ): Promise<Agreement[]> {
+    return this.agreementsRepository.manager.transaction(async (manager) => {
+      const createdAgreements: Agreement[] = [];
+
+      for (const agreementImport of agreementImports) {
+        const mappedAgreement = this.mapImportedAgreement(agreementImport);
+        const contractorCode = mappedAgreement.contractor_id as string | null;
+        const workCode = mappedAgreement.work_id as string | null;
+
+        if (!contractorCode) {
+          throw new UnprocessableEntityException(
+            'contractor_code is required for agreement import',
+          );
+        }
+
+        if (!workCode) {
+          throw new UnprocessableEntityException(
+            'workcode is required for agreement import',
+          );
+        }
+
+        const contractor = await manager.findOne(User, {
+          where: { code: contractorCode },
+        });
+
+        if (!contractor) {
+          throw new UnprocessableEntityException(
+            `Contractor user code #${contractorCode} not found`,
+          );
+        }
+
+        const workItem = await manager.findOne(WorkItem, {
+          where: { work_code: workCode },
+        });
+
+        if (!workItem) {
+          throw new UnprocessableEntityException(
+            `Work item code #${workCode} not found`,
+          );
+        }
+
+        const agreement = manager.create(Agreement, {
+          agreementno: mappedAgreement.agreementno as string,
+          agreementyear: mappedAgreement.agreementyear as string,
+          contractor_id: contractor.id,
+          work_id: workItem.id,
+          workorderno: mappedAgreement.workorderno ?? null,
+          workorderdate: mappedAgreement.workorderdate ?? null,
+          sr: mappedAgreement.sr ?? null,
+          excel: mappedAgreement.excel ?? null,
+          unitag: mappedAgreement.unitag ?? null,
+          agrid:
+            mappedAgreement.agrid === null ||
+            mappedAgreement.agrid === undefined
+              ? null
+              : String(mappedAgreement.agrid),
+          division_code: mappedAgreement.division_code ?? null,
+        } as Partial<Agreement>);
+
+        const savedAgreement = await manager.save(Agreement, agreement);
+        const reloadedAgreement = await manager.findOne(Agreement, {
+          where: { id: savedAgreement.id },
+          relations: this.agreementRelations,
+        });
+
+        if (!reloadedAgreement) {
+          throw new NotFoundException(
+            `Agreement #${savedAgreement.id} not found`,
+          );
+        }
+
+        createdAgreements.push(reloadedAgreement);
+      }
+
+      return createdAgreements;
+    });
   }
 
   async findAll(
