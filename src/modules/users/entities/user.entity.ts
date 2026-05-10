@@ -25,7 +25,7 @@ export class User {
   designation?: string; // designation
 
   @Column({ type: 'varchar', length: 255, nullable: true })
-  contractorid?: string; // contractorname
+  contractorid?: string; // contractorid
 
   @Column({ unique: true })
   code: string; // userid,
