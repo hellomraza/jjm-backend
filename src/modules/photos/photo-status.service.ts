@@ -5,7 +5,6 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { Component } from '../components/entities/component.entity';
 import {
   WorkItemComponent,
   WorkItemComponentStatus,
@@ -23,8 +22,6 @@ export class PhotoStatusService {
     private photoRepository: Repository<Photo>,
     @InjectRepository(WorkItem)
     private workItemRepository: Repository<WorkItem>,
-    @InjectRepository(Component)
-    private componentRepository: Repository<Component>,
     @InjectRepository(WorkItemComponent)
     private workItemComponentRepository: Repository<WorkItemComponent>,
   ) {}
@@ -279,7 +276,7 @@ export class PhotoStatusService {
         photo: {
           employee: true,
         },
-        component: true,
+        workItemComponent: true,
         workItem: true,
         selectedByUser: true,
         approvedByUser: true,
@@ -318,7 +315,7 @@ export class PhotoStatusService {
         work_item_id: workItemId,
         status: PhotoStatusEnum.SELECTED,
       },
-      relations: ['photo', 'component', 'workItem', 'selectedByUser'],
+      relations: ['photo', 'workItemComponent', 'workItem', 'selectedByUser'],
       skip: (page - 1) * limit,
       take: limit,
       order: { selected_at: 'DESC' },
@@ -354,7 +351,7 @@ export class PhotoStatusService {
       },
       relations: [
         'photo',
-        'component',
+        'workItemComponent',
         'workItem',
         'selectedByUser',
         'approvedByUser',
@@ -394,7 +391,7 @@ export class PhotoStatusService {
         status: PhotoStatusEnum.SELECTED,
         selected_by: contractorId,
       },
-      relations: ['photo', 'component', 'workItem', 'selectedByUser'],
+      relations: ['photo', 'workItemComponent', 'workItem', 'selectedByUser'],
       skip: (page - 1) * limit,
       take: limit,
       order: { selected_at: 'DESC' },

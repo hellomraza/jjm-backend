@@ -83,7 +83,7 @@ export class PhotoStatusController {
    * CO/DO: Get all photos for a component with pagination
    */
   @Get('component/:componentId')
-  @Roles(UserRole.CO, UserRole.DO, UserRole.HO)
+  @Roles(UserRole.CO, UserRole.DO, UserRole.HO, UserRole.EM)
   async getPhotosByComponent(
     @Param('componentId') componentId: string,
     @Query('page') page: number = 1,
