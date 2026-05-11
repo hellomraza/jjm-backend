@@ -83,12 +83,11 @@ export class DashboardService {
         'District Officer must have a district assigned',
       );
     }
-
     const districtId = doUser.district_id;
 
-    // Get the district name
+    // Get the district name (districts are looked up by code now)
     const district = await this.districtRepository.findOne({
-      where: { districtid: districtId },
+      where: { district_code: districtId },
     });
     const districtName = district?.districtname || 'Unknown District';
 
@@ -107,7 +106,7 @@ export class DashboardService {
   }
 
   private async getDistrictWorkItemStats(
-    districtId: number,
+    districtId: string,
   ): Promise<WorkItemStatsDto> {
     const [total, pending, inProgress, completed] = await Promise.all([
       this.workItemRepository.count({
@@ -133,7 +132,7 @@ export class DashboardService {
   }
 
   private async getDistrictWorkItems(
-    districtId: number,
+    districtId: string,
   ): Promise<WorkItemWithProgressDto[]> {
     const workItems = await this.workItemRepository.find({
       where: { district_id: districtId },
