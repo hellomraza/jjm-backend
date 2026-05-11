@@ -30,6 +30,7 @@ describe('WorkItemsService', () => {
   } as unknown as Repository<User>;
   const agreementsService = {
     createWithManager: jest.fn(),
+    getWorkItemIdsForContractor: jest.fn(),
   };
   const dataSource = { transaction: jest.fn() } as unknown as DataSource;
 
@@ -97,6 +98,235 @@ describe('WorkItemsService', () => {
       expect.objectContaining({
         work_id: 'w1',
         contractor_id: 'c1',
+      }),
+    );
+  });
+
+  it('bulkCreateFromImport creates a temporary contractor when contractor code is missing', async () => {
+    const manager = {
+      findOne: jest.fn(),
+      create: jest.fn((_entity, payload) => payload),
+      save: jest.fn(),
+    };
+
+    (dataSource.transaction as jest.Mock).mockImplementation(async (callback) =>
+      callback(manager),
+    );
+
+    manager.findOne.mockImplementation(async (entity, options) => {
+      if (entity === User) {
+        expect(options.where.code).toBe('TAT001');
+        return null;
+      }
+
+      if (entity === WorkItem) {
+        expect(options.where.work_code).toBe('WORK001');
+        return null;
+      }
+
+      return null;
+    });
+
+    manager.save.mockImplementation(async (entity, payload) => {
+      if (entity === User) {
+        return { ...payload, id: 'temp-contractor-id' };
+      }
+
+      if (entity === WorkItem) {
+        return { ...payload, id: 'work-item-id' };
+      }
+
+      return payload;
+    });
+
+    const result = await service.bulkCreateFromImport([
+      {
+        workcode: 'WORK001',
+        schemetype: 'PWS',
+        contractor_code: 'TAT001',
+        excel: null,
+        district_code: null,
+        block_code: null,
+        panchayat_code: null,
+        schemecategory: null,
+        nofhtc: null,
+        aa_amount: null,
+        payment_rs: null,
+        sr: null,
+        systemdate: null,
+        workcodeid: null,
+      } as any,
+    ]);
+
+    expect(result).toHaveLength(1);
+    expect(manager.save).toHaveBeenCalledWith(
+      User,
+      expect.objectContaining({
+        code: 'TAT001',
+        name: 'Temporary Contractor TAT001',
+        role: UserRole.CO,
+        email: expect.stringMatching(
+          /^temp-contractor-[a-f0-9]+@import\.local$/,
+        ),
+      }),
+    );
+  });
+
+  it('bulkCreateFromImport updates an existing temporary contractor with the same code', async () => {
+    const existingTempContractor = {
+      id: 'temp-contractor-id',
+      code: 'TAT001',
+      email: 'temp-contractor-old@import.local',
+      password: 'old-password',
+      name: 'Temporary Contractor Old',
+      role: UserRole.CO,
+    };
+
+    const manager = {
+      findOne: jest.fn(),
+      create: jest.fn((_entity, payload) => payload),
+      save: jest.fn(),
+    };
+
+    (dataSource.transaction as jest.Mock).mockImplementation(async (callback) =>
+      callback(manager),
+    );
+
+    manager.findOne.mockImplementation(async (entity, options) => {
+      if (entity === User) {
+        expect(options.where.code).toBe('TAT001');
+        return existingTempContractor;
+      }
+
+      if (entity === WorkItem) {
+        expect(options.where.work_code).toBe('WORK002');
+        return null;
+      }
+
+      return null;
+    });
+
+    manager.save.mockImplementation(async (entity, payload) => {
+      if (entity === User) {
+        return { ...payload, id: 'temp-contractor-id' };
+      }
+
+      if (entity === WorkItem) {
+        return { ...payload, id: 'work-item-id' };
+      }
+
+      return payload;
+    });
+
+    await service.bulkCreateFromImport([
+      {
+        workcode: 'WORK002',
+        schemetype: 'PWS',
+        contractor_code: 'TAT001',
+        excel: null,
+        district_code: null,
+        block_code: null,
+        panchayat_code: null,
+        schemecategory: null,
+        nofhtc: null,
+        aa_amount: null,
+        payment_rs: null,
+        sr: null,
+        systemdate: null,
+        workcodeid: null,
+      } as any,
+    ]);
+
+    expect(manager.save).toHaveBeenCalledWith(
+      User,
+      expect.objectContaining({
+        id: 'temp-contractor-id',
+        code: 'TAT001',
+        name: 'Temporary Contractor TAT001',
+        role: UserRole.CO,
+        email: expect.stringMatching(
+          /^temp-contractor-[a-f0-9]+@import\.local$/,
+        ),
+      }),
+    );
+  });
+
+  it('bulkCreateFromImport updates an existing temporary work item with the same workcode', async () => {
+    const existingTempWorkItem = {
+      id: 'temp-work-item-id',
+      work_code: 'WORK003',
+      title: 'Temporary Work Item WORK003',
+      description: 'Temporary work item created during agreement import',
+      district_id: null,
+      schemetype: 'TEMP',
+      contractor_id: 'old-contractor-id',
+      latitude: 0,
+      longitude: 0,
+      progress_percentage: 0,
+      status: WorkItemStatus.PENDING,
+    };
+
+    const manager = {
+      findOne: jest.fn(),
+      create: jest.fn((_entity, payload) => payload),
+      save: jest.fn(),
+    };
+
+    (dataSource.transaction as jest.Mock).mockImplementation(async (callback) =>
+      callback(manager),
+    );
+
+    manager.findOne.mockImplementation(async (entity, options) => {
+      if (entity === User && options.where.role === UserRole.CO) {
+        return {
+          id: 'contractor-id',
+          code: 'TAT003',
+          role: UserRole.CO,
+          email: 'real.contractor@example.com',
+          name: 'Real Contractor',
+        };
+      }
+
+      if (entity === WorkItem) {
+        expect(options.where.work_code).toBe('WORK003');
+        return existingTempWorkItem;
+      }
+
+      return null;
+    });
+
+    manager.save.mockImplementation(async (_entity, payload) => payload);
+
+    const result = await service.bulkCreateFromImport([
+      {
+        workcode: 'WORK003',
+        schemetype: 'PWS',
+        contractor_code: 'TAT003',
+        excel: 'EX-003',
+        district_code: 'CG-RPR',
+        block_code: null,
+        panchayat_code: null,
+        schemecategory: null,
+        nofhtc: null,
+        aa_amount: null,
+        payment_rs: null,
+        sr: null,
+        systemdate: null,
+        workcodeid: null,
+      } as any,
+    ]);
+
+    expect(result).toHaveLength(1);
+    expect(manager.save).toHaveBeenCalledWith(
+      WorkItem,
+      expect.objectContaining({
+        id: 'temp-work-item-id',
+        work_code: 'WORK003',
+        title: 'WORK003',
+        schemetype: 'PWS',
+        district_id: 'CG-RPR',
+        contractor_id: 'contractor-id',
+        excel: 'EX-003',
       }),
     );
   });
@@ -326,25 +556,47 @@ describe('WorkItemsService', () => {
   it('getMyWorkItems filters by district for DO', async () => {
     (usersRepository.findOne as jest.Mock).mockResolvedValue({
       id: 'do1',
-      district_id: 10,
+      district_id: 'DIST001',
     });
     (workItemsRepository.findAndCount as jest.Mock).mockResolvedValue([[], 0]);
 
     await service.getMyWorkItems('do1', UserRole.DO, 1, 20);
 
     expect(workItemsRepository.findAndCount).toHaveBeenCalledWith(
-      expect.objectContaining({ where: { district_id: 10 } }),
+      expect.objectContaining({ where: { district_id: 'DIST001' } }),
     );
   });
 
   it('getMyWorkItems filters by contractor for CO', async () => {
+    (
+      agreementsService.getWorkItemIdsForContractor as jest.Mock
+    ).mockResolvedValue(['w1', 'w2']);
     (workItemsRepository.findAndCount as jest.Mock).mockResolvedValue([[], 0]);
 
     await service.getMyWorkItems('co1', UserRole.CO, 1, 20);
 
     expect(workItemsRepository.findAndCount).toHaveBeenCalledWith(
-      expect.objectContaining({ where: { contractor_id: 'co1' } }),
+      expect.objectContaining({
+        where: { contractor_id: 'co1', id: expect.anything() },
+      }),
     );
+  });
+
+  it('getMyWorkItems returns empty result for CO with no agreements', async () => {
+    (
+      agreementsService.getWorkItemIdsForContractor as jest.Mock
+    ).mockResolvedValue([]);
+
+    const result = await service.getMyWorkItems('co1', UserRole.CO, 1, 20);
+
+    expect(result).toEqual({
+      data: [],
+      total: 0,
+      page: 1,
+      limit: 20,
+      totalPages: 0,
+    });
+    expect(workItemsRepository.findAndCount).not.toHaveBeenCalled();
   });
 
   it('getMyWorkItems filters by assigned work items for EM', async () => {
