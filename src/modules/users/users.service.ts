@@ -7,7 +7,7 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import * as bcrypt from 'bcryptjs';
-import { Repository } from 'typeorm';
+import { DeepPartial, Repository } from 'typeorm';
 import { importContractorMapping } from '../import/import.service';
 import { WorkItemEmployeeAssignment } from '../work-items/entities/work-item-employee-assignment.entity';
 import { CreateContractorDto } from './dto/create-contractor.dto';
@@ -97,6 +97,46 @@ export class UsersService {
     );
   }
 
+  private normalizeImportString(value: unknown): string | null {
+    if (value === null || value === undefined) {
+      return null;
+    }
+
+    if (
+      typeof value !== 'string' &&
+      typeof value !== 'number' &&
+      typeof value !== 'boolean'
+    ) {
+      return null;
+    }
+
+    const normalized = String(value).trim();
+    if (!normalized || normalized === '?') {
+      return null;
+    }
+
+    return normalized;
+  }
+
+  private async ensureUniqueFieldAvailable(
+    field: 'code' | 'email' | 'pan_number' | 'auid',
+    value: string | null,
+    currentUserId?: string,
+  ): Promise<void> {
+    if (!value) {
+      return;
+    }
+
+    const existing = await this.userRepository.findOne({
+      where: { [field]: value } as Partial<User>,
+      select: ['id'],
+    });
+
+    if (existing && existing.id !== currentUserId) {
+      throw new Error(`${field} already exists for another user`);
+    }
+  }
+
   async create(createUserDto: CreateUserDto): Promise<Omit<User, 'password'>> {
     const { email, password, name, role, district_id } = createUserDto;
     const resolvedRole = role ?? UserRole.EM;
@@ -113,16 +153,16 @@ export class UsersService {
     const hashedPassword = await bcrypt.hash(password, 10);
 
     // Create and save user
-    const user = this.userRepository.create({
+    const user: DeepPartial<User> = {
       code: await this.generateUniqueUserCode(resolvedRole),
       email,
       password: hashedPassword,
       name,
       role: resolvedRole,
       district_id,
-    });
-
-    const savedUser = await this.userRepository.save(user);
+    };
+    const created = this.userRepository.create(user);
+    const savedUser = await this.userRepository.save(created);
 
     // Return user without password
     return this.stripPassword(savedUser);
@@ -227,17 +267,44 @@ export class UsersService {
     }[] = [];
 
     for (let i = 0; i < contractors.length; i++) {
-      const item = contractors[i] ?? {};
-
+      const item: Record<string, unknown> = contractors[i] ?? {};
       try {
-        const userPayload: any = {};
+        const userPayload: Record<string, unknown> = {};
+        const allowedFields = new Set([
+          'auid',
+          'contractorid',
+          'code',
+          'email',
+          'password',
+          'name',
+          'mobile',
+          'pan_number',
+          'address',
+          'designation',
+        ]);
 
         // Map fields from contractor -> user using mapping
         for (const [userKey, contractorKey] of Object.entries(
           importContractorMapping,
         ) as Array<[string, string]>) {
-          if (contractorKey in item && item[contractorKey] != null) {
+          if (
+            !allowedFields.has(userKey) ||
+            !(contractorKey in item) ||
+            item[contractorKey] == null
+          ) {
+            continue;
+          }
+
+          if (userKey === 'password') {
             userPayload[userKey] = item[contractorKey];
+            continue;
+          }
+
+          const normalizedValue = this.normalizeImportString(
+            item[contractorKey],
+          );
+          if (normalizedValue !== null) {
+            userPayload[userKey] = normalizedValue;
           }
         }
 
@@ -249,15 +316,101 @@ export class UsersService {
           userPayload.code = await this.generateUniqueUserCode(UserRole.CO);
         }
 
+        const contractorCode = String(userPayload.code);
+        const normalizedEmail = this.normalizeImportString(userPayload.email);
+        const normalizedPan = this.normalizeImportString(
+          userPayload.pan_number,
+        );
+        const normalizedAuid = this.normalizeImportString(userPayload.auid);
+
+        if (normalizedEmail) {
+          userPayload.email = normalizedEmail;
+        } else {
+          delete userPayload.email;
+        }
+
+        if (normalizedPan) {
+          userPayload.pan_number = normalizedPan;
+        } else {
+          delete userPayload.pan_number;
+        }
+
+        if (normalizedAuid) {
+          userPayload.auid = normalizedAuid;
+        } else {
+          delete userPayload.auid;
+        }
+
         // Password: must hash
         const rawPassword =
-          userPayload.password ?? userPayload.contractorpass ?? null;
+          typeof userPayload.password === 'string'
+            ? userPayload.password
+            : typeof userPayload.contractorpass === 'string'
+              ? userPayload.contractorpass
+              : null;
+
         if (!rawPassword) {
           throw new Error('missing password');
         }
 
         const hashed = await bcrypt.hash(String(rawPassword), 10);
         userPayload.password = hashed;
+
+        const existingContractor = await this.userRepository.findOne({
+          where: { code: contractorCode, role: UserRole.CO },
+        });
+        if (existingContractor) {
+          try {
+            await this.ensureUniqueFieldAvailable(
+              'code',
+              contractorCode,
+              existingContractor.id,
+            );
+            await this.ensureUniqueFieldAvailable(
+              'email',
+              this.normalizeImportString(userPayload.email),
+              existingContractor.id,
+            );
+            await this.ensureUniqueFieldAvailable(
+              'pan_number',
+              this.normalizeImportString(userPayload.pan_number),
+              existingContractor.id,
+            );
+            await this.ensureUniqueFieldAvailable(
+              'auid',
+              this.normalizeImportString(userPayload.auid),
+              existingContractor.id,
+            );
+
+            Object.assign(existingContractor, userPayload);
+            const saved = await this.userRepository.save(existingContractor);
+
+            inserted.push(this.stripPassword(saved));
+            continue;
+          } catch (updateErr) {
+            const updateErrorMessage =
+              updateErr instanceof Error
+                ? updateErr.message
+                : String(updateErr);
+            throw new Error(
+              `Failed to update existing contractor with code ${contractorCode}: ${updateErrorMessage}`,
+            );
+          }
+        }
+
+        await this.ensureUniqueFieldAvailable('code', contractorCode);
+        await this.ensureUniqueFieldAvailable(
+          'email',
+          this.normalizeImportString(userPayload.email),
+        );
+        await this.ensureUniqueFieldAvailable(
+          'pan_number',
+          this.normalizeImportString(userPayload.pan_number),
+        );
+        await this.ensureUniqueFieldAvailable(
+          'auid',
+          this.normalizeImportString(userPayload.auid),
+        );
 
         // Create and save
         const userEntity = this.userRepository.create(
@@ -267,7 +420,11 @@ export class UsersService {
 
         inserted.push(this.stripPassword(saved));
       } catch (err) {
-        errors.push({ index: i, reason: String(err?.message ?? err), item });
+        errors.push({
+          index: i,
+          reason: String(err instanceof Error ? err.message : err),
+          item,
+        });
       }
     }
 
@@ -289,16 +446,16 @@ export class UsersService {
     const hashedPassword = await bcrypt.hash(password, 10);
 
     // Create and save DO with DO role
-    const districtOffice = this.userRepository.create({
+    const doObject: DeepPartial<User> = {
       code: await this.generateUniqueUserCode(UserRole.DO),
       email,
       password: hashedPassword,
       name,
       role: UserRole.DO,
       district_id,
-    });
-
-    const savedDO = await this.userRepository.save(districtOffice);
+    };
+    const created = this.userRepository.create(doObject);
+    const savedDO = await this.userRepository.save(created);
 
     // Return DO without password
     return this.stripPassword(savedDO);
@@ -431,7 +588,10 @@ export class UsersService {
   }
 
   async getMyProfile(userId: string): Promise<Omit<User, 'password'>> {
-    const user = await this.userRepository.findOne({ where: { id: userId } });
+    const user = await this.userRepository.findOne({
+      where: { id: userId },
+      relations: ['district'],
+    });
     if (!user) {
       throw new NotFoundException(`User #${userId} not found`);
     }
@@ -456,10 +616,21 @@ export class UsersService {
   }
 
   async getAllContractors(): Promise<Omit<User, 'password'>[]> {
-    const contractors = await this.userRepository.find({
-      where: { role: UserRole.CO },
-      order: { created_at: 'DESC' },
-    });
+    const contractors = await this.userRepository
+      .createQueryBuilder('user')
+      .where('user.role = :role', { role: UserRole.CO })
+      .andWhere(
+        `NOT (
+          user.email LIKE :temporaryEmailPattern
+          AND user.name LIKE :temporaryNamePattern
+        )`,
+        {
+          temporaryEmailPattern: 'temp-contractor-%@import.local',
+          temporaryNamePattern: 'Temporary Contractor %',
+        },
+      )
+      .orderBy('user.created_at', 'DESC')
+      .getMany();
 
     // Remove password from all contractors
     return contractors.map((contractor) => this.stripPassword(contractor));
