@@ -24,7 +24,11 @@ describe('PhotosService', () => {
   } as unknown as UploadService;
 
   beforeEach(() => {
-    service = new PhotosService(photoRepo, uploadService);
+    const photoStatusService = {
+      recordPhotoUpload: jest.fn(),
+    } as any;
+
+    service = new PhotosService(photoRepo, uploadService, photoStatusService);
     jest.clearAllMocks();
   });
 

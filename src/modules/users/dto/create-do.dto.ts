@@ -29,9 +29,9 @@ export class CreateDODto {
 
   @ApiProperty({
     description: 'District ID',
-    example: 1,
-    type: Number,
+    example: 'DIST001',
+    type: String,
     required: false,
   })
-  district_id?: number;
+  district_id?: string;
 }

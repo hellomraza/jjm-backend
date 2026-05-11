@@ -127,7 +127,7 @@ export class ComponentsController {
         .addMaxSizeValidator({ maxSize: 5 * 1024 * 1024 })
         .build({ fileIsRequired: true }),
     )
-    file: Express.Multer.File,
+    file: any,
     @Body() uploadComponentPhotoDto: UploadComponentPhotoDto,
     @Request() req: AuthenticatedRequest,
   ) {
@@ -157,12 +157,12 @@ export class ComponentsController {
     type: PhotoResponseDto,
   })
   @ApiBadRequestResponse({ description: 'Invalid upload payload' })
-  uploadComponentPhotoUrl(
+  async uploadComponentPhotoUrl(
     @Param('componentId') componentId: string,
     @Body() uploadComponentPhotoUrlDto: UploadComponentPhotoUrlDto,
     @Request() req: AuthenticatedRequest,
   ) {
-    return this.componentsService.uploadPhotoUrl(
+    return await this.componentsService.uploadPhotoUrl(
       componentId,
       uploadComponentPhotoUrlDto,
       req.user.userId,

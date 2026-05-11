@@ -6,11 +6,14 @@ import {
   UnprocessableEntityException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
+import * as bcrypt from 'bcryptjs';
+import { createHash } from 'crypto';
 import {
   DataSource,
   EntityManager,
   FindOptionsWhere,
   In,
+  Not,
   Repository,
 } from 'typeorm';
 import { AgreementsService } from '../agreements/agreements.service';
@@ -19,6 +22,10 @@ import {
   WorkItemComponent,
   WorkItemComponentStatus,
 } from '../components/entities/work-item-component.entity';
+import {
+  importWorkItemMapping,
+  type WorkItemImport,
+} from '../import/import.service';
 import { User, UserRole } from '../users/entities/user.entity';
 import { AssignMultipleEmployeesResponseDto } from './dto/assign-work-item-employee.dto';
 import { CreateWorkItemDto } from './dto/create-work-item.dto';
@@ -76,6 +83,69 @@ export class WorkItemsService {
     );
   }
 
+  private isTemporaryContractor(contractor: User): boolean {
+    return (
+      contractor.role === UserRole.CO &&
+      contractor.email.startsWith('temp-contractor-') &&
+      contractor.email.endsWith('@import.local') &&
+      contractor.name.startsWith('Temporary Contractor ')
+    );
+  }
+
+  private async findOrCreateTemporaryContractor(
+    manager: EntityManager,
+    contractorCode: string,
+  ): Promise<User> {
+    const contractor = await manager.findOne(User, {
+      where: { code: contractorCode, role: UserRole.CO },
+    });
+
+    if (contractor) {
+      if (this.isTemporaryContractor(contractor)) {
+        const codeHash = createHash('sha256')
+          .update(contractorCode)
+          .digest('hex')
+          .slice(0, 16);
+
+        Object.assign(contractor, {
+          email: `temp-contractor-${codeHash}@import.local`,
+          password: await bcrypt.hash(`temp-contractor-${codeHash}`, 10),
+          name: `Temporary Contractor ${contractorCode}`,
+          role: UserRole.CO,
+        });
+
+        return manager.save(User, contractor);
+      }
+
+      return contractor;
+    }
+
+    const existingUserWithCode = await manager.findOne(User, {
+      where: { code: contractorCode },
+    });
+
+    if (existingUserWithCode) {
+      throw new UnprocessableEntityException(
+        `User code #${contractorCode} exists but is not a contractor`,
+      );
+    }
+
+    const codeHash = createHash('sha256')
+      .update(contractorCode)
+      .digest('hex')
+      .slice(0, 16);
+    const password = await bcrypt.hash(`temp-contractor-${codeHash}`, 10);
+    const temporaryContractor = manager.create(User, {
+      code: contractorCode,
+      email: `temp-contractor-${codeHash}@import.local`,
+      password,
+      name: `Temporary Contractor ${contractorCode}`,
+      role: UserRole.CO,
+    });
+
+    return manager.save(User, temporaryContractor);
+  }
+
   async create(createWorkItemDto: CreateWorkItemDto): Promise<WorkItem> {
     return this.dataSource.transaction(async (manager) => {
       const masterComponents = await manager.find(Component, {
@@ -103,6 +173,11 @@ export class WorkItemsService {
         this.agreementsService;
 
       await agreementCreator.createWithManager(manager, {
+        agreementno: `AG-${workCode}`,
+        agreementyear: new Date().getFullYear().toString(),
+        division_code: createWorkItemDto.district_id,
+        workorderdate: new Date(),
+        workorderno: `WO-${workCode}`,
         contractor_id: savedWorkItem.contractor_id,
         work_id: savedWorkItem.id,
       });
@@ -119,6 +194,190 @@ export class WorkItemsService {
 
       await manager.save(WorkItemComponent, mappings);
       return savedWorkItem;
+    });
+  }
+
+  async bulkCreateFromImport(
+    workItemImports: WorkItemImport[],
+  ): Promise<WorkItem[]> {
+    return this.dataSource.transaction(async (manager) => {
+      const createdWorkItems: WorkItem[] = [];
+
+      const masterComponents = await manager.find(Component, {
+        order: { order_number: 'ASC' },
+      });
+
+      if (masterComponents.length !== 12) {
+        throw new NotFoundException(
+          `Expected 12 static components, found ${masterComponents.length}`,
+        );
+      }
+
+      for (const workItemImport of workItemImports) {
+        const contractorCode = workItemImport.contractor_code?.trim();
+        let contractorId: string | null = null;
+
+        if (contractorCode) {
+          const contractor = await this.findOrCreateTemporaryContractor(
+            manager,
+            contractorCode,
+          );
+
+          contractorId = contractor.id;
+        }
+
+        const workCode = workItemImport.workcode?.trim();
+        const schemetype = workItemImport.schemetype?.trim();
+
+        if (!workCode) {
+          throw new UnprocessableEntityException(
+            'workcode is required for work item import',
+          );
+        }
+
+        if (!schemetype) {
+          throw new UnprocessableEntityException(
+            'schemetype is required for work item import',
+          );
+        }
+
+        const mappedWorkItem: Partial<WorkItem> = {};
+
+        for (const [entityKey, importKey] of Object.entries(
+          importWorkItemMapping,
+        ) as Array<[keyof WorkItem, keyof WorkItemImport]>) {
+          const rawValue = workItemImport[importKey];
+
+          if (rawValue === null || rawValue === undefined) {
+            continue;
+          }
+
+          switch (entityKey) {
+            case 'district_id':
+            case 'block_id':
+            case 'panchayat_id':
+              mappedWorkItem[entityKey] = String(rawValue);
+              break;
+            case 'serial_no':
+              mappedWorkItem[entityKey] =
+                typeof rawValue === 'number' ? rawValue : Number(rawValue);
+              break;
+            case 'amount_approved':
+            case 'payment_amount':
+            case 'latitude':
+            case 'longitude':
+            case 'progress_percentage':
+              mappedWorkItem[entityKey] =
+                typeof rawValue === 'number' ? rawValue : Number(rawValue);
+              break;
+            case 'nofhtc':
+              mappedWorkItem[entityKey] = String(rawValue);
+              break;
+            case 'created_at':
+              mappedWorkItem[entityKey] =
+                rawValue instanceof Date ? rawValue : new Date(rawValue);
+              break;
+            case 'work_code':
+            case 'excel':
+            case 'schemecategory':
+            case 'schemetype':
+              mappedWorkItem[entityKey] = String(rawValue);
+              break;
+          }
+        }
+
+        const workItem = manager.create(WorkItem, {
+          ...mappedWorkItem,
+          title: workCode,
+          work_code: workCode,
+          contractor_id: contractorId ?? undefined,
+          latitude: Number.isFinite(Number(mappedWorkItem.latitude))
+            ? Number(mappedWorkItem.latitude)
+            : 0,
+          longitude: Number.isFinite(Number(mappedWorkItem.longitude))
+            ? Number(mappedWorkItem.longitude)
+            : 0,
+          progress_percentage: Number.isFinite(
+            Number(mappedWorkItem.progress_percentage),
+          )
+            ? Number(mappedWorkItem.progress_percentage)
+            : 0,
+          status: WorkItemStatus.PENDING,
+          district_id:
+            mappedWorkItem.district_id === undefined ||
+            mappedWorkItem.district_id === null
+              ? null
+              : mappedWorkItem.district_id,
+        } as Partial<WorkItem>);
+
+        const existingWorkItem = await manager.findOne(WorkItem, {
+          where: { work_code: workCode },
+        });
+
+        if (existingWorkItem?.schemetype === 'TEMP') {
+          const {
+            work_code: _workCode,
+            id,
+            contractor_id,
+            ...updatableWorkItemFields
+          }: Partial<WorkItem> = {
+            ...workItem,
+          };
+
+          Object.assign(existingWorkItem, {
+            ...updatableWorkItemFields,
+            description: updatableWorkItemFields?.description
+              ?.toLocaleLowerCase()
+              ?.includes('temporary')
+              ? '---'
+              : updatableWorkItemFields.description,
+          });
+          const savedWorkItem = await manager.save(WorkItem, existingWorkItem);
+
+          const existingComponents = await manager.find(WorkItemComponent, {
+            where: { work_item_id: existingWorkItem.id },
+          });
+
+          await manager.remove(WorkItemComponent, existingComponents);
+
+          const mappings = masterComponents.map((component) => {
+            const mapping = new WorkItemComponent();
+            mapping.work_item_id = savedWorkItem.id;
+            mapping.component_id = component.id;
+            mapping.quantity = undefined;
+            mapping.remarks = undefined;
+            mapping.status = WorkItemComponentStatus.PENDING;
+            return mapping;
+          });
+
+          await manager.save(WorkItemComponent, mappings);
+          createdWorkItems.push(savedWorkItem);
+          continue;
+        }
+
+        if (existingWorkItem) {
+          throw new UnprocessableEntityException(
+            `Work item with workcode #${workCode} already exists`,
+          );
+        }
+
+        const savedWorkItem = await manager.save(WorkItem, workItem);
+
+        const mappings = masterComponents.map((component) => {
+          const mapping = new WorkItemComponent();
+          mapping.work_item_id = savedWorkItem.id;
+          mapping.component_id = component.id;
+          mapping.quantity = undefined;
+          mapping.remarks = undefined;
+          mapping.status = WorkItemComponentStatus.PENDING;
+          return mapping;
+        });
+
+        await manager.save(WorkItemComponent, mappings);
+        createdWorkItems.push(savedWorkItem);
+      }
+
+      return createdWorkItems;
     });
   }
 
@@ -169,7 +428,23 @@ export class WorkItemsService {
     let where: FindOptionsWhere<WorkItem> = {};
 
     if (role === UserRole.CO) {
-      where = { contractor_id: userId };
+      const agreementWorkItemIds =
+        await this.agreementsService.getWorkItemIdsForContractor(userId);
+
+      if (agreementWorkItemIds.length === 0) {
+        return {
+          data: [],
+          total: 0,
+          page: safePage,
+          limit: safeLimit,
+          totalPages: 0,
+        };
+      }
+
+      where = {
+        contractor_id: userId,
+        id: In(agreementWorkItemIds),
+      };
     }
 
     if (role === UserRole.DO) {
@@ -186,14 +461,14 @@ export class WorkItemsService {
         );
       }
 
-      const districtId = Number(user.district_id);
-      if (!Number.isInteger(districtId)) {
+      const districtCode = String(user.district_id);
+      if (!districtCode || districtCode.trim() === '') {
         throw new InternalServerErrorException(
           `User with role ${role} has invalid district assignment`,
         );
       }
 
-      where = { district_id: districtId };
+      where = { district_id: districtCode };
     }
 
     if (role === UserRole.EM) {
@@ -220,6 +495,9 @@ export class WorkItemsService {
       where = { id: In(assignedWorkItemIds) };
     }
 
+    // Exclude temporary work items for all roles
+    where.schemetype = Not('TEMP');
+
     const [items, total] = await this.workItemsRepository.findAndCount({
       where,
       skip: (safePage - 1) * safeLimit,
@@ -228,8 +506,30 @@ export class WorkItemsService {
       relations: this.locationRelations,
     });
 
+    // Fetch components for each work item and calculate progress_percentage
+    const itemsWithCalculatedProgress = await Promise.all(
+      items.map(async (item) => {
+        const components = await this.dataSource
+          .getRepository(WorkItemComponent)
+          .find({
+            where: { work_item_id: item.id },
+          });
+
+        if (components.length > 0) {
+          const approvedCount = components.filter(
+            (comp) => comp.status === WorkItemComponentStatus.APPROVED,
+          ).length;
+          item.progress_percentage = Math.round(
+            (approvedCount / components.length) * 100,
+          );
+        }
+
+        return item;
+      }),
+    );
+
     return {
-      data: items,
+      data: itemsWithCalculatedProgress,
       total,
       page: safePage,
       limit: safeLimit,
@@ -260,15 +560,21 @@ export class WorkItemsService {
       throw new NotFoundException(`Work item #${workItemId} not found`);
     }
 
-    const districtId = workItem.district_id;
+    const districtCode = workItem.district_id;
+
+    if (districtCode == null) {
+      throw new NotFoundException(
+        `Work item #${workItemId} does not have a district assignment`,
+      );
+    }
 
     const districtOfficer = await this.usersRepository.findOne({
-      where: { district_id: districtId, role: UserRole.DO },
+      where: { district_id: districtCode, role: UserRole.DO },
     });
 
     if (!districtOfficer) {
       throw new NotFoundException(
-        `District Officer not found for district ${districtId}`,
+        `District Officer not found for district ${districtCode}`,
       );
     }
 
@@ -321,6 +627,21 @@ export class WorkItemsService {
     });
 
     return this.workItemEmployeeAssignmentsRepository.save(assignment);
+  }
+
+  async getAssignedEmployees(
+    workItemId: string,
+  ): Promise<Omit<User, 'password'>[]> {
+    const assignments = await this.workItemEmployeeAssignmentsRepository.find({
+      where: { work_item_id: workItemId },
+      relations: ['employee'],
+    });
+
+    return assignments.map((assignment) => {
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const { password, ...employeeWithoutPassword } = assignment.employee;
+      return employeeWithoutPassword;
+    });
   }
 
   async assignMultipleEmployeesToWorkItem(

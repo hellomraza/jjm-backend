@@ -4,9 +4,18 @@ import {
   UnprocessableEntityException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
+import * as bcrypt from 'bcryptjs';
+import { createHash } from 'crypto';
 import { EntityManager, FindOptionsWhere, Repository } from 'typeorm';
+import {
+  importAgreementMapping,
+  type AgreementImport,
+} from '../import/import.service';
 import { User, UserRole } from '../users/entities/user.entity';
-import { WorkItem } from '../work-items/entities/work-item.entity';
+import {
+  WorkItem,
+  WorkItemStatus,
+} from '../work-items/entities/work-item.entity';
 import { CreateAgreementDto } from './dto/create-agreement.dto';
 import { UpdateAgreementDto } from './dto/update-agreement.dto';
 import { Agreement } from './entities/agreement.entity';
@@ -70,6 +79,148 @@ export class AgreementsService {
     const paddedSequence = String(nextSequence).padStart(4, '0');
 
     return `AGR-${financialYear}-${paddedSequence}`;
+  }
+
+  private mapImportedAgreement(
+    agreementImport: AgreementImport,
+  ): Partial<Agreement> {
+    const mappedAgreement: Record<string, unknown> = {};
+
+    for (const [agreementKey, importKey] of Object.entries(
+      importAgreementMapping,
+    ) as Array<[keyof Agreement, keyof AgreementImport]>) {
+      const value = agreementImport[importKey];
+
+      if (value !== undefined) {
+        mappedAgreement[agreementKey as string] = value;
+      }
+    }
+
+    return mappedAgreement as Partial<Agreement>;
+  }
+
+  private isTemporaryContractor(contractor: User): boolean {
+    return (
+      contractor.role === UserRole.CO &&
+      contractor.email.startsWith('temp-contractor-') &&
+      contractor.email.endsWith('@import.local') &&
+      contractor.name.startsWith('Temporary Contractor ')
+    );
+  }
+
+  private async findOrCreateTemporaryContractor(
+    manager: EntityManager,
+    contractorCode: string,
+  ): Promise<User> {
+    const contractor = await manager.findOne(User, {
+      where: { code: contractorCode, role: UserRole.CO },
+    });
+
+    if (contractor) {
+      if (this.isTemporaryContractor(contractor)) {
+        const codeHash = createHash('sha256')
+          .update(contractorCode)
+          .digest('hex')
+          .slice(0, 16);
+
+        Object.assign(contractor, {
+          email: `temp-contractor-${codeHash}@import.local`,
+          password: await bcrypt.hash(`temp-contractor-${codeHash}`, 10),
+          name: `Temporary Contractor ${contractorCode}`,
+          role: UserRole.CO,
+        });
+
+        return manager.save(User, contractor);
+      }
+
+      return contractor;
+    }
+
+    const existingUserWithCode = await manager.findOne(User, {
+      where: { code: contractorCode },
+    });
+
+    if (existingUserWithCode) {
+      throw new UnprocessableEntityException(
+        `User code #${contractorCode} exists but is not a contractor`,
+      );
+    }
+
+    const codeHash = createHash('sha256')
+      .update(contractorCode)
+      .digest('hex')
+      .slice(0, 16);
+    const password = await bcrypt.hash(`temp-contractor-${codeHash}`, 10);
+    const temporaryContractor = manager.create(User, {
+      code: contractorCode,
+      email: `temp-contractor-${codeHash}@import.local`,
+      password,
+      name: `Temporary Contractor ${contractorCode}`,
+      role: UserRole.CO,
+    });
+
+    return manager.save(User, temporaryContractor);
+  }
+
+  async getWorkItemIdsForContractor(contractorId: string): Promise<string[]> {
+    const agreements = await this.agreementsRepository.find({
+      where: { contractor_id: contractorId },
+      select: ['work_id'],
+    });
+
+    return agreements.map((agreement) => agreement.work_id);
+  }
+
+  private isTemporaryWorkItem(workItem: WorkItem): boolean {
+    return (
+      workItem.schemetype === 'TEMP' ||
+      workItem.title.startsWith('Temporary Work Item ')
+    );
+  }
+
+  private async findOrCreateTemporaryWorkItem(
+    manager: EntityManager,
+    workCode: string,
+    contractorId: string,
+  ): Promise<WorkItem> {
+    const workItem = await manager.findOne(WorkItem, {
+      where: { work_code: workCode },
+    });
+
+    if (workItem) {
+      if (this.isTemporaryWorkItem(workItem)) {
+        Object.assign(workItem, {
+          title: `Temporary Work Item ${workCode}`,
+          description: 'Temporary work item created during agreement import',
+          district_id: null,
+          schemetype: 'TEMP',
+          contractor_id: contractorId,
+          latitude: 0,
+          longitude: 0,
+          progress_percentage: 0,
+          status: WorkItemStatus.PENDING,
+        });
+
+        return manager.save(WorkItem, workItem);
+      }
+
+      return workItem;
+    }
+
+    const temporaryWorkItem = manager.create(WorkItem, {
+      work_code: workCode,
+      title: `Temporary Work Item ${workCode}`,
+      description: 'Temporary work item created during agreement import',
+      district_id: null,
+      schemetype: 'TEMP',
+      contractor_id: contractorId,
+      latitude: 0,
+      longitude: 0,
+      progress_percentage: 0,
+      status: WorkItemStatus.PENDING,
+    });
+
+    return manager.save(WorkItem, temporaryWorkItem);
   }
 
   async create(createAgreementDto: CreateAgreementDto): Promise<Agreement> {
@@ -142,6 +293,77 @@ export class AgreementsService {
     }
 
     return reloadedAgreement;
+  }
+
+  async bulkCreateFromImport(
+    agreementImports: AgreementImport[],
+  ): Promise<Agreement[]> {
+    return this.agreementsRepository.manager.transaction(async (manager) => {
+      const createdAgreements: Agreement[] = [];
+
+      for (const agreementImport of agreementImports) {
+        const mappedAgreement = this.mapImportedAgreement(agreementImport);
+        const contractorCode = mappedAgreement.contractor_id as string | null;
+        const workCode = mappedAgreement.work_id as string | null;
+
+        if (!contractorCode) {
+          throw new UnprocessableEntityException(
+            'contractor_code is required for agreement import',
+          );
+        }
+
+        if (!workCode) {
+          throw new UnprocessableEntityException(
+            'workcode is required for agreement import',
+          );
+        }
+
+        const contractor = await this.findOrCreateTemporaryContractor(
+          manager,
+          contractorCode,
+        );
+
+        const workItem = await this.findOrCreateTemporaryWorkItem(
+          manager,
+          workCode,
+          contractor.id,
+        );
+
+        const agreement = manager.create(Agreement, {
+          agreementno: mappedAgreement.agreementno as string,
+          agreementyear: mappedAgreement.agreementyear as string,
+          contractor_id: contractor.id,
+          work_id: workItem.id,
+          workorderno: mappedAgreement.workorderno ?? null,
+          workorderdate: mappedAgreement.workorderdate ?? null,
+          sr: mappedAgreement.sr ?? null,
+          excel: mappedAgreement.excel ?? null,
+          unitag: mappedAgreement.unitag ?? null,
+          agrid:
+            mappedAgreement.agrid === null ||
+            mappedAgreement.agrid === undefined
+              ? null
+              : String(mappedAgreement.agrid),
+          division_code: mappedAgreement.division_code ?? null,
+        } as Partial<Agreement>);
+
+        const savedAgreement = await manager.save(Agreement, agreement);
+        const reloadedAgreement = await manager.findOne(Agreement, {
+          where: { id: savedAgreement.id },
+          relations: this.agreementRelations,
+        });
+
+        if (!reloadedAgreement) {
+          throw new NotFoundException(
+            `Agreement #${savedAgreement.id} not found`,
+          );
+        }
+
+        createdAgreements.push(reloadedAgreement);
+      }
+
+      return createdAgreements;
+    });
   }
 
   async findAll(

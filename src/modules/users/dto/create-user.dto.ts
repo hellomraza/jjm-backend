@@ -46,12 +46,12 @@ export class CreateUserDto {
   role: UserRole;
 
   @ApiPropertyOptional({
-    description: 'District ID for district-level users, nullable for HO',
-    example: 10,
+    description: 'District code for district-level users, nullable for HO',
+    example: 'DIST001',
   })
   @IsOptional()
-  @IsInt()
-  district_id?: number;
+  @IsString()
+  district_id?: string;
 
   @ApiPropertyOptional({
     description: 'Mobile phone number (10 digits)',
