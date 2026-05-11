@@ -130,7 +130,7 @@ export class ComponentsService {
 
   async uploadPhoto(
     componentId: string,
-    file: Express.Multer.File,
+    file: any,
     uploadDto: UploadComponentPhotoDto,
     employeeId: string,
   ): Promise<Photo> {
