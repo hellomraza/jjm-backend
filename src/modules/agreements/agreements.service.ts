@@ -4,13 +4,18 @@ import {
   UnprocessableEntityException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
+import * as bcrypt from 'bcryptjs';
+import { createHash } from 'crypto';
 import { EntityManager, FindOptionsWhere, Repository } from 'typeorm';
 import {
   importAgreementMapping,
   type AgreementImport,
 } from '../import/import.service';
 import { User, UserRole } from '../users/entities/user.entity';
-import { WorkItem } from '../work-items/entities/work-item.entity';
+import {
+  WorkItem,
+  WorkItemStatus,
+} from '../work-items/entities/work-item.entity';
 import { CreateAgreementDto } from './dto/create-agreement.dto';
 import { UpdateAgreementDto } from './dto/update-agreement.dto';
 import { Agreement } from './entities/agreement.entity';
@@ -92,6 +97,130 @@ export class AgreementsService {
     }
 
     return mappedAgreement as Partial<Agreement>;
+  }
+
+  private isTemporaryContractor(contractor: User): boolean {
+    return (
+      contractor.role === UserRole.CO &&
+      contractor.email.startsWith('temp-contractor-') &&
+      contractor.email.endsWith('@import.local') &&
+      contractor.name.startsWith('Temporary Contractor ')
+    );
+  }
+
+  private async findOrCreateTemporaryContractor(
+    manager: EntityManager,
+    contractorCode: string,
+  ): Promise<User> {
+    const contractor = await manager.findOne(User, {
+      where: { code: contractorCode, role: UserRole.CO },
+    });
+
+    if (contractor) {
+      if (this.isTemporaryContractor(contractor)) {
+        const codeHash = createHash('sha256')
+          .update(contractorCode)
+          .digest('hex')
+          .slice(0, 16);
+
+        Object.assign(contractor, {
+          email: `temp-contractor-${codeHash}@import.local`,
+          password: await bcrypt.hash(`temp-contractor-${codeHash}`, 10),
+          name: `Temporary Contractor ${contractorCode}`,
+          role: UserRole.CO,
+        });
+
+        return manager.save(User, contractor);
+      }
+
+      return contractor;
+    }
+
+    const existingUserWithCode = await manager.findOne(User, {
+      where: { code: contractorCode },
+    });
+
+    if (existingUserWithCode) {
+      throw new UnprocessableEntityException(
+        `User code #${contractorCode} exists but is not a contractor`,
+      );
+    }
+
+    const codeHash = createHash('sha256')
+      .update(contractorCode)
+      .digest('hex')
+      .slice(0, 16);
+    const password = await bcrypt.hash(`temp-contractor-${codeHash}`, 10);
+    const temporaryContractor = manager.create(User, {
+      code: contractorCode,
+      email: `temp-contractor-${codeHash}@import.local`,
+      password,
+      name: `Temporary Contractor ${contractorCode}`,
+      role: UserRole.CO,
+    });
+
+    return manager.save(User, temporaryContractor);
+  }
+
+  async getWorkItemIdsForContractor(contractorId: string): Promise<string[]> {
+    const agreements = await this.agreementsRepository.find({
+      where: { contractor_id: contractorId },
+      select: ['work_id'],
+    });
+
+    return agreements.map((agreement) => agreement.work_id);
+  }
+
+  private isTemporaryWorkItem(workItem: WorkItem): boolean {
+    return (
+      workItem.schemetype === 'TEMP' ||
+      workItem.title.startsWith('Temporary Work Item ')
+    );
+  }
+
+  private async findOrCreateTemporaryWorkItem(
+    manager: EntityManager,
+    workCode: string,
+    contractorId: string,
+  ): Promise<WorkItem> {
+    const workItem = await manager.findOne(WorkItem, {
+      where: { work_code: workCode },
+    });
+
+    if (workItem) {
+      if (this.isTemporaryWorkItem(workItem)) {
+        Object.assign(workItem, {
+          title: `Temporary Work Item ${workCode}`,
+          description: 'Temporary work item created during agreement import',
+          district_id: null,
+          schemetype: 'TEMP',
+          contractor_id: contractorId,
+          latitude: 0,
+          longitude: 0,
+          progress_percentage: 0,
+          status: WorkItemStatus.PENDING,
+        });
+
+        return manager.save(WorkItem, workItem);
+      }
+
+      return workItem;
+    }
+
+    const temporaryWorkItem = manager.create(WorkItem, {
+      work_code: workCode,
+      title: `Temporary Work Item ${workCode}`,
+      description: 'Temporary work item created during agreement import',
+      district_id: null,
+      schemetype: 'TEMP',
+      contractor_id: contractorId,
+      latitude: 0,
+      longitude: 0,
+      progress_percentage: 0,
+      status: WorkItemStatus.PENDING,
+    });
+
+    return manager.save(WorkItem, temporaryWorkItem);
   }
 
   async create(createAgreementDto: CreateAgreementDto): Promise<Agreement> {
@@ -189,25 +318,16 @@ export class AgreementsService {
           );
         }
 
-        const contractor = await manager.findOne(User, {
-          where: { code: contractorCode },
-        });
+        const contractor = await this.findOrCreateTemporaryContractor(
+          manager,
+          contractorCode,
+        );
 
-        if (!contractor) {
-          throw new UnprocessableEntityException(
-            `Contractor user code #${contractorCode} not found`,
-          );
-        }
-
-        const workItem = await manager.findOne(WorkItem, {
-          where: { work_code: workCode },
-        });
-
-        if (!workItem) {
-          throw new UnprocessableEntityException(
-            `Work item code #${workCode} not found`,
-          );
-        }
+        const workItem = await this.findOrCreateTemporaryWorkItem(
+          manager,
+          workCode,
+          contractor.id,
+        );
 
         const agreement = manager.create(Agreement, {
           agreementno: mappedAgreement.agreementno as string,
