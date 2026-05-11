@@ -77,7 +77,7 @@ describe('ImportService', () => {
     );
     expect(result.agreementTable?.[0]).toMatchObject({
       agreementyear: 'AG-001',
-      division_code: 1,
+      division_code: '1',
       contractor_code: 'CON-001',
       workcode: 'W-12',
       workorderno: 'WO-9001',
@@ -212,7 +212,40 @@ describe('ImportService', () => {
 
   it('parses workitem workbook type and returns a table', async () => {
     const workbook = new ExcelJS.Workbook();
-    workbook.addWorksheet('Agreement').addRow(['x']);
+    const sheet = workbook.addWorksheet('WorkItem');
+
+    sheet.addRow([
+      'workcodeid',
+      'workcode',
+      'excel',
+      'district_code',
+      'block_code',
+      'panchayat_code',
+      'schemetype',
+      'schemecategory',
+      'nofhtc',
+      'aa_amount',
+      'payment_rs',
+      'sr',
+      'systemdate',
+      'contractor_code',
+    ]);
+    sheet.addRow([
+      101,
+      'W-101',
+      'EX-101',
+      '12',
+      '21',
+      '31',
+      'PWS',
+      'Category A',
+      '4',
+      '1500',
+      '1200',
+      'SR-101',
+      new Date('2026-01-10'),
+      'CON-101',
+    ]);
 
     const buffer = Buffer.from(await workbook.xlsx.writeBuffer());
 
@@ -225,7 +258,23 @@ describe('ImportService', () => {
     );
 
     expect(result.workItemTable).toBeDefined();
-    expect(result.workItemTable).toHaveLength(0);
+    expect(result.workItemTable).toHaveLength(1);
+    expect(result.workItemTable?.[0]).toMatchObject({
+      workcodeid: 101,
+      workcode: 'W-101',
+      excel: 'EX-101',
+      district_code: '12',
+      block_code: '21',
+      panchayat_code: '31',
+      schemetype: 'PWS',
+      schemecategory: 'Category A',
+      nofhtc: 4,
+      aa_amount: 1500,
+      payment_rs: 1200,
+      sr: 'SR-101',
+      systemdate: new Date('2026-01-10T00:00:00.000Z'),
+      contractor_code: 'CON-101',
+    });
   });
 
   it('rejects unsupported import types', async () => {

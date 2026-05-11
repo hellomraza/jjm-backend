@@ -47,7 +47,7 @@ export type AgreementImport = {
   agrid: number | null;
   agreementno: string | null;
   agreementyear: string | null;
-  division_code: number | null;
+  division_code: string | null;
   contractor_code: string | null;
   workcode: string | null;
   workorderno: string | null;
@@ -156,7 +156,10 @@ type Contractor = {
   systemdate: Date | null;
 };
 
-export const importContractorMapping: Record<keyof User, keyof Contractor> = {
+export const importContractorMapping: Record<
+  keyof Omit<User, 'district'>,
+  keyof Contractor
+> = {
   address: 'contractoraddress',
   auid: 'contractorid',
   code: 'contractor_code',
@@ -396,6 +399,14 @@ export class ImportService {
       return -1;
     };
 
+    const findExactIndex = (names: string[]) => {
+      for (const n of names) {
+        const idx = headers.findIndex((h) => h === n);
+        if (idx !== -1) return idx;
+      }
+      return -1;
+    };
+
     const idxMap = {
       workcodeid: findIndex([
         'workcodeid',
@@ -404,7 +415,7 @@ export class ImportService {
         'work id',
         'workid',
       ]),
-      workcode: findIndex(['workcode', 'work code', 'work_code']),
+      workcode: findExactIndex(['workcode', 'work code', 'work_code']),
       excel: findIndex(['excel']),
       district_code: findIndex(['district_code', 'district code', 'district']),
       block_code: findIndex(['block_code', 'block code', 'block']),
@@ -481,8 +492,37 @@ export class ImportService {
 
     const rows = sheet.allRows;
 
-    // Actual table data starts after header rows
-    const dataRows = rows.slice(1);
+    // Find the header row by looking for known column names
+    let headerRowIndex = -1;
+    const knownHeaders = [
+      'agreement no',
+      'agreement year',
+      'contractor name',
+      'work order no',
+      'work order date',
+    ];
+
+    for (let i = 0; i < rows.length; i++) {
+      const row = rows[i];
+      // eslint-disable-next-line @typescript-eslint/restrict-plus-operands
+      const rowStr = row
+        .map((val) => String(val ?? 'unknown').toLowerCase())
+        .join(' ');
+      if (
+        knownHeaders.some((header) => rowStr.includes(header.toLowerCase()))
+      ) {
+        headerRowIndex = i;
+        break;
+      }
+    }
+
+    // If header row not found, assume it's the first row
+    if (headerRowIndex === -1) {
+      headerRowIndex = 0;
+    }
+
+    // Data rows start after the header row
+    const dataRows = rows.slice(headerRowIndex + 1);
 
     for (const row of dataRows) {
       if (!row || row.length === 0) continue;
@@ -491,7 +531,7 @@ export class ImportService {
         agrid: this.normalizeNumber(row[0]),
         agreementno: this.normalizeString(row[1]),
         agreementyear: this.normalizeString(row[2]),
-        division_code: this.normalizeNumber(row[4]),
+        division_code: this.normalizeString(row[4]),
         contractor_code: this.normalizeString(row[5]),
         workcode: this.normalizeString(row[6]),
         workorderno: this.normalizeString(row[7]),
