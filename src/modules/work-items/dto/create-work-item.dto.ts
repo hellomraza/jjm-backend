@@ -21,7 +21,7 @@ export class CreateWorkItemDto {
   })
   @IsString()
   @IsNotEmpty()
-  title: string;
+  title!: string;
 
   @ApiPropertyOptional({
     description: 'Detailed description of the work item',
@@ -32,59 +32,59 @@ export class CreateWorkItemDto {
   description?: string;
 
   @ApiProperty({
-    description: 'District ID',
-    example: 10,
+    description: 'District Code',
+    example: 'DIST001',
   })
-  @IsInt()
-  district_id: number;
+  @IsString()
+  district_id!: string;
 
   @ApiPropertyOptional({
-    description: 'Block ID',
-    example: 101,
+    description: 'Block Code',
+    example: 'BLK001',
   })
-  @IsInt()
+  @IsString()
   @IsOptional()
-  block_id?: number;
+  block_id?: string;
 
   @ApiPropertyOptional({
-    description: 'Panchayat ID',
-    example: 201,
+    description: 'Panchayat Code',
+    example: 'PAN001',
   })
-  @IsInt()
+  @IsString()
   @IsOptional()
-  panchayat_id?: number;
+  panchayat_id?: string;
 
   @ApiPropertyOptional({
-    description: 'Village ID',
-    example: 301,
+    description: 'Village Code',
+    example: 'VIL001',
   })
-  @IsInt()
+  @IsString()
   @IsOptional()
-  village_id?: number;
+  village_id?: string;
 
   @ApiPropertyOptional({
-    description: 'Subdivision ID',
-    example: 401,
+    description: 'Subdivision Code',
+    example: 'SUB001',
   })
-  @IsInt()
+  @IsString()
   @IsOptional()
-  subdivision_id?: number;
+  subdivision_id?: string;
 
   @ApiPropertyOptional({
-    description: 'Circle ID',
-    example: 501,
+    description: 'Circle Code',
+    example: 'CIR001',
   })
-  @IsInt()
+  @IsString()
   @IsOptional()
-  circle_id?: number;
+  circle_id?: string;
 
   @ApiPropertyOptional({
-    description: 'Zone ID',
-    example: 601,
+    description: 'Zone Code',
+    example: 'ZON001',
   })
-  @IsInt()
+  @IsString()
   @IsOptional()
-  zone_id?: number;
+  zone_id?: string;
 
   @ApiProperty({
     description: 'Scheme type (NVARCHAR 100 equivalent)',
@@ -92,7 +92,7 @@ export class CreateWorkItemDto {
   })
   @IsString()
   @IsNotEmpty()
-  schemetype: string;
+  schemetype!: string;
 
   @ApiPropertyOptional({
     description: 'Number of FHTC (NVARCHAR 110 equivalent)',
@@ -131,15 +131,15 @@ export class CreateWorkItemDto {
     example: '550e8400-e29b-41d4-a716-446655440001',
   })
   @IsUUID()
-  contractor_id: string;
+  contractor_id!: string;
 
   @ApiProperty({ description: 'Latitude of work location', example: 25.5941 })
   @IsLatitude()
-  latitude: number;
+  latitude!: number;
 
   @ApiProperty({ description: 'Longitude of work location', example: 85.1376 })
   @IsLongitude()
-  longitude: number;
+  longitude!: number;
 
   @ApiPropertyOptional({
     description: 'Initial progress percentage (0-100)',
