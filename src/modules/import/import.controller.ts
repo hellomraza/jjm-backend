@@ -7,6 +7,7 @@ import {
   Post,
   Query,
   UploadedFile,
+  UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
@@ -19,7 +20,11 @@ import {
   ApiQuery,
   ApiTags,
 } from '@nestjs/swagger';
+import { Roles } from '../../common/decorators/roles.decorator';
+import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
+import { RolesGuard } from '../../common/guards/roles.guard';
 import { AgreementsService } from '../agreements/agreements.service';
+import { UserRole } from '../users/entities/user.entity';
 import { UsersService } from '../users/users.service';
 import { WorkItemsService } from '../work-items/work-items.service';
 import {
@@ -41,11 +46,13 @@ export class ImportController {
   ) {}
 
   @Post('upload')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.HO, UserRole.DO)
   @UseInterceptors(FileInterceptor('file'))
   @ApiOperation({
     summary: 'Upload and read an Excel file',
     description:
-      'Accepts an .xlsx file and parses it in the backend for preview',
+      'Accepts an .xlsx file and parses it in the backend for preview (HO only)',
   })
   @ApiQuery({
     name: 'type',
@@ -92,40 +99,54 @@ export class ImportController {
   }
 
   @Post('contractors/bulk')
-  @ApiOperation({ summary: 'Bulk insert contractors from parsed rows' })
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.HO, UserRole.DO)
+  @ApiOperation({
+    summary: 'Bulk insert contractors from parsed rows (HO only)',
+  })
   @ApiBody({
     schema: {
       type: 'array',
       items: { type: 'object' },
     },
   })
-  async bulkInsertContractors(@Body() contractors: unknown[]) {
+  async bulkInsertContractors(@Body('contractors') contractors: unknown[]) {
     return this.usersService.bulkCreateContractorsFromImport(
       contractors as Record<string, any>[],
     );
   }
 
   @Post('agreements/bulk')
-  @ApiOperation({ summary: 'Bulk insert agreements from imported rows' })
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.HO, UserRole.DO)
+  @ApiOperation({
+    summary: 'Bulk insert agreements from imported rows (HO only)',
+  })
   @ApiBody({
     schema: {
       type: 'array',
       items: { type: 'object' },
     },
   })
-  async bulkInsertAgreements(@Body() agreements: AgreementImport[]) {
+  async bulkInsertAgreements(
+    @Body('agreements') agreements: AgreementImport[],
+  ) {
     return this.agreementsService.bulkCreateFromImport(agreements);
   }
 
   @Post('work-items/bulk')
-  @ApiOperation({ summary: 'Bulk insert work items from imported rows' })
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.HO)
+  @ApiOperation({
+    summary: 'Bulk insert work items from imported rows (HO only)',
+  })
   @ApiBody({
     schema: {
       type: 'array',
       items: { type: 'object' },
     },
   })
-  async bulkInsertWorkItems(@Body() workItems: WorkItemImport[]) {
+  async bulkInsertWorkItems(@Body('workItems') workItems: WorkItemImport[]) {
     return this.workItemsService.bulkCreateFromImport(workItems);
   }
 }
