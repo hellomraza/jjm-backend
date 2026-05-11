@@ -23,7 +23,7 @@ export class PhotosService {
   ) {}
 
   async uploadPhoto(
-    file: Express.Multer.File,
+    file: any,
     uploadPhotoDto: UploadPhotoDto,
     employeeId: string,
   ): Promise<Photo> {

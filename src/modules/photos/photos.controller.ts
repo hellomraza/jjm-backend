@@ -105,7 +105,7 @@ export class PhotosController {
         .addMaxSizeValidator({ maxSize: 5 * 1024 * 1024 })
         .build({ fileIsRequired: true }),
     )
-    file: Express.Multer.File,
+    file: any,
     @Body() uploadPhotoDto: UploadPhotoDto,
     @Request() req: AuthenticatedRequest,
   ) {
