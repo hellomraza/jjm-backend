@@ -39,9 +39,9 @@ export class AgreementContractorResponseDto {
     description: 'District identifier for district-bound users',
     required: false,
     nullable: true,
-    example: 10,
+    example: 'CG-BAL',
   })
-  district_id?: number | null;
+  district_id?: string | null;
 
   @ApiProperty({
     description: 'Timestamp when the contractor user was created',
@@ -84,9 +84,10 @@ export class AgreementWorkItemResponseDto {
 
   @ApiProperty({
     description: 'ID of the district to which the work item belongs',
-    example: 10,
+    required: false,
+    example: 'CG-BAL',
   })
-  district_id: number;
+  district_id?: string | null;
 
   @ApiProperty({
     description: 'Type of scheme under which the work item is categorized',

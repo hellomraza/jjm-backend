@@ -14,45 +14,45 @@ import { WorkItem } from '../../work-items/entities/work-item.entity';
 @Entity('agreements')
 export class Agreement {
   @PrimaryGeneratedColumn('uuid')
-  id: string;
+  id!: string;
 
   @Index()
   @Column({ type: 'varchar', length: 100 })
-  agreementno: string; // agreementno
+  agreementno!: string; // agreementno
 
   @Column({ type: 'varchar', length: 9 })
-  agreementyear: string; //agreementyear
+  agreementyear!: string; //agreementyear
 
   @Index()
   @Column({ type: 'varchar', length: 36 })
-  contractor_id: string; //contractor_code
+  contractor_id!: string; //contractor_code
 
   @Index()
   @Column({ type: 'varchar', length: 36 })
-  work_id: string; // workcode
+  work_id!: string; // workcode
 
   // workorderno. workorderdate, sr, excel, unitag, agrid
 
   @Column({ type: 'varchar', length: 20, nullable: true })
-  workorderno: string; // workorderno
+  workorderno!: string; // workorderno
 
   @Column({ type: 'date', nullable: true })
-  workorderdate: Date; // workorderdate
+  workorderdate!: Date; // workorderdate
 
   @Column({ type: 'varchar', length: 20, nullable: true })
-  sr: string; // sr
+  sr!: string; // sr
 
   @Column({ type: 'varchar', length: 255, nullable: true })
-  excel: string; // excel
+  excel!: string; // excel
 
-  @Column({ type: 'varchar', length: 20, nullable: true })
-  unitag: string; // unitag
+  @Column({ type: 'varchar', length: 255, nullable: true })
+  unitag!: string; // unitag
 
   @Column({ type: 'varchar', length: 36, nullable: true })
-  agrid: string; // agrid
+  agrid!: string; // agrid
 
-  @Column({ type: 'int', nullable: true })
-  division_code: number; //division_code
+  @Column({ type: 'varchar', length: 100, nullable: true })
+  division_code!: string; //division_code
 
   @Column({ type: 'decimal', precision: 10, scale: 7, nullable: true })
   latitude?: number;
@@ -62,15 +62,15 @@ export class Agreement {
 
   @ManyToOne(() => User, { onDelete: 'RESTRICT', onUpdate: 'CASCADE' })
   @JoinColumn({ name: 'contractor_id', referencedColumnName: 'id' })
-  contractor: User;
+  contractor!: User;
 
   @ManyToOne(() => WorkItem, { onDelete: 'RESTRICT', onUpdate: 'CASCADE' })
   @JoinColumn({ name: 'work_id', referencedColumnName: 'id' })
-  work: WorkItem;
+  work!: WorkItem;
 
   @CreateDateColumn()
-  created_at: Date;
+  created_at!: Date;
 
   @UpdateDateColumn()
-  updated_at: Date;
+  updated_at!: Date;
 }

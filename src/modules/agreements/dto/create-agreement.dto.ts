@@ -30,9 +30,9 @@ export class CreateAgreementDto {
 
   @ApiProperty({
     description: 'Division code',
-    example: 1,
+    example: 'DIST001',
   })
-  division_code: number;
+  division_code: string;
 
   @ApiProperty({
     description: 'Work order number',
