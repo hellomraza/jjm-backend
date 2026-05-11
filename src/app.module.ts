@@ -25,8 +25,10 @@ import { WorkItemsModule } from './modules/work-items/work-items.module';
         type: 'mysql',
         autoLoadEntities: true,
         synchronize: true,
-        url: 'mysql://2FqoYp8JvbCHXrd.root:6OMFP6smhcS69NHy@gateway01.ap-southeast-1.prod.alicloud.tidbcloud.com:4000/test?ssl={"rejectUnauthorized":true}',
+        url: configService.get<string>('DB_URL'),
         entities: [__dirname + '/../**/*.entity{.ts,.js}'],
+        migrations: [__dirname + '/../migrations/*{.ts,.js}'],
+        migrationsRun: true,
         ssl: {
           rejectUnauthorized: true,
         },
