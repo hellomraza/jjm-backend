@@ -17,7 +17,7 @@ type SeedUser = {
   email: string;
   name: string;
   role: UserRole;
-  district_id?: number;
+  district_id?: string;
 };
 
 type SeedComponent = {
@@ -91,6 +91,25 @@ const STATIC_COMPONENTS: SeedComponent[] = [
 
 const buildSeedNumericCode = (offset: number): string => {
   return `${Date.now()}${offset.toString().padStart(4, '0')}`.slice(-12);
+};
+
+const usedLocationCodes = new Set<string>();
+
+const generateLocationCode = (): string => {
+  for (let attempt = 0; attempt < 100; attempt++) {
+    const firstDigit = Math.random() < 0.5 ? '5' : '6';
+    const suffix = Math.floor(Math.random() * 1000)
+      .toString()
+      .padStart(3, '0');
+    const code = `${firstDigit}${suffix}`;
+
+    if (!usedLocationCodes.has(code)) {
+      usedLocationCodes.add(code);
+      return code;
+    }
+  }
+
+  throw new Error('Unable to generate unique location code');
 };
 
 export async function seedMockData() {
@@ -229,9 +248,9 @@ export async function seedMockData() {
       hasUserCodeColumn = true;
     }
 
-    // Normalize legacy schemas where users.district_id might still be varchar
+    // Normalize legacy schemas where users.district_id might still be int
     await queryRunner.query(
-      'ALTER TABLE users MODIFY COLUMN district_id int NULL',
+      'ALTER TABLE users MODIFY COLUMN district_id varchar(100) NULL',
     );
 
     await queryRunner.release();
@@ -241,63 +260,19 @@ export async function seedMockData() {
 
     const seedUsers: SeedUser[] = [
       {
-        email: 'rajesh.ho@gmail.com',
-        name: 'Rajesh Kumar Sharma',
+        email: 'ho@gmail.com',
+        name: 'Head Office',
         role: UserRole.HO,
       },
       {
-        email: 'vikram.do@gmail.com',
-        name: 'Vikram Singh Patel',
+        email: 'do1@gmail.com',
+        name: 'District Officer 1',
         role: UserRole.DO,
-        district_id: 10,
       },
       {
-        email: 'arjun.contractor@gmail.com',
-        name: 'Arjun Verma',
-        role: UserRole.CO,
-        district_id: 10,
-      },
-      {
-        email: 'amit.contractor@gmail.com',
-        name: 'Amit Kumar Mishra',
-        role: UserRole.CO,
-        district_id: 11,
-      },
-      {
-        email: 'deepak.contractor@gmail.com',
-        name: 'Deepak Singh',
-        role: UserRole.CO,
-        district_id: 12,
-      },
-      {
-        email: 'suresh.contractor@gmail.com',
-        name: 'Suresh Pandey',
-        role: UserRole.CO,
-        district_id: 13,
-      },
-      {
-        email: 'pradeep.em@gmail.com',
-        name: 'Pradeep Gupta',
-        role: UserRole.EM,
-        district_id: 10,
-      },
-      {
-        email: 'anil.em@gmail.com',
-        name: 'Anil Kumar Yadav',
-        role: UserRole.EM,
-        district_id: 11,
-      },
-      {
-        email: 'naveen.em@gmail.com',
-        name: 'Naveen Singh Chauhan',
-        role: UserRole.EM,
-        district_id: 12,
-      },
-      {
-        email: 'sanjay.em@gmail.com',
-        name: 'Sanjay Nath',
-        role: UserRole.EM,
-        district_id: 13,
+        email: 'do2@gmail.com',
+        name: 'District Officer 2',
+        role: UserRole.DO,
       },
     ];
 
@@ -325,29 +300,11 @@ export async function seedMockData() {
       allMockUsers.map((user) => [user.email, user]),
     );
 
-    const ho = usersByEmail.get('rajesh.ho@gmail.com');
-    const do_officer = usersByEmail.get('vikram.do@gmail.com');
-    const contractor1 = usersByEmail.get('arjun.contractor@gmail.com');
-    const contractor2 = usersByEmail.get('amit.contractor@gmail.com');
-    const contractor3 = usersByEmail.get('deepak.contractor@gmail.com');
-    const contractor4 = usersByEmail.get('suresh.contractor@gmail.com');
-    const employee1 = usersByEmail.get('pradeep.em@gmail.com');
-    const employee2 = usersByEmail.get('anil.em@gmail.com');
-    const employee3 = usersByEmail.get('naveen.em@gmail.com');
-    const employee4 = usersByEmail.get('sanjay.em@gmail.com');
+    const ho = usersByEmail.get('ho@gmail.com');
+    const do1 = usersByEmail.get('do1@gmail.com');
+    const do2 = usersByEmail.get('do2@gmail.com');
 
-    if (
-      !ho ||
-      !do_officer ||
-      !contractor1 ||
-      !contractor2 ||
-      !contractor3 ||
-      !contractor4 ||
-      !employee1 ||
-      !employee2 ||
-      !employee3 ||
-      !employee4
-    ) {
+    if (!ho || !do1 || !do2) {
       throw new Error('Failed to resolve seeded users');
     }
 
@@ -372,51 +329,72 @@ export async function seedMockData() {
       }
 
       const chhatisgarhDistricts = [
-        { districtname: 'Balod', district_code: 'CG-BAL' },
-        { districtname: 'Balodabazar-Bhatapara', district_code: 'CG-BABA' },
-        { districtname: 'Balrampur-Ramanujganj', district_code: 'CG-BARA' },
-        { districtname: 'Bastar', district_code: 'CG-BST' },
-        { districtname: 'Bemetara', district_code: 'CG-BEM' },
-        { districtname: 'Bijapur', district_code: 'CG-BJP' },
-        { districtname: 'Bilaspur', district_code: 'CG-BLS' },
+        { districtname: 'Balod', district_code: generateLocationCode() },
+        {
+          districtname: 'Balodabazar-Bhatapara',
+          district_code: generateLocationCode(),
+        },
+        {
+          districtname: 'Balrampur-Ramanujganj',
+          district_code: generateLocationCode(),
+        },
+        { districtname: 'Bastar', district_code: generateLocationCode() },
+        { districtname: 'Bemetara', district_code: generateLocationCode() },
+        { districtname: 'Bijapur', district_code: generateLocationCode() },
+        { districtname: 'Bilaspur', district_code: generateLocationCode() },
         {
           districtname: 'Dakshin Bastar Dantewada',
-          district_code: 'CG-DBD',
+          district_code: generateLocationCode(),
         },
-        { districtname: 'Dhamtari', district_code: 'CG-DHT' },
-        { districtname: 'Durg', district_code: 'CG-DRG' },
-        { districtname: 'Gariyaband', district_code: 'CG-GRB' },
-        { districtname: 'Gaurela-Pendra-Marwahi', district_code: 'CG-GPM' },
-        { districtname: 'Janjgir-Champa', district_code: 'CG-JJC' },
-        { districtname: 'Jashpur', district_code: 'CG-JSP' },
-        { districtname: 'Kabeerdham', district_code: 'CG-KBD' },
+        { districtname: 'Dhamtari', district_code: generateLocationCode() },
+        { districtname: 'Durg', district_code: generateLocationCode() },
+        { districtname: 'Gariyaband', district_code: generateLocationCode() },
+        {
+          districtname: 'Gaurela-Pendra-Marwahi',
+          district_code: generateLocationCode(),
+        },
+        {
+          districtname: 'Janjgir-Champa',
+          district_code: generateLocationCode(),
+        },
+        { districtname: 'Jashpur', district_code: generateLocationCode() },
+        { districtname: 'Kabeerdham', district_code: generateLocationCode() },
         {
           districtname: 'Khairagarh-Chhuikhadan-Gandai',
-          district_code: 'CG-KCG',
+          district_code: generateLocationCode(),
         },
-        { districtname: 'Kondagaon', district_code: 'CG-KDG' },
-        { districtname: 'Korba', district_code: 'CG-KRB' },
-        { districtname: 'Korea', district_code: 'CG-KOR' },
-        { districtname: 'Mahasamund', district_code: 'CG-MHM' },
+        { districtname: 'Kondagaon', district_code: generateLocationCode() },
+        { districtname: 'Korba', district_code: generateLocationCode() },
+        { districtname: 'Korea', district_code: generateLocationCode() },
+        { districtname: 'Mahasamund', district_code: generateLocationCode() },
         {
           districtname: 'Manendragarh-Chirmiri-Bharatpur(M C B)',
-          district_code: 'CG-MCB',
+          district_code: generateLocationCode(),
         },
         {
           districtname: 'Mohla-Manpur-Ambagarh Chouki',
-          district_code: 'CG-MMAC',
+          district_code: generateLocationCode(),
         },
-        { districtname: 'Mungeli', district_code: 'CG-MNG' },
-        { districtname: 'Narayanpur', district_code: 'CG-NRP' },
-        { districtname: 'Raigarh', district_code: 'CG-RGH' },
-        { districtname: 'Raipur', district_code: 'CG-RPR' },
-        { districtname: 'Rajnandgaon', district_code: 'CG-RNG' },
-        { districtname: 'Sakti', district_code: 'CG-SKT' },
-        { districtname: 'Sarangarh-Bilaigarh', district_code: 'CG-SBG' },
-        { districtname: 'Sukma', district_code: 'CG-SKM' },
-        { districtname: 'Surajpur', district_code: 'CG-SRP' },
-        { districtname: 'Surguja', district_code: 'CG-SRG' },
-        { districtname: 'Uttar Bastar Kanker', district_code: 'CG-UBK' },
+        { districtname: 'Mungeli', district_code: generateLocationCode() },
+        { districtname: 'Narayanpur', district_code: generateLocationCode() },
+        { districtname: 'Raigarh', district_code: generateLocationCode() },
+        { districtname: 'Raipur', district_code: generateLocationCode() },
+        {
+          districtname: 'Rajnandgaon',
+          district_code: generateLocationCode(),
+        },
+        { districtname: 'Sakti', district_code: generateLocationCode() },
+        {
+          districtname: 'Sarangarh-Bilaigarh',
+          district_code: generateLocationCode(),
+        },
+        { districtname: 'Sukma', district_code: generateLocationCode() },
+        { districtname: 'Surajpur', district_code: generateLocationCode() },
+        { districtname: 'Surguja', district_code: generateLocationCode() },
+        {
+          districtname: 'Uttar Bastar Kanker',
+          district_code: generateLocationCode(),
+        },
       ];
 
       const existingCodes = new Set(
@@ -458,61 +436,65 @@ export async function seedMockData() {
         // Raipur blocks
         {
           blockname: 'Abhanpur',
-          block_code: 'BLK-RPR-001',
+          block_code: generateLocationCode(),
           districtname: 'Raipur',
         },
         {
           blockname: 'Arang',
-          block_code: 'BLK-RPR-002',
+          block_code: generateLocationCode(),
           districtname: 'Raipur',
         },
         {
           blockname: 'Asind',
-          block_code: 'BLK-RPR-003',
+          block_code: generateLocationCode(),
           districtname: 'Raipur',
         },
         // Durg blocks
-        { blockname: 'Durg', block_code: 'BLK-DRG-001', districtname: 'Durg' },
+        {
+          blockname: 'Durg',
+          block_code: generateLocationCode(),
+          districtname: 'Durg',
+        },
         {
           blockname: 'Dhamdha',
-          block_code: 'BLK-DRG-002',
+          block_code: generateLocationCode(),
           districtname: 'Durg',
         },
         {
           blockname: 'Bhilai',
-          block_code: 'BLK-DRG-003',
+          block_code: generateLocationCode(),
           districtname: 'Durg',
         },
         // Bilaspur blocks
         {
           blockname: 'Bilaspur',
-          block_code: 'BLK-BLS-001',
+          block_code: generateLocationCode(),
           districtname: 'Bilaspur',
         },
         {
           blockname: 'Takhatpur',
-          block_code: 'BLK-BLS-002',
+          block_code: generateLocationCode(),
           districtname: 'Bilaspur',
         },
         {
           blockname: 'Gaurela',
-          block_code: 'BLK-BLS-003',
+          block_code: generateLocationCode(),
           districtname: 'Bilaspur',
         },
         // Korba blocks
         {
           blockname: 'Korba',
-          block_code: 'BLK-KRB-001',
+          block_code: generateLocationCode(),
           districtname: 'Korba',
         },
         {
           blockname: 'Katghora',
-          block_code: 'BLK-KRB-002',
+          block_code: generateLocationCode(),
           districtname: 'Korba',
         },
         {
           blockname: 'Karmgarh',
-          block_code: 'BLK-KRB-003',
+          block_code: generateLocationCode(),
           districtname: 'Korba',
         },
       ];
@@ -553,18 +535,33 @@ export async function seedMockData() {
       }
 
       const realPanchayats = [
-        { panchayatname: 'Abhanpur', panchayat_code: 'PAN-001' },
-        { panchayatname: 'Arang', panchayat_code: 'PAN-002' },
-        { panchayatname: 'Asind', panchayat_code: 'PAN-003' },
-        { panchayatname: 'Durg', panchayat_code: 'PAN-004' },
-        { panchayatname: 'Dhamdha', panchayat_code: 'PAN-005' },
-        { panchayatname: 'Bhilai', panchayat_code: 'PAN-006' },
-        { panchayatname: 'Bilaspur', panchayat_code: 'PAN-007' },
-        { panchayatname: 'Takhatpur', panchayat_code: 'PAN-008' },
-        { panchayatname: 'Katghora', panchayat_code: 'PAN-009' },
-        { panchayatname: 'Raigarh', panchayat_code: 'PAN-010' },
-        { panchayatname: 'Manendragarh', panchayat_code: 'PAN-011' },
-        { panchayatname: 'Surguja', panchayat_code: 'PAN-012' },
+        {
+          panchayatname: 'Abhanpur',
+          panchayat_code: generateLocationCode(),
+        },
+        { panchayatname: 'Arang', panchayat_code: generateLocationCode() },
+        { panchayatname: 'Asind', panchayat_code: generateLocationCode() },
+        { panchayatname: 'Durg', panchayat_code: generateLocationCode() },
+        { panchayatname: 'Dhamdha', panchayat_code: generateLocationCode() },
+        { panchayatname: 'Bhilai', panchayat_code: generateLocationCode() },
+        {
+          panchayatname: 'Bilaspur',
+          panchayat_code: generateLocationCode(),
+        },
+        {
+          panchayatname: 'Takhatpur',
+          panchayat_code: generateLocationCode(),
+        },
+        {
+          panchayatname: 'Katghora',
+          panchayat_code: generateLocationCode(),
+        },
+        { panchayatname: 'Raigarh', panchayat_code: generateLocationCode() },
+        {
+          panchayatname: 'Manendragarh',
+          panchayat_code: generateLocationCode(),
+        },
+        { panchayatname: 'Surguja', panchayat_code: generateLocationCode() },
       ];
 
       seededPanchayats = await panchayatRepo.save(
@@ -593,58 +590,62 @@ export async function seedMockData() {
       const realVillages = [
         {
           villagename: 'Abhanpur',
-          village_code: 'VIL-001',
+          village_code: generateLocationCode(),
           districtname: 'Raipur',
         },
         {
           villagename: 'Arang',
-          village_code: 'VIL-002',
+          village_code: generateLocationCode(),
           districtname: 'Raipur',
         },
         {
           villagename: 'Asind',
-          village_code: 'VIL-003',
+          village_code: generateLocationCode(),
           districtname: 'Raipur',
         },
         {
           villagename: 'Khamharia',
-          village_code: 'VIL-004',
+          village_code: generateLocationCode(),
           districtname: 'Raipur',
         },
         {
           villagename: 'Durg City',
-          village_code: 'VIL-005',
+          village_code: generateLocationCode(),
           districtname: 'Durg',
         },
         {
           villagename: 'Dhamdha',
-          village_code: 'VIL-006',
+          village_code: generateLocationCode(),
           districtname: 'Durg',
         },
         {
           villagename: 'Bhilai',
-          village_code: 'VIL-007',
+          village_code: generateLocationCode(),
           districtname: 'Durg',
         },
-        { villagename: 'Jamul', village_code: 'VIL-008', districtname: 'Durg' },
+        {
+          villagename: 'Jamul',
+          village_code: generateLocationCode(),
+          districtname: 'Durg',
+        },
         {
           villagename: 'Bilaspur City',
-          village_code: 'VIL-009',
+          village_code: generateLocationCode(),
           districtname: 'Bilaspur',
         },
         {
           villagename: 'Takhatpur',
-          village_code: 'VIL-010',
+          village_code: generateLocationCode(),
           districtname: 'Bilaspur',
         },
         {
           villagename: 'Korba City',
-          village_code: 'VIL-011',
+          village_code: generateLocationCode(),
           districtname: 'Korba',
         },
         {
           villagename: 'Katghora',
-          village_code: 'VIL-012',
+          village_code: generateLocationCode(),
           districtname: 'Korba',
         },
       ];
@@ -689,18 +690,45 @@ export async function seedMockData() {
       }
 
       const realSubdivisions = [
-        { subdivisionname: 'Raipur Sadar', subdivision_code: 'SUB-001' },
-        { subdivisionname: 'Durg', subdivision_code: 'SUB-002' },
-        { subdivisionname: 'Bilaspur', subdivision_code: 'SUB-003' },
-        { subdivisionname: 'Korba', subdivision_code: 'SUB-004' },
-        { subdivisionname: 'Raigarh', subdivision_code: 'SUB-005' },
-        { subdivisionname: 'Janjgir-Champa', subdivision_code: 'SUB-006' },
-        { subdivisionname: 'Jashpur', subdivision_code: 'SUB-007' },
-        { subdivisionname: 'Surguja', subdivision_code: 'SUB-008' },
-        { subdivisionname: 'Bastar', subdivision_code: 'SUB-009' },
-        { subdivisionname: 'Rajnandgaon', subdivision_code: 'SUB-010' },
-        { subdivisionname: 'Dhamtari', subdivision_code: 'SUB-011' },
-        { subdivisionname: 'Mahasamund', subdivision_code: 'SUB-012' },
+        {
+          subdivisionname: 'Raipur Sadar',
+          subdivision_code: generateLocationCode(),
+        },
+        { subdivisionname: 'Durg', subdivision_code: generateLocationCode() },
+        {
+          subdivisionname: 'Bilaspur',
+          subdivision_code: generateLocationCode(),
+        },
+        { subdivisionname: 'Korba', subdivision_code: generateLocationCode() },
+        {
+          subdivisionname: 'Raigarh',
+          subdivision_code: generateLocationCode(),
+        },
+        {
+          subdivisionname: 'Janjgir-Champa',
+          subdivision_code: generateLocationCode(),
+        },
+        {
+          subdivisionname: 'Jashpur',
+          subdivision_code: generateLocationCode(),
+        },
+        {
+          subdivisionname: 'Surguja',
+          subdivision_code: generateLocationCode(),
+        },
+        { subdivisionname: 'Bastar', subdivision_code: generateLocationCode() },
+        {
+          subdivisionname: 'Rajnandgaon',
+          subdivision_code: generateLocationCode(),
+        },
+        {
+          subdivisionname: 'Dhamtari',
+          subdivision_code: generateLocationCode(),
+        },
+        {
+          subdivisionname: 'Mahasamund',
+          subdivision_code: generateLocationCode(),
+        },
       ];
 
       seededSubdivisions = await subdivisionRepo.save(
@@ -726,18 +754,36 @@ export async function seedMockData() {
       }
 
       const realCircles = [
-        { circlename: 'Raipur Circle', circle_code: 'CIR-001' },
-        { circlename: 'Durg Circle', circle_code: 'CIR-002' },
-        { circlename: 'Bilaspur Circle', circle_code: 'CIR-003' },
-        { circlename: 'Korba Circle', circle_code: 'CIR-004' },
-        { circlename: 'Raigarh Circle', circle_code: 'CIR-005' },
-        { circlename: 'Janjgir Circle', circle_code: 'CIR-006' },
-        { circlename: 'Jashpur Circle', circle_code: 'CIR-007' },
-        { circlename: 'Surguja Circle', circle_code: 'CIR-008' },
-        { circlename: 'Bastar Circle', circle_code: 'CIR-009' },
-        { circlename: 'Rajnandgaon Circle', circle_code: 'CIR-010' },
-        { circlename: 'Dhamtari Circle', circle_code: 'CIR-011' },
-        { circlename: 'Mahasamund Circle', circle_code: 'CIR-012' },
+        {
+          circlename: 'Raipur Circle',
+          circle_code: generateLocationCode(),
+        },
+        { circlename: 'Durg Circle', circle_code: generateLocationCode() },
+        {
+          circlename: 'Bilaspur Circle',
+          circle_code: generateLocationCode(),
+        },
+        { circlename: 'Korba Circle', circle_code: generateLocationCode() },
+        {
+          circlename: 'Raigarh Circle',
+          circle_code: generateLocationCode(),
+        },
+        {
+          circlename: 'Janjgir Circle',
+          circle_code: generateLocationCode(),
+        },
+        { circlename: 'Jashpur Circle', circle_code: generateLocationCode() },
+        { circlename: 'Surguja Circle', circle_code: generateLocationCode() },
+        { circlename: 'Bastar Circle', circle_code: generateLocationCode() },
+        {
+          circlename: 'Rajnandgaon Circle',
+          circle_code: generateLocationCode(),
+        },
+        { circlename: 'Dhamtari Circle', circle_code: generateLocationCode() },
+        {
+          circlename: 'Mahasamund Circle',
+          circle_code: generateLocationCode(),
+        },
       ];
 
       seededCircles = await circleRepo.save(
@@ -763,18 +809,18 @@ export async function seedMockData() {
       }
 
       const realZones = [
-        { zonename: 'Raipur Zone', zone_code: 'ZON-001' },
-        { zonename: 'Durg Zone', zone_code: 'ZON-002' },
-        { zonename: 'Bilaspur Zone', zone_code: 'ZON-003' },
-        { zonename: 'Korba Zone', zone_code: 'ZON-004' },
-        { zonename: 'Raigarh Zone', zone_code: 'ZON-005' },
-        { zonename: 'Janjgir Zone', zone_code: 'ZON-006' },
-        { zonename: 'Jashpur Zone', zone_code: 'ZON-007' },
-        { zonename: 'Surguja Zone', zone_code: 'ZON-008' },
-        { zonename: 'Bastar Zone', zone_code: 'ZON-009' },
-        { zonename: 'Rajnandgaon Zone', zone_code: 'ZON-010' },
-        { zonename: 'Dhamtari Zone', zone_code: 'ZON-011' },
-        { zonename: 'Mahasamund Zone', zone_code: 'ZON-012' },
+        { zonename: 'Raipur Zone', zone_code: generateLocationCode() },
+        { zonename: 'Durg Zone', zone_code: generateLocationCode() },
+        { zonename: 'Bilaspur Zone', zone_code: generateLocationCode() },
+        { zonename: 'Korba Zone', zone_code: generateLocationCode() },
+        { zonename: 'Raigarh Zone', zone_code: generateLocationCode() },
+        { zonename: 'Janjgir Zone', zone_code: generateLocationCode() },
+        { zonename: 'Jashpur Zone', zone_code: generateLocationCode() },
+        { zonename: 'Surguja Zone', zone_code: generateLocationCode() },
+        { zonename: 'Bastar Zone', zone_code: generateLocationCode() },
+        { zonename: 'Rajnandgaon Zone', zone_code: generateLocationCode() },
+        { zonename: 'Dhamtari Zone', zone_code: generateLocationCode() },
+        { zonename: 'Mahasamund Zone', zone_code: generateLocationCode() },
       ];
 
       seededZones = await zoneRepo.save(
@@ -786,6 +832,16 @@ export async function seedMockData() {
         ),
       );
     }
+
+    if (seededDistricts.length < 2) {
+      throw new Error('At least two districts are required for DO mock users');
+    }
+
+    do1.district_id = seededDistricts[0].district_code;
+    do1.district_name = seededDistricts[0].districtname;
+    do2.district_id = seededDistricts[1].district_code;
+    do2.district_name = seededDistricts[1].districtname;
+    await userRepo.save([do1, do2]);
 
     // Ensure all 12 master components exist with correct order_number/unit
     // (repair existing bad data as well, e.g. all order_number = 0)
