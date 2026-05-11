@@ -1,3 +1,4 @@
+import { WorkItemComponent } from 'src/modules/components/entities/work-item-component.entity';
 import {
   Column,
   CreateDateColumn,
@@ -8,7 +9,6 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
-import { Component } from '../../components/entities/component.entity';
 import { User } from '../../users/entities/user.entity';
 import { WorkItem } from '../../work-items/entities/work-item.entity';
 import { Photo } from './photo.entity';
@@ -55,9 +55,12 @@ export class PhotoStatus {
   @Column()
   component_id: string;
 
-  @ManyToOne(() => Component, { onDelete: 'CASCADE', onUpdate: 'CASCADE' })
+  @ManyToOne(() => WorkItemComponent, {
+    onDelete: 'CASCADE',
+    onUpdate: 'CASCADE',
+  })
   @JoinColumn({ name: 'component_id' })
-  component: Component;
+  workItemComponent: WorkItemComponent;
 
   @Index()
   @Column({
