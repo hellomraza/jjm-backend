@@ -295,75 +295,127 @@ export class AgreementsService {
     return reloadedAgreement;
   }
 
-  async bulkCreateFromImport(
-    agreementImports: AgreementImport[],
-  ): Promise<Agreement[]> {
-    return this.agreementsRepository.manager.transaction(async (manager) => {
-      const createdAgreements: Agreement[] = [];
+  async bulkCreateFromImport(agreementImports: AgreementImport[]): Promise<{
+    inserted: Agreement[];
+    errors: { index: number; reason: string; item: AgreementImport }[];
+  }> {
+    const inserted: Agreement[] = [];
+    const errors: { index: number; reason: string; item: AgreementImport }[] =
+      [];
+    const seenWorkOrders = new Set<string>();
 
-      for (const agreementImport of agreementImports) {
-        const mappedAgreement = this.mapImportedAgreement(agreementImport);
-        const contractorCode = mappedAgreement.contractor_id as string | null;
-        const workCode = mappedAgreement.work_id as string | null;
+    for (let i = 0; i < agreementImports.length; i++) {
+      const agreementImport = agreementImports[i];
 
-        if (!contractorCode) {
-          throw new UnprocessableEntityException(
-            'contractor_code is required for agreement import',
+      try {
+        const createdAgreement =
+          await this.agreementsRepository.manager.transaction(
+            async (manager) => {
+              const mappedAgreement =
+                this.mapImportedAgreement(agreementImport);
+              const contractorCode = mappedAgreement.contractor_id as
+                | string
+                | null;
+              const workCode = mappedAgreement.work_id as string | null;
+
+              const workOrderValue = mappedAgreement.workorderno;
+              const normalizedWorkOrder =
+                workOrderValue === null || workOrderValue === undefined
+                  ? null
+                  : String(workOrderValue).trim() || null;
+
+              if (!contractorCode) {
+                throw new UnprocessableEntityException(
+                  'contractor_code is required for agreement import',
+                );
+              }
+
+              if (!workCode) {
+                throw new UnprocessableEntityException(
+                  'workcode is required for agreement import',
+                );
+              }
+
+              if (normalizedWorkOrder) {
+                const workOrderKey = normalizedWorkOrder.toLowerCase();
+                if (seenWorkOrders.has(workOrderKey)) {
+                  throw new UnprocessableEntityException(
+                    `Agreement with work order #${normalizedWorkOrder} appears multiple times in import payload`,
+                  );
+                }
+
+                const existingAgreement = await manager.findOne(Agreement, {
+                  where: { workorderno: normalizedWorkOrder },
+                  select: ['id'],
+                });
+
+                if (existingAgreement) {
+                  throw new UnprocessableEntityException(
+                    `Agreement with work order #${normalizedWorkOrder} already exists`,
+                  );
+                }
+              }
+
+              const contractor = await this.findOrCreateTemporaryContractor(
+                manager,
+                contractorCode,
+              );
+
+              const workItem = await this.findOrCreateTemporaryWorkItem(
+                manager,
+                workCode,
+                contractor.id,
+              );
+
+              const agreement = manager.create(Agreement, {
+                agreementno: mappedAgreement.agreementno as string,
+                agreementyear: mappedAgreement.agreementyear as string,
+                contractor_id: contractor.id,
+                work_id: workItem.id,
+                workorderno: normalizedWorkOrder,
+                workorderdate: mappedAgreement.workorderdate ?? null,
+                sr: mappedAgreement.sr ?? null,
+                excel: mappedAgreement.excel ?? null,
+                unitag: mappedAgreement.unitag ?? null,
+                agrid:
+                  mappedAgreement.agrid === null ||
+                  mappedAgreement.agrid === undefined
+                    ? null
+                    : String(mappedAgreement.agrid),
+                division_code: mappedAgreement.division_code ?? null,
+              } as Partial<Agreement>);
+
+              const savedAgreement = await manager.save(Agreement, agreement);
+              const reloadedAgreement = await manager.findOne(Agreement, {
+                where: { id: savedAgreement.id },
+                relations: this.agreementRelations,
+              });
+
+              if (!reloadedAgreement) {
+                throw new NotFoundException(
+                  `Agreement #${savedAgreement.id} not found`,
+                );
+              }
+
+              if (normalizedWorkOrder) {
+                seenWorkOrders.add(normalizedWorkOrder.toLowerCase());
+              }
+
+              return reloadedAgreement;
+            },
           );
-        }
 
-        if (!workCode) {
-          throw new UnprocessableEntityException(
-            'workcode is required for agreement import',
-          );
-        }
-
-        const contractor = await this.findOrCreateTemporaryContractor(
-          manager,
-          contractorCode,
-        );
-
-        const workItem = await this.findOrCreateTemporaryWorkItem(
-          manager,
-          workCode,
-          contractor.id,
-        );
-
-        const agreement = manager.create(Agreement, {
-          agreementno: mappedAgreement.agreementno as string,
-          agreementyear: mappedAgreement.agreementyear as string,
-          contractor_id: contractor.id,
-          work_id: workItem.id,
-          workorderno: mappedAgreement.workorderno ?? null,
-          workorderdate: mappedAgreement.workorderdate ?? null,
-          sr: mappedAgreement.sr ?? null,
-          excel: mappedAgreement.excel ?? null,
-          unitag: mappedAgreement.unitag ?? null,
-          agrid:
-            mappedAgreement.agrid === null ||
-            mappedAgreement.agrid === undefined
-              ? null
-              : String(mappedAgreement.agrid),
-          division_code: mappedAgreement.division_code ?? null,
-        } as Partial<Agreement>);
-
-        const savedAgreement = await manager.save(Agreement, agreement);
-        const reloadedAgreement = await manager.findOne(Agreement, {
-          where: { id: savedAgreement.id },
-          relations: this.agreementRelations,
+        inserted.push(createdAgreement);
+      } catch (err) {
+        errors.push({
+          index: i,
+          reason: err instanceof Error ? err.message : String(err),
+          item: agreementImport,
         });
-
-        if (!reloadedAgreement) {
-          throw new NotFoundException(
-            `Agreement #${savedAgreement.id} not found`,
-          );
-        }
-
-        createdAgreements.push(reloadedAgreement);
       }
+    }
 
-      return createdAgreements;
-    });
+    return { inserted, errors };
   }
 
   async findAll(
