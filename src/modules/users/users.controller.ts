@@ -33,6 +33,7 @@ import { CreateDODto } from './dto/create-do.dto';
 import { CreateEmployeeDto } from './dto/create-employee.dto';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateContractorDto } from './dto/update-contractor.dto';
+import { UpdateDODto } from './dto/update-do.dto';
 import { UpdateEmployeeDto } from './dto/update-employee.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { UserResponseDto } from './dto/user-response.dto';
@@ -174,6 +175,23 @@ export class UsersController {
   @ApiConflictResponse({ description: 'User with email already exists' })
   createDO(@Body() createDODto: CreateDODto) {
     return this.usersService.createDO(createDODto);
+  }
+
+  @Patch('do/:id')
+  @Roles(UserRole.HO)
+  @ApiOperation({
+    summary: 'Edit district office manager',
+    description: 'Edits an existing district office account (HO only)',
+  })
+  @ApiParam({ name: 'id', type: String, description: 'DO ID' })
+  @ApiOkResponse({
+    description: 'District office updated successfully',
+    type: UserResponseDto,
+  })
+  @ApiBadRequestResponse({ description: 'Invalid request body' })
+  @ApiNotFoundResponse({ description: 'District office not found' })
+  updateDO(@Param('id') id: string, @Body() updateDODto: UpdateDODto) {
+    return this.usersService.updateDO(id, updateDODto);
   }
 
   @Get('my-created-users')
