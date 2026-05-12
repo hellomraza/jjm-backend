@@ -2,9 +2,8 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
   IsEmail,
   IsNotEmpty,
-  IsString,
-  MinLength,
   IsOptional,
+  IsString,
   Matches,
 } from 'class-validator';
 
@@ -31,7 +30,6 @@ export class CreateContractorDto {
   })
   @IsString()
   @IsNotEmpty()
-  @MinLength(8)
   password: string;
 
   @ApiPropertyOptional({

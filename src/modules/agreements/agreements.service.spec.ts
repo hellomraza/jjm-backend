@@ -10,8 +10,8 @@ import {
   WorkItemStatus,
 } from '../work-items/entities/work-item.entity';
 import { AgreementsService } from './agreements.service';
-import { Agreement } from './entities/agreement.entity';
 import { CreateAgreementDto } from './dto/create-agreement.dto';
+import { Agreement } from './entities/agreement.entity';
 
 describe('AgreementsService', () => {
   let service: AgreementsService;
@@ -84,6 +84,10 @@ describe('AgreementsService', () => {
 
       if (entity === WorkItem) {
         expect(options.where.work_code).toBe('WORK001');
+        return null;
+      }
+
+      if (entity === Agreement && options?.select) {
         return null;
       }
 
@@ -208,6 +212,10 @@ describe('AgreementsService', () => {
       if (entity === WorkItem) {
         expect(options.where.work_code).toBe('WORK001');
         return existingWorkItem;
+      }
+
+      if (entity === Agreement && options?.select) {
+        return null;
       }
 
       if (entity === Agreement) {

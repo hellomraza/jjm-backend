@@ -14,6 +14,7 @@ import { CreateContractorDto } from './dto/create-contractor.dto';
 import { CreateDODto } from './dto/create-do.dto';
 import { CreateEmployeeDto } from './dto/create-employee.dto';
 import { CreateUserDto } from './dto/create-user.dto';
+import { UpdateDODto } from './dto/update-do.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { ContractorContract } from './entities/contractor-contract.entity';
 import { EmployeeContract } from './entities/employee-contract.entity';
@@ -432,7 +433,7 @@ export class UsersService {
   }
 
   async createDO(createDODto: CreateDODto): Promise<Omit<User, 'password'>> {
-    const { email, password, name, district_id } = createDODto;
+    const { email, password, name, district_id, mobile } = createDODto;
 
     // Check if user already exists
     const existingUser = await this.userRepository.findOne({
@@ -440,6 +441,18 @@ export class UsersService {
     });
     if (existingUser) {
       throw new ConflictException(`User with email ${email} already exists`);
+    }
+
+    // Check if another DO already exists with the same district_id
+    if (district_id) {
+      const existingDO = await this.userRepository.findOne({
+        where: { role: UserRole.DO, district_id },
+      });
+      if (existingDO) {
+        throw new ConflictException(
+          `Another district office manager already exists for this district`,
+        );
+      }
     }
 
     // Hash password
@@ -453,6 +466,7 @@ export class UsersService {
       name,
       role: UserRole.DO,
       district_id,
+      mobile,
     };
     const created = this.userRepository.create(doObject);
     const savedDO = await this.userRepository.save(created);
@@ -571,9 +585,62 @@ export class UsersService {
         );
       }
     }
-
     // Update user
     Object.assign(user, updateUserDto);
+    const updatedUser = await this.userRepository.save(user);
+
+    return this.stripPassword(updatedUser);
+  }
+
+  async updateDO(
+    id: string,
+    updateDODto: UpdateDODto,
+  ): Promise<Omit<User, 'password'>> {
+    const user = await this.userRepository.findOne({ where: { id } });
+    if (!user) {
+      throw new NotFoundException(`User #${id} not found`);
+    }
+
+    if (user.role !== UserRole.DO) {
+      throw new BadRequestException(
+        `User #${id} is not a district office manager`,
+      );
+    }
+
+    // If password is being updated, hash it
+    if (updateDODto.password) {
+      updateDODto.password = await bcrypt.hash(updateDODto.password, 10);
+    }
+
+    // Check if email already exists (if email is being updated)
+    if (updateDODto.email && updateDODto.email !== user.email) {
+      const existingUser = await this.userRepository.findOne({
+        where: { email: updateDODto.email },
+      });
+      if (existingUser) {
+        throw new ConflictException(
+          `User with email ${updateDODto.email} already exists`,
+        );
+      }
+    }
+
+    // Check if district_id is being updated
+    if (
+      updateDODto.district_id &&
+      updateDODto.district_id !== user.district_id
+    ) {
+      const existingDO = await this.userRepository.findOne({
+        where: { role: UserRole.DO, district_id: updateDODto.district_id },
+      });
+      if (existingDO) {
+        throw new ConflictException(
+          `Another district office manager already exists for district ${updateDODto.district_id}`,
+        );
+      }
+    }
+
+    // Update user
+    Object.assign(user, updateDODto);
     const updatedUser = await this.userRepository.save(user);
 
     return this.stripPassword(updatedUser);
@@ -639,6 +706,7 @@ export class UsersService {
   async getAllDOs(): Promise<Omit<User, 'password'>[]> {
     const dos = await this.userRepository.find({
       where: { role: UserRole.DO },
+      relations: ['district'],
       order: { created_at: 'DESC' },
     });
 

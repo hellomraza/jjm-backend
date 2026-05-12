@@ -530,7 +530,7 @@ export class ImportService {
       const agreement: AgreementImport = {
         agrid: this.normalizeNumber(row[0]),
         agreementno: this.normalizeString(row[1]),
-        agreementyear: this.normalizeString(row[2]),
+        agreementyear: this.normalizeString(row[3]),
         division_code: this.normalizeString(row[4]),
         contractor_code: this.normalizeString(row[5]),
         workcode: this.normalizeString(row[6]),
