@@ -279,7 +279,9 @@ export class PhotoStatusService {
         workItemComponent: true,
         workItem: true,
         selectedByUser: true,
-        approvedByUser: true,
+        approvedByUser: {
+          district: true,
+        },
         rejectedByUser: true,
       },
       skip: (page - 1) * limit,
