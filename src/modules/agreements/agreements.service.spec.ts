@@ -1,5 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-assignment */
 import {
+  ConflictException,
+  ForbiddenException,
   NotFoundException,
   UnprocessableEntityException,
 } from '@nestjs/common';
@@ -10,7 +12,10 @@ import {
   WorkItemStatus,
 } from '../work-items/entities/work-item.entity';
 import { AgreementsService } from './agreements.service';
+import { AttachAgreementFileDto } from './dto/attach-agreement-file.dto';
 import { CreateAgreementDto } from './dto/create-agreement.dto';
+import { AgreementFile } from './entities/agreement-file.entity';
+import { AgreementFileMap } from './entities/agreement-file-map.entity';
 import { Agreement } from './entities/agreement.entity';
 
 describe('AgreementsService', () => {
@@ -116,7 +121,7 @@ describe('AgreementsService', () => {
       return { ...payload, id: 'agreement-id' };
     });
 
-    await service.bulkCreateFromImport([
+    const result = await service.bulkCreateFromImport([
       {
         agrid: null,
         agreementno: 'AGR001',
@@ -132,6 +137,9 @@ describe('AgreementsService', () => {
         sr: null,
       },
     ]);
+
+    expect(result.inserted).toHaveLength(1);
+    expect(result.errors).toHaveLength(0);
 
     expect(manager.save).toHaveBeenCalledWith(
       User,
@@ -243,7 +251,7 @@ describe('AgreementsService', () => {
       return { ...payload, id: 'agreement-id' };
     });
 
-    await service.bulkCreateFromImport([
+    const result = await service.bulkCreateFromImport([
       {
         agrid: null,
         agreementno: 'AGR001',
@@ -259,6 +267,9 @@ describe('AgreementsService', () => {
         sr: null,
       },
     ]);
+
+    expect(result.inserted).toHaveLength(1);
+    expect(result.errors).toHaveLength(0);
 
     expect(manager.save).toHaveBeenCalledWith(
       User,
@@ -287,5 +298,144 @@ describe('AgreementsService', () => {
         status: WorkItemStatus.PENDING,
       }),
     );
+  });
+
+  it('attachFileToAgreement attaches a pdf file to an agreement', async () => {
+    const agreement = {
+      id: 'agreement-id',
+      agreementno: 'AGR001',
+      agreementyear: '2025-2026',
+      contractor_id: 'temp-contractor-id',
+      work_id: 'temp-work-id',
+      created_at: new Date(),
+      updated_at: new Date(),
+      agreementFileMaps: [],
+    } as Agreement;
+
+    const manager = {
+      findOne: jest.fn(),
+      create: jest.fn((_entity, payload) => payload),
+      save: jest.fn(),
+    };
+
+    (agreementsRepository as any).manager = {
+      transaction: jest.fn((callback) => callback(manager)),
+    };
+
+    manager.findOne.mockImplementation(async (entity, options) => {
+      if (entity === Agreement) {
+        expect(options.where.id).toBe('agreement-id');
+        return agreement;
+      }
+
+      if (entity === AgreementFile) {
+        return null;
+      }
+
+      return null;
+    });
+
+    manager.save.mockImplementation(async (entity, payload) => {
+      if (entity === AgreementFile) {
+        return {
+          ...payload,
+          id: 'file-id',
+          created_at: new Date(),
+          updated_at: new Date(),
+        };
+      }
+
+      if (entity === AgreementFileMap) {
+        return {
+          ...payload,
+          id: 'map-id',
+          created_at: new Date(),
+          updated_at: new Date(),
+        };
+      }
+
+      return payload;
+    });
+
+    const result = await service.attachFileToAgreement(
+      'agreement-id',
+      {
+        fileUrl: 'https://cdn.example.com/agreements/agreement.pdf',
+        fileName: 'agreement.pdf',
+        mimeType: 'application/pdf',
+        fileSize: 1024,
+      } as AttachAgreementFileDto,
+      { userId: 'user-id', role: UserRole.HO },
+    );
+
+    expect(result.file.file_url).toBe(
+      'https://cdn.example.com/agreements/agreement.pdf',
+    );
+    expect(result.mapping.agreement_file_id).toBe('file-id');
+    expect(manager.save).toHaveBeenCalledWith(
+      AgreementFile,
+      expect.objectContaining({
+        file_url: 'https://cdn.example.com/agreements/agreement.pdf',
+        uploaded_by_user_id: 'user-id',
+        uploaded_by_role: UserRole.HO,
+      }),
+    );
+  });
+
+  it('attachFileToAgreement rejects duplicate pdf urls', async () => {
+    const manager = {
+      findOne: jest.fn(),
+      create: jest.fn((_entity, payload) => payload),
+      save: jest.fn(),
+    };
+
+    (agreementsRepository as any).manager = {
+      transaction: jest.fn((callback) => callback(manager)),
+    };
+
+    manager.findOne.mockImplementation(async (entity) => {
+      if (entity === Agreement) {
+        return {
+          id: 'agreement-id',
+          agreementno: 'AGR001',
+          agreementyear: '2025-2026',
+          contractor_id: 'temp-contractor-id',
+          work_id: 'temp-work-id',
+        } as Agreement;
+      }
+
+      if (entity === AgreementFile) {
+        return {
+          id: 'file-id',
+          file_url: 'https://cdn.example.com/agreements/agreement.pdf',
+        } as AgreementFile;
+      }
+
+      return null;
+    });
+
+    await expect(
+      service.attachFileToAgreement(
+        'agreement-id',
+        {
+          fileUrl: 'https://cdn.example.com/agreements/agreement.pdf',
+          mimeType: 'application/pdf',
+        } as AttachAgreementFileDto,
+        { userId: 'user-id', role: UserRole.HO },
+      ),
+    ).rejects.toThrow(ConflictException);
+  });
+
+  it('attachFileToAgreement rejects non-HO users', async () => {
+    await expect(
+      service.attachFileToAgreement(
+        'agreement-id',
+        {
+          fileUrl: 'https://cdn.example.com/agreements/agreement.pdf',
+          mimeType: 'application/pdf',
+        } as AttachAgreementFileDto,
+        { userId: 'user-id', role: UserRole.DO },
+      ),
+    ).rejects.toThrow(ForbiddenException);
   });
 });
