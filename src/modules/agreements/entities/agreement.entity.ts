@@ -5,11 +5,13 @@ import {
   Index,
   JoinColumn,
   ManyToOne,
+  OneToMany,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
 import { User } from '../../users/entities/user.entity';
 import { WorkItem } from '../../work-items/entities/work-item.entity';
+import { AgreementFileMap } from './agreement-file-map.entity';
 
 @Entity('agreements')
 export class Agreement {
@@ -67,6 +69,12 @@ export class Agreement {
   @ManyToOne(() => WorkItem, { onDelete: 'RESTRICT', onUpdate: 'CASCADE' })
   @JoinColumn({ name: 'work_id', referencedColumnName: 'id' })
   work!: WorkItem;
+
+  @OneToMany(
+    () => AgreementFileMap,
+    (agreementFileMap) => agreementFileMap.agreement,
+  )
+  agreementFileMaps?: AgreementFileMap[];
 
   @CreateDateColumn()
   created_at!: Date;

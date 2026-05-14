@@ -6,9 +6,19 @@ import { WorkItem } from '../work-items/entities/work-item.entity';
 import { AgreementsController } from './agreements.controller';
 import { AgreementsService } from './agreements.service';
 import { Agreement } from './entities/agreement.entity';
+import { AgreementFile } from './entities/agreement-file.entity';
+import { AgreementFileMap } from './entities/agreement-file-map.entity';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Agreement, User, WorkItem])],
+  imports: [
+    TypeOrmModule.forFeature([
+      Agreement,
+      AgreementFile,
+      AgreementFileMap,
+      User,
+      WorkItem,
+    ]),
+  ],
   controllers: [AgreementsController],
   providers: [AgreementsService, RolesGuard],
   exports: [AgreementsService],
