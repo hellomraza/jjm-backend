@@ -66,6 +66,7 @@ export const importAgreementMapping: Record<
     | 'id'
     | 'work'
     | 'contractor'
+    | 'agreementFileMaps'
     | 'latitude'
     | 'longitude'
   >,
@@ -504,9 +505,16 @@ export class ImportService {
 
     for (let i = 0; i < rows.length; i++) {
       const row = rows[i];
-      // eslint-disable-next-line @typescript-eslint/restrict-plus-operands
       const rowStr = row
-        .map((val) => String(val ?? 'unknown').toLowerCase())
+        .map((val) =>
+          val === null || val === undefined
+            ? 'unknown'
+            : typeof val === 'string' ||
+                typeof val === 'number' ||
+                typeof val === 'boolean'
+              ? String(val).toLowerCase()
+              : (JSON.stringify(val)?.toLowerCase() ?? 'unknown'),
+        )
         .join(' ');
       if (
         knownHeaders.some((header) => rowStr.includes(header.toLowerCase()))
