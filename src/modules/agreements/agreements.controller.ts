@@ -14,6 +14,7 @@ import {
   ApiBadRequestResponse,
   ApiBearerAuth,
   ApiCreatedResponse,
+  ApiConflictResponse,
   ApiForbiddenResponse,
   ApiNotFoundResponse,
   ApiOkResponse,
@@ -30,7 +31,11 @@ import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { UserRole } from '../users/entities/user.entity';
 import { AgreementsService } from './agreements.service';
-import { AgreementResponseDto } from './dto/agreement-response.dto';
+import { AttachAgreementFileDto } from './dto/attach-agreement-file.dto';
+import {
+  AgreementFileAttachmentResponseDto,
+  AgreementResponseDto,
+} from './dto/agreement-response.dto';
 import { CreateAgreementDto } from './dto/create-agreement.dto';
 import { UpdateAgreementDto } from './dto/update-agreement.dto';
 
@@ -58,8 +63,9 @@ export class AgreementsController {
   @ApiUnprocessableEntityResponse({
     description: 'contractor_id or work_id does not exist',
   })
-  create(@Body() createAgreementDto: CreateAgreementDto) {
-    return this.agreementsService.create(createAgreementDto);
+  async create(@Body() createAgreementDto: CreateAgreementDto) {
+    const agreement = await this.agreementsService.create(createAgreementDto);
+    return AgreementResponseDto.fromEntity(agreement);
   }
 
   @Get()
@@ -71,17 +77,24 @@ export class AgreementsController {
   @ApiQuery({ name: 'page', required: false, type: Number, example: 1 })
   @ApiQuery({ name: 'limit', required: false, type: Number, example: 20 })
   @ApiPaginatedResponse(AgreementResponseDto)
-  findAll(
+  async findAll(
     @Request() req: { user: { userId: string; role: UserRole } },
     @Query('page') page: number = 1,
     @Query('limit') limit: number = 20,
   ) {
-    return this.agreementsService.findAllForUser(
+    const result = await this.agreementsService.findAllForUser(
       req.user.userId,
       req.user.role,
       page,
       limit,
     );
+
+    return {
+      ...result,
+      data: result.data.map((agreement) =>
+        AgreementResponseDto.fromEntity(agreement),
+      ),
+    };
   }
 
   @Get(':id')
@@ -93,15 +106,17 @@ export class AgreementsController {
   @ApiParam({ name: 'id', type: String, description: 'Agreement ID' })
   @ApiOkResponse({ description: 'Agreement found', type: AgreementResponseDto })
   @ApiNotFoundResponse({ description: 'Agreement not found' })
-  findOne(
+  async findOne(
     @Request() req: { user: { userId: string; role: UserRole } },
     @Param('id') id: string,
   ) {
-    return this.agreementsService.findOneForUser(
+    const agreement = await this.agreementsService.findOneForUser(
       id,
       req.user.userId,
       req.user.role,
     );
+
+    return AgreementResponseDto.fromEntity(agreement);
   }
 
   @Patch(':id')
@@ -120,11 +135,49 @@ export class AgreementsController {
   @ApiUnprocessableEntityResponse({
     description: 'contractor_id or work_id does not exist',
   })
-  update(
+  async update(
     @Param('id') id: string,
     @Body() updateAgreementDto: UpdateAgreementDto,
   ) {
-    return this.agreementsService.update(id, updateAgreementDto);
+    const agreement = await this.agreementsService.update(
+      id,
+      updateAgreementDto,
+    );
+    return AgreementResponseDto.fromEntity(agreement);
+  }
+
+  @Post(':agreementId/files')
+  @Roles(UserRole.HO)
+  @ApiOperation({
+    summary: 'Attach a PDF file to an agreement',
+    description: 'Stores PDF file metadata and links the file to the agreement',
+  })
+  @ApiParam({ name: 'agreementId', type: String, description: 'Agreement ID' })
+  @ApiCreatedResponse({
+    description: 'Agreement file attached successfully',
+    type: Object,
+  })
+  @ApiBadRequestResponse({ description: 'Invalid request body' })
+  @ApiConflictResponse({
+    description: 'Agreement file already exists or is already attached',
+  })
+  @ApiNotFoundResponse({ description: 'Agreement not found' })
+  async attachFile(
+    @Param('agreementId') agreementId: string,
+    @Body() attachAgreementFileDto: AttachAgreementFileDto,
+    @Request() req: { user: { userId: string; role: UserRole } },
+  ): Promise<AgreementFileAttachmentResponseDto> {
+    const attachment = await this.agreementsService.attachFileToAgreement(
+      agreementId,
+      attachAgreementFileDto,
+      req.user,
+    );
+
+    return {
+      agreement: AgreementResponseDto.fromEntity(attachment.agreement),
+      file: attachment.file,
+      mapping: attachment.mapping,
+    };
   }
 
   @Delete(':id')
