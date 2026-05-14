@@ -2,6 +2,8 @@ import { ApiProperty } from '@nestjs/swagger';
 import { UserRole } from '../../users/entities/user.entity';
 import { WorkItemStatus } from '../../work-items/entities/work-item.entity';
 import { Agreement } from '../entities/agreement.entity';
+import { AgreementFile } from '../entities/agreement-file.entity';
+import { AgreementFileMap } from '../entities/agreement-file-map.entity';
 
 export class AgreementContractorResponseDto {
   @ApiProperty({
@@ -139,6 +141,150 @@ export class AgreementWorkItemResponseDto {
   updated_at: Date;
 }
 
+export class AgreementFileResponseDto {
+  @ApiProperty({
+    description: 'Unique identifier for the attached file',
+    example: '550e8400-e29b-41d4-a716-446655440100',
+  })
+  id: string;
+
+  @ApiProperty({
+    description: 'Public URL of the PDF file',
+    example: 'https://cdn.example.com/agreements/file.pdf',
+  })
+  file_url: string;
+
+  @ApiProperty({
+    description: 'File name stored in the system',
+    example: 'agreement.pdf',
+  })
+  file_name: string;
+
+  @ApiProperty({
+    description: 'MIME type of the uploaded file',
+    example: 'application/pdf',
+  })
+  mime_type: string;
+
+  @ApiProperty({
+    description: 'File size in bytes',
+    required: false,
+    nullable: true,
+    example: 245678,
+  })
+  file_size?: number | null;
+
+  @ApiProperty({
+    description: 'ID of the user who uploaded the file',
+    required: false,
+    nullable: true,
+    example: 'user-123',
+  })
+  uploaded_by_user_id?: string | null;
+
+  @ApiProperty({
+    description: 'Role of the uploader captured at upload time',
+    enum: UserRole,
+    example: UserRole.HO,
+  })
+  uploaded_by_role: UserRole;
+
+  @ApiProperty({
+    description: 'Timestamp when the file was created',
+    example: '2026-03-07T10:30:00.000Z',
+  })
+  created_at: Date;
+
+  @ApiProperty({
+    description: 'Timestamp when the file was last updated',
+    example: '2026-03-08T12:15:00.000Z',
+  })
+  updated_at: Date;
+
+  static fromEntity(file: AgreementFile): AgreementFileResponseDto {
+    return {
+      id: file.id,
+      file_url: file.file_url,
+      file_name: file.file_name,
+      mime_type: file.mime_type,
+      file_size: file.file_size,
+      uploaded_by_user_id: file.uploaded_by_user_id,
+      uploaded_by_role: file.uploaded_by_role,
+      created_at: file.created_at,
+      updated_at: file.updated_at,
+    };
+  }
+}
+
+export class AgreementFileMapResponseDto {
+  @ApiProperty({
+    description: 'Unique identifier for the mapping row',
+    example: '550e8400-e29b-41d4-a716-446655440200',
+  })
+  id: string;
+
+  @ApiProperty({
+    description: 'Agreement ID linked to the file',
+    example: 'agreement-123',
+  })
+  agreement_id: string;
+
+  @ApiProperty({
+    description: 'Agreement file ID linked to the agreement',
+    example: 'file-123',
+  })
+  agreement_file_id: string;
+
+  @ApiProperty({
+    description: 'Attached agreement file details',
+    type: AgreementFileResponseDto,
+    required: false,
+    nullable: true,
+  })
+  agreementFile?: AgreementFileResponseDto;
+
+  @ApiProperty({
+    description: 'Timestamp when the mapping was created',
+    example: '2026-03-07T10:30:00.000Z',
+  })
+  created_at: Date;
+
+  static fromEntity(map: AgreementFileMap): AgreementFileMapResponseDto {
+    return {
+      id: map.id,
+      agreement_id: map.agreement_id,
+      agreement_file_id: map.agreement_file_id,
+      agreementFile: map.agreementFile
+        ? AgreementFileResponseDto.fromEntity(map.agreementFile)
+        : undefined,
+      created_at: map.created_at,
+    };
+  }
+}
+
+export class AgreementFileAttachmentResponseDto {
+  @ApiProperty({ type: () => AgreementResponseDto })
+  agreement: any;
+
+  @ApiProperty({ type: AgreementFileResponseDto })
+  file: AgreementFileResponseDto;
+
+  @ApiProperty({ type: AgreementFileMapResponseDto })
+  mapping: AgreementFileMapResponseDto;
+
+  static fromAttachment(attachment: {
+    agreement: Agreement;
+    file: AgreementFile;
+    mapping: AgreementFileMap;
+  }): AgreementFileAttachmentResponseDto {
+    return {
+      agreement: AgreementResponseDto.fromEntity(attachment.agreement),
+      file: AgreementFileResponseDto.fromEntity(attachment.file),
+      mapping: AgreementFileMapResponseDto.fromEntity(attachment.mapping),
+    };
+  }
+}
+
 export class AgreementResponseDto {
   @ApiProperty({
     description: 'Unique identifier for the agreement',
@@ -183,6 +329,13 @@ export class AgreementResponseDto {
     nullable: true,
   })
   workItem?: AgreementWorkItemResponseDto;
+
+  @ApiProperty({
+    description: 'Attached agreement files',
+    type: [AgreementFileResponseDto],
+    default: [],
+  })
+  files: AgreementFileResponseDto[];
 
   @ApiProperty({
     description: 'Timestamp when the agreement was created',
@@ -232,6 +385,10 @@ export class AgreementResponseDto {
             updated_at: agreement.work.updated_at,
           }
         : undefined,
+      files:
+        agreement.agreementFileMaps?.map((agreementFileMap) =>
+          AgreementFileResponseDto.fromEntity(agreementFileMap.agreementFile),
+        ) ?? [],
       created_at: agreement.created_at,
       updated_at: agreement.updated_at,
     };

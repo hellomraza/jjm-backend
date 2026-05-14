@@ -1,4 +1,7 @@
 import {
+  BadRequestException,
+  ConflictException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
   UnprocessableEntityException,
@@ -16,9 +19,18 @@ import {
   WorkItem,
   WorkItemStatus,
 } from '../work-items/entities/work-item.entity';
+import { AttachAgreementFileDto } from './dto/attach-agreement-file.dto';
 import { CreateAgreementDto } from './dto/create-agreement.dto';
 import { UpdateAgreementDto } from './dto/update-agreement.dto';
+import { AgreementFile } from './entities/agreement-file.entity';
+import { AgreementFileMap } from './entities/agreement-file-map.entity';
 import { Agreement } from './entities/agreement.entity';
+
+type AgreementFileAttachmentResult = {
+  agreement: Agreement;
+  file: AgreementFile;
+  mapping: AgreementFileMap;
+};
 
 @Injectable()
 export class AgreementsService {
@@ -34,7 +46,49 @@ export class AgreementsService {
   private readonly agreementRelations = {
     contractor: true,
     work: true,
+    agreementFileMaps: {
+      agreementFile: true,
+    },
   } as const;
+
+  private resolvePdfMimeType(fileUrl: string, mimeType?: string): string {
+    const normalizedMimeType = mimeType?.trim();
+    const looksLikePdf = /\.pdf(?:\?.*)?$/i.test(fileUrl);
+
+    if (normalizedMimeType && normalizedMimeType !== 'application/pdf') {
+      throw new BadRequestException('mimeType must be application/pdf');
+    }
+
+    if (!normalizedMimeType && !looksLikePdf) {
+      throw new BadRequestException(
+        'mimeType must be application/pdf or the fileUrl must end with .pdf',
+      );
+    }
+
+    return 'application/pdf';
+  }
+
+  private deriveAgreementFileName(fileUrl: string, fileName?: string): string {
+    const normalizedName = fileName?.trim();
+    if (normalizedName) {
+      return normalizedName;
+    }
+
+    try {
+      const url = new URL(fileUrl);
+      const lastSegment = url.pathname.split('/').filter(Boolean).pop();
+      return lastSegment || 'agreement.pdf';
+    } catch {
+      return 'agreement.pdf';
+    }
+  }
+
+  private isDuplicateKeyError(error: unknown): boolean {
+    return (
+      error instanceof Error &&
+      /duplicate entry|ER_DUP_ENTRY/i.test(error.message)
+    );
+  }
 
   private async validateForeignKeys(
     contractorId: string,
@@ -239,6 +293,99 @@ export class AgreementsService {
     });
     const savedAgreement = await this.agreementsRepository.save(agreement);
     return this.findOne(savedAgreement.id);
+  }
+
+  async attachFileToAgreement(
+    agreementId: string,
+    attachAgreementFileDto: AttachAgreementFileDto,
+    uploader: { userId: string; role: UserRole },
+  ): Promise<AgreementFileAttachmentResult> {
+    if (uploader.role !== UserRole.HO) {
+      throw new ForbiddenException(
+        'Only HO users can attach files to agreements',
+      );
+    }
+
+    const fileUrl = attachAgreementFileDto.fileUrl.trim();
+    const mimeType = this.resolvePdfMimeType(
+      fileUrl,
+      attachAgreementFileDto.mimeType,
+    );
+
+    try {
+      return await this.agreementsRepository.manager.transaction(
+        async (manager) => {
+          const agreement = await manager.findOne(Agreement, {
+            where: { id: agreementId },
+            relations: this.agreementRelations,
+          });
+
+          if (!agreement) {
+            throw new NotFoundException(`Agreement #${agreementId} not found`);
+          }
+
+          const existingFile = await manager.findOne(AgreementFile, {
+            where: { file_url: fileUrl },
+          });
+
+          if (existingFile) {
+            throw new ConflictException(
+              `Agreement file with URL ${fileUrl} already exists`,
+            );
+          }
+
+          const agreementFile = manager.create(AgreementFile, {
+            file_url: fileUrl,
+            file_name: this.deriveAgreementFileName(
+              fileUrl,
+              attachAgreementFileDto.fileName,
+            ),
+            mime_type: mimeType,
+            file_size: attachAgreementFileDto.fileSize ?? null,
+            uploaded_by_user_id: uploader.userId,
+            uploaded_by_role: uploader.role,
+          });
+
+          const savedAgreementFile = await manager.save(
+            AgreementFile,
+            agreementFile,
+          );
+
+          const agreementFileMap = manager.create(AgreementFileMap, {
+            agreement_id: agreement.id,
+            agreement_file_id: savedAgreementFile.id,
+          });
+
+          const savedAgreementFileMap = await manager.save(
+            AgreementFileMap,
+            agreementFileMap,
+          );
+
+          const reloadedAgreement = await manager.findOne(Agreement, {
+            where: { id: agreement.id },
+            relations: this.agreementRelations,
+          });
+
+          if (!reloadedAgreement) {
+            throw new NotFoundException(`Agreement #${agreement.id} not found`);
+          }
+
+          return {
+            agreement: reloadedAgreement,
+            file: savedAgreementFile,
+            mapping: savedAgreementFileMap,
+          };
+        },
+      );
+    } catch (error) {
+      if (this.isDuplicateKeyError(error)) {
+        throw new ConflictException(
+          `Agreement file with URL ${fileUrl} already exists or is already attached`,
+        );
+      }
+
+      throw error;
+    }
   }
 
   async createWithManager(
