@@ -560,6 +560,10 @@ export class UsersService {
     return this.userRepository.findOne({ where: { email } });
   }
 
+  async findByCode(code: string): Promise<User | null> {
+    return this.userRepository.findOne({ where: { code } });
+  }
+
   async update(
     id: string,
     updateUserDto: UpdateUserDto,

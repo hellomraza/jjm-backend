@@ -3,7 +3,6 @@ import { AuthGuard } from '@nestjs/passport';
 import {
   ApiBadRequestResponse,
   ApiBody,
-  ApiCreatedResponse,
   ApiForbiddenResponse,
   ApiOkResponse,
   ApiOperation,
@@ -13,6 +12,7 @@ import {
 import { type Request } from 'express';
 import { User } from '../users/entities/user.entity';
 import { AuthService } from './auth.service';
+import { LoginCodeDto } from './dto/login-code.dto';
 import { LoginResponseDto } from './dto/login-response.dto';
 import { LoginDto } from './dto/login.dto';
 
@@ -57,5 +57,21 @@ export class AuthController {
   dashboardLogin(@Req() req: Request & { user: Omit<User, 'password'> }) {
     const user = req.user;
     return this.authService.dashboardLogin(user);
+  }
+
+  @Post('login/code')
+  @UseGuards(AuthGuard('code'))
+  @ApiOperation({
+    summary: 'User login with code',
+    description:
+      'Authenticate using user code and password. All user roles (HO, CO, DO, EM) can login with this endpoint.',
+  })
+  @ApiBody({ type: LoginCodeDto })
+  @ApiOkResponse({ description: 'Login successful', type: LoginResponseDto })
+  @ApiBadRequestResponse({ description: 'Invalid request payload' })
+  @ApiUnauthorizedResponse({ description: 'Invalid code or password' })
+  loginWithCode(@Req() req: Request & { user: Omit<User, 'password'> }) {
+    const user = req.user;
+    return this.authService.login(user);
   }
 }

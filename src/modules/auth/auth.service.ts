@@ -42,6 +42,28 @@ export class AuthService {
     return result;
   }
 
+  async validateUserByCode(
+    code: string,
+    password: string,
+  ): Promise<Omit<User, 'password'> | null> {
+    const user = await this.usersService.findByCode(code);
+    if (!user) {
+      return null;
+    }
+
+    const isPasswordValid = await this.usersService.comparePasswords(
+      password,
+      user.password,
+    );
+
+    if (!isPasswordValid) {
+      return null;
+    }
+
+    const { password: _, ...result } = user;
+    return result;
+  }
+
   login(user: Omit<User, 'password'>) {
     if (!user) {
       throw new UnauthorizedException('Invalid credentials');
