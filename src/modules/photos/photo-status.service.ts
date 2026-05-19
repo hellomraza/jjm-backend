@@ -440,13 +440,19 @@ export class PhotoStatusService {
   async findOne(photoStatusId: string): Promise<PhotoStatus> {
     const photoStatus = await this.photoStatusRepository.findOne({
       where: { id: photoStatusId },
-      relations: [
-        'photo',
-        'component',
-        'workItem',
-        'selectedByUser',
-        'approvedByUser',
-      ],
+      relations: {
+        photo: {
+          employee: true,
+        },
+        workItemComponent: {
+          component: true,
+        },
+        workItem: {
+          district: true,
+        },
+        selectedByUser: true,
+        approvedByUser: true,
+      },
     });
 
     if (!photoStatus) {
@@ -475,7 +481,7 @@ export class PhotoStatusService {
       where: { status: PhotoStatusEnum.APPROVED },
       relations: [
         'photo',
-        'component',
+        'workItemComponent',
         'workItem',
         'selectedByUser',
         'approvedByUser',
