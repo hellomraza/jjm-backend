@@ -14,8 +14,8 @@ import { CreateContractorDto } from './dto/create-contractor.dto';
 import { CreateDODto } from './dto/create-do.dto';
 import { CreateEmployeeDto } from './dto/create-employee.dto';
 import { CreateUserDto } from './dto/create-user.dto';
+import { UpdateContractorDto } from './dto/update-contractor.dto';
 import { UpdateDODto } from './dto/update-do.dto';
-import { UpdateUserDto } from './dto/update-user.dto';
 import { ContractorContract } from './entities/contractor-contract.entity';
 import { EmployeeContract } from './entities/employee-contract.entity';
 import { User, UserRole } from './entities/user.entity';
@@ -566,7 +566,7 @@ export class UsersService {
 
   async update(
     id: string,
-    updateUserDto: UpdateUserDto,
+    updateUserDto: UpdateContractorDto,
   ): Promise<Omit<User, 'password'>> {
     const user = await this.userRepository.findOne({ where: { id } });
     if (!user) {
@@ -686,7 +686,21 @@ export class UsersService {
     return employees.map((employee) => this.stripPassword(employee));
   }
 
-  async getAllContractors(): Promise<Omit<User, 'password'>[]> {
+  async getAllContractors(
+    requesterUserId: string,
+    requesterRole: UserRole,
+  ): Promise<Omit<User, 'password'>[]> {
+    let requesterDistrictId: string | undefined;
+
+    if (requesterRole === UserRole.DO) {
+      const requester = await this.userRepository.findOne({
+        where: { id: requesterUserId, role: UserRole.DO },
+        select: ['id', 'district_id'],
+      });
+
+      requesterDistrictId = requester?.district_id;
+    }
+
     const contractors = await this.userRepository
       .createQueryBuilder('user')
       .where('user.role = :role', { role: UserRole.CO })
@@ -700,7 +714,15 @@ export class UsersService {
           temporaryNamePattern: 'Temporary Contractor %',
         },
       )
-      .orderBy('user.created_at', 'DESC')
+      .orderBy(
+        'CASE WHEN user.district_id = :requesterDistrictId THEN 0 ELSE 1 END',
+        'ASC',
+      )
+      .setParameter(
+        'requesterDistrictId',
+        requesterDistrictId ?? '__no_district__',
+      )
+      .addOrderBy('user.created_at', 'DESC')
       .getMany();
 
     // Remove password from all contractors

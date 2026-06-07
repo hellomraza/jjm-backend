@@ -68,4 +68,13 @@ export class UpdateContractorDto {
   @IsOptional()
   @IsString()
   address?: string;
+
+
+  @ApiPropertyOptional({
+    description: 'District code for district-level users, nullable for HO',
+    example: 'DIST001',
+  })
+  @IsOptional()
+  @IsString()
+  district_id?: string;
 }

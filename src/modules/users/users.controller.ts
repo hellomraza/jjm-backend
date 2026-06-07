@@ -258,8 +258,8 @@ export class UsersController {
     description: 'Contractors retrieved successfully',
     type: [UserResponseDto],
   })
-  getAllContractors() {
-    return this.usersService.getAllContractors();
+  getAllContractors(@Request() req: AuthenticatedRequest) {
+    return this.usersService.getAllContractors(req.user.userId, req.user.role);
   }
 
   @Get('dos')
