@@ -143,6 +143,12 @@ export class DistrictDashboardDto {
   workItemsList: WorkItemWithProgressDto[];
 
   @ApiProperty({
+    description: 'Total number of agreements in this district',
+    example: 5,
+  })
+  totalAgreements: number;
+
+  @ApiProperty({
     description: 'Timestamp when the statistics were generated',
     example: '2026-03-25T10:30:00.000Z',
   })
@@ -232,6 +238,12 @@ export class ContractorDashboardDto {
     type: [ContractorWorkItemDto],
   })
   workItems: ContractorWorkItemDto[];
+
+  @ApiProperty({
+    description: 'Total number of agreements for this contractor',
+    example: 3,
+  })
+  totalAgreements: number;
 
   @ApiProperty({
     description: 'Timestamp when the statistics were generated',
