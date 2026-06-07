@@ -24,7 +24,7 @@ import { LocalStrategy } from './strategies/local.strategy';
         return {
           secret: jwtSecret,
           signOptions: {
-            expiresIn: configService.get('JWT_EXPIRES_IN') || '1d',
+            expiresIn: configService.get('JWT_EXPIRES_IN') || '1y',
           },
         };
       },
