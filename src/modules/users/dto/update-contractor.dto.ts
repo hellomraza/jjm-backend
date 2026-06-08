@@ -5,9 +5,22 @@ import {
   IsString,
   Matches,
   ValidateIf,
+  Length,
 } from 'class-validator';
 
 export class UpdateContractorDto {
+  @ApiPropertyOptional({
+    description: 'Unique contractor code (alphanumeric, length 9)',
+    example: 'CO1234567',
+  })
+  @IsOptional()
+  @IsString()
+  @Length(9, 9)
+  @Matches(/^[a-zA-Z0-9]{9}$/, {
+    message: 'code must be a 9-character alphanumeric string',
+  })
+  code?: string;
+
   @ApiPropertyOptional({
     description: 'Full name of the contractor',
     example: 'Jane Smith',

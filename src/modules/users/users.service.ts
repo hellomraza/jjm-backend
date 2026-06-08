@@ -216,7 +216,7 @@ export class UsersService {
     creatorUserId: string,
     creatorRole: UserRole,
   ): Promise<Omit<User, 'password'>> {
-    const { email, password, name } = createContractorDto;
+    const { email, password, name, code } = createContractorDto;
 
     // Check if user already exists
     const existingUser = await this.userRepository.findOne({
@@ -226,18 +226,27 @@ export class UsersService {
       throw new ConflictException(`User with email ${email} already exists`);
     }
 
+    // Check if user with this code already exists
+    const existingUserByCode = await this.userRepository.findOne({
+      where: { code },
+    });
+    if (existingUserByCode) {
+      throw new ConflictException(`User with code ${code} already exists`);
+    }
+
     // Hash password
     const hashedPassword = await bcrypt.hash(password, 10);
 
     // Create and save contractor with CO role
     const contractor = this.userRepository.create({
-      code: await this.generateUniqueUserCode(UserRole.CO),
+      code,
       email,
       password: hashedPassword,
       name,
       role: UserRole.CO,
       address: createContractorDto.address,
       district_name: createContractorDto.district_name,
+      district_id: createContractorDto.district_id,
       mobile: createContractorDto.mobile,
       pan_number: createContractorDto.pan_number,
     });
@@ -589,6 +598,18 @@ export class UsersService {
         );
       }
     }
+
+    // Check if code already exists (if code is being updated)
+    if (updateUserDto.code && updateUserDto.code !== user.code) {
+      const existingUserByCode = await this.userRepository.findOne({
+        where: { code: updateUserDto.code },
+      });
+      if (existingUserByCode) {
+        throw new ConflictException(
+          `User with code ${updateUserDto.code} already exists`,
+        );
+      }
+    }
     // Update user
     Object.assign(user, updateUserDto);
     const updatedUser = await this.userRepository.save(user);
@@ -675,6 +696,16 @@ export class UsersService {
   ): Promise<boolean> {
     return bcrypt.compare(plainPassword, hashedPassword);
   }
+
+  async resetPassword(email: string, plainPassword: string): Promise<void> {
+    const user = await this.userRepository.findOne({ where: { email } });
+    if (!user) {
+      throw new NotFoundException(`User with email ${email} not found`);
+    }
+    user.password = await bcrypt.hash(plainPassword, 10);
+    await this.userRepository.save(user);
+  }
+
 
   async getAllEmployees(): Promise<Omit<User, 'password'>[]> {
     const employees = await this.userRepository.find({
