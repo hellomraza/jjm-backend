@@ -14,8 +14,8 @@ import { CreateContractorDto } from './dto/create-contractor.dto';
 import { CreateDODto } from './dto/create-do.dto';
 import { CreateEmployeeDto } from './dto/create-employee.dto';
 import { CreateUserDto } from './dto/create-user.dto';
+import { UpdateContractorDto } from './dto/update-contractor.dto';
 import { UpdateDODto } from './dto/update-do.dto';
-import { UpdateUserDto } from './dto/update-user.dto';
 import { ContractorContract } from './entities/contractor-contract.entity';
 import { EmployeeContract } from './entities/employee-contract.entity';
 import { User, UserRole } from './entities/user.entity';
@@ -216,7 +216,7 @@ export class UsersService {
     creatorUserId: string,
     creatorRole: UserRole,
   ): Promise<Omit<User, 'password'>> {
-    const { email, password, name } = createContractorDto;
+    const { email, password, name, code } = createContractorDto;
 
     // Check if user already exists
     const existingUser = await this.userRepository.findOne({
@@ -226,18 +226,27 @@ export class UsersService {
       throw new ConflictException(`User with email ${email} already exists`);
     }
 
+    // Check if user with this code already exists
+    const existingUserByCode = await this.userRepository.findOne({
+      where: { code },
+    });
+    if (existingUserByCode) {
+      throw new ConflictException(`User with code ${code} already exists`);
+    }
+
     // Hash password
     const hashedPassword = await bcrypt.hash(password, 10);
 
     // Create and save contractor with CO role
     const contractor = this.userRepository.create({
-      code: await this.generateUniqueUserCode(UserRole.CO),
+      code,
       email,
       password: hashedPassword,
       name,
       role: UserRole.CO,
       address: createContractorDto.address,
       district_name: createContractorDto.district_name,
+      district_id: createContractorDto.district_id,
       mobile: createContractorDto.mobile,
       pan_number: createContractorDto.pan_number,
     });
@@ -566,7 +575,7 @@ export class UsersService {
 
   async update(
     id: string,
-    updateUserDto: UpdateUserDto,
+    updateUserDto: UpdateContractorDto,
   ): Promise<Omit<User, 'password'>> {
     const user = await this.userRepository.findOne({ where: { id } });
     if (!user) {
@@ -586,6 +595,18 @@ export class UsersService {
       if (existingUser) {
         throw new ConflictException(
           `User with email ${updateUserDto.email} already exists`,
+        );
+      }
+    }
+
+    // Check if code already exists (if code is being updated)
+    if (updateUserDto.code && updateUserDto.code !== user.code) {
+      const existingUserByCode = await this.userRepository.findOne({
+        where: { code: updateUserDto.code },
+      });
+      if (existingUserByCode) {
+        throw new ConflictException(
+          `User with code ${updateUserDto.code} already exists`,
         );
       }
     }
@@ -676,6 +697,16 @@ export class UsersService {
     return bcrypt.compare(plainPassword, hashedPassword);
   }
 
+  async resetPassword(email: string, plainPassword: string): Promise<void> {
+    const user = await this.userRepository.findOne({ where: { email } });
+    if (!user) {
+      throw new NotFoundException(`User with email ${email} not found`);
+    }
+    user.password = await bcrypt.hash(plainPassword, 10);
+    await this.userRepository.save(user);
+  }
+
+
   async getAllEmployees(): Promise<Omit<User, 'password'>[]> {
     const employees = await this.userRepository.find({
       where: { role: UserRole.EM },
@@ -686,7 +717,21 @@ export class UsersService {
     return employees.map((employee) => this.stripPassword(employee));
   }
 
-  async getAllContractors(): Promise<Omit<User, 'password'>[]> {
+  async getAllContractors(
+    requesterUserId: string,
+    requesterRole: UserRole,
+  ): Promise<Omit<User, 'password'>[]> {
+    let requesterDistrictId: string | undefined;
+
+    if (requesterRole === UserRole.DO) {
+      const requester = await this.userRepository.findOne({
+        where: { id: requesterUserId, role: UserRole.DO },
+        select: ['id', 'district_id'],
+      });
+
+      requesterDistrictId = requester?.district_id;
+    }
+
     const contractors = await this.userRepository
       .createQueryBuilder('user')
       .where('user.role = :role', { role: UserRole.CO })
@@ -700,7 +745,15 @@ export class UsersService {
           temporaryNamePattern: 'Temporary Contractor %',
         },
       )
-      .orderBy('user.created_at', 'DESC')
+      .orderBy(
+        'CASE WHEN user.district_id = :requesterDistrictId THEN 0 ELSE 1 END',
+        'ASC',
+      )
+      .setParameter(
+        'requesterDistrictId',
+        requesterDistrictId ?? '__no_district__',
+      )
+      .addOrderBy('user.created_at', 'DESC')
       .getMany();
 
     // Remove password from all contractors

@@ -25,7 +25,7 @@ import {
   ApiUnauthorizedResponse,
   ApiUnprocessableEntityResponse,
 } from '@nestjs/swagger';
-import { PaginatedResponse } from 'src/common/types/response.type';
+import { PaginatedResponse } from '../../common/types/response.type';
 import { ApiPaginatedResponse } from '../../common/decorators/paginated.responce.decorator';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';

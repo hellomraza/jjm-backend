@@ -12,6 +12,7 @@ import { LocationsModule } from './modules/locations/locations.module';
 import { PhotosModule } from './modules/photos/photos.module';
 import { UsersModule } from './modules/users/users.module';
 import { WorkItemsModule } from './modules/work-items/work-items.module';
+import { MailModule } from './common/mail/mail.module';
 
 @Module({
   imports: [
@@ -43,6 +44,7 @@ import { WorkItemsModule } from './modules/work-items/work-items.module';
     ImportModule,
     LocationsModule,
     DashboardModule,
+    MailModule,
   ],
   controllers: [AppController],
   providers: [AppService],

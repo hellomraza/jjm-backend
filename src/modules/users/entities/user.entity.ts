@@ -1,4 +1,4 @@
-import { District } from 'src/modules/locations/entities/district.entity';
+import { District } from '../../locations/entities/district.entity';
 import {
   Column,
   CreateDateColumn,

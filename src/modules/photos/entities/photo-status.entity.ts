@@ -1,4 +1,4 @@
-import { WorkItemComponent } from 'src/modules/components/entities/work-item-component.entity';
+import { WorkItemComponent } from '../../components/entities/work-item-component.entity';
 import {
   Column,
   CreateDateColumn,

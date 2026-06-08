@@ -2,26 +2,26 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Agreement } from '../agreements/entities/agreement.entity';
-import { District } from '../locations/entities/district.entity';
 import {
   WorkItemComponent,
   WorkItemComponentStatus,
 } from '../components/entities/work-item-component.entity';
+import { District } from '../locations/entities/district.entity';
 import { User, UserRole } from '../users/entities/user.entity';
+import { WorkItemEmployeeAssignment } from '../work-items/entities/work-item-employee-assignment.entity';
 import {
   WorkItem,
   WorkItemStatus,
 } from '../work-items/entities/work-item.entity';
-import { WorkItemEmployeeAssignment } from '../work-items/entities/work-item-employee-assignment.entity';
 import {
+  ComponentStatusCountDto,
+  ContractorDashboardDto,
+  ContractorWorkItemDto,
   DashboardStatsDto,
   DistrictDashboardDto,
-  ContractorDashboardDto,
   UserStatsDto,
   WorkItemStatsDto,
   WorkItemWithProgressDto,
-  ComponentStatusCountDto,
-  ContractorWorkItemDto,
 } from './dto/dashboard-stats.dto';
 
 @Injectable()
@@ -44,7 +44,9 @@ export class DashboardService {
   async getStats(
     userId: string,
     userRole: UserRole,
-  ): Promise<DashboardStatsDto | DistrictDashboardDto | ContractorDashboardDto> {
+  ): Promise<
+    DashboardStatsDto | DistrictDashboardDto | ContractorDashboardDto
+  > {
     if (userRole === UserRole.HO) {
       return this.getHOStats();
     }
@@ -91,16 +93,20 @@ export class DashboardService {
     });
     const districtName = district?.districtname || 'Unknown District';
 
-    // Get work items for the district
-    const [workItemStats, workItemsList] = await Promise.all([
+    // Get work items and agreements count for the district
+    const [workItemStats, workItemsList, totalAgreements] = await Promise.all([
       this.getDistrictWorkItemStats(districtId),
       this.getDistrictWorkItems(districtId),
+      this.agreementRepository.count({
+        where: { work: { district_id: districtId } },
+      }),
     ]);
 
     return {
       districtName,
       workItems: workItemStats,
       workItemsList,
+      totalAgreements,
       generatedAt: new Date(),
     };
   }
@@ -159,13 +165,19 @@ export class DashboardService {
     });
 
     // Get detailed info for each work item
-    const workItemsDetails = await Promise.all(
-      workItems.map((item) => this.getContractorWorkItemDetails(item.id)),
-    );
+    const [workItemsDetails, totalAgreements] = await Promise.all([
+      Promise.all(
+        workItems.map((item) => this.getContractorWorkItemDetails(item.id)),
+      ),
+      this.agreementRepository.count({
+        where: { contractor_id: contractorId },
+      }),
+    ]);
 
     return {
       totalWorkItems: workItems.length,
       workItems: workItemsDetails,
+      totalAgreements,
       generatedAt: new Date(),
     };
   }
@@ -242,9 +254,7 @@ export class DashboardService {
     };
   }
 
-  private async getAssignedEmployeeCount(
-    workItemId: string,
-  ): Promise<number> {
+  private async getAssignedEmployeeCount(workItemId: string): Promise<number> {
     return this.workItemEmployeeAssignmentRepository.count({
       where: { work_item_id: workItemId },
     });

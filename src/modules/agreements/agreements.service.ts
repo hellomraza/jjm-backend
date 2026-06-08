@@ -9,7 +9,7 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import * as bcrypt from 'bcryptjs';
 import { createHash } from 'crypto';
-import { EntityManager, FindOptionsWhere, Repository } from 'typeorm';
+import { EntityManager, FindOptionsWhere, Like, Repository } from 'typeorm';
 import {
   importAgreementMapping,
   type AgreementImport,
@@ -625,6 +625,8 @@ export class AgreementsService {
     role: UserRole,
     page: number = 1,
     limit: number = 20,
+    search?: string,
+    agreementyear?: string,
   ): Promise<{
     data: Agreement[];
     total: number;
@@ -634,7 +636,20 @@ export class AgreementsService {
   }> {
     const safePage = Number.isNaN(Number(page)) ? 1 : Number(page);
     const safeLimit = Number.isNaN(Number(limit)) ? 20 : Number(limit);
-    const where = await this.getAccessWhereClause(userId, role);
+
+    const where: FindOptionsWhere<Agreement> = {};
+    const accessWhere = await this.getAccessWhereClause(userId, role);
+    if (accessWhere) {
+      Object.assign(where, accessWhere);
+    }
+
+    if (search) {
+      where.agreementno = Like(`%${search}%`);
+    }
+
+    if (agreementyear) {
+      where.agreementyear = agreementyear;
+    }
 
     const [items, total] = await this.agreementsRepository.findAndCount({
       where,
