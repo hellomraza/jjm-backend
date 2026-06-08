@@ -72,21 +72,37 @@ export class AgreementsController {
   @Roles(UserRole.HO, UserRole.DO, UserRole.CO)
   @ApiOperation({
     summary: 'List agreements',
-    description: 'Returns paginated agreements list',
+    description: 'Returns paginated agreements list with search and filter support',
   })
   @ApiQuery({ name: 'page', required: false, type: Number, example: 1 })
   @ApiQuery({ name: 'limit', required: false, type: Number, example: 20 })
+  @ApiQuery({
+    name: 'search',
+    required: false,
+    type: String,
+    description: 'Search by agreement number (partial match)',
+  })
+  @ApiQuery({
+    name: 'agreementyear',
+    required: false,
+    type: String,
+    description: 'Filter by agreement year',
+  })
   @ApiPaginatedResponse(AgreementResponseDto)
   async findAll(
     @Request() req: { user: { userId: string; role: UserRole } },
     @Query('page') page: number = 1,
     @Query('limit') limit: number = 20,
+    @Query('search') search?: string,
+    @Query('agreementyear') agreementyear?: string,
   ) {
     const result = await this.agreementsService.findAllForUser(
       req.user.userId,
       req.user.role,
       page,
       limit,
+      search,
+      agreementyear,
     );
 
     return {

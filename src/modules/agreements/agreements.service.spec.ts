@@ -438,4 +438,55 @@ describe('AgreementsService', () => {
       ),
     ).rejects.toThrow(ForbiddenException);
   });
+
+  describe('findAllForUser with search and filter', () => {
+    it('should query without search/filter and with correct pagination', async () => {
+      (agreementsRepository.findAndCount as jest.Mock).mockResolvedValue([[/* agreements */], 0]);
+
+      const result = await service.findAllForUser('ho-id', UserRole.HO, 1, 10);
+
+      expect(agreementsRepository.findAndCount).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: {},
+          skip: 0,
+          take: 10,
+        }),
+      );
+      expect(result.data).toBeDefined();
+      expect(result.total).toBe(0);
+    });
+
+    it('should query with search (Like) and agreementyear filters', async () => {
+      (agreementsRepository.findAndCount as jest.Mock).mockResolvedValue([[], 0]);
+
+      await service.findAllForUser('ho-id', UserRole.HO, 2, 15, 'AGR-123', '2025-26');
+
+      expect(agreementsRepository.findAndCount).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            agreementno: expect.anything(), // will be a Like operator
+            agreementyear: '2025-26',
+          }),
+          skip: 15,
+          take: 15,
+        }),
+      );
+    });
+
+    it('should combine search/filter parameters with contractor role access controls', async () => {
+      (agreementsRepository.findAndCount as jest.Mock).mockResolvedValue([[], 0]);
+
+      await service.findAllForUser('contractor-id', UserRole.CO, 1, 20, 'AGR-456', '2026-27');
+
+      expect(agreementsRepository.findAndCount).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            contractor_id: 'contractor-id',
+            agreementno: expect.anything(),
+            agreementyear: '2026-27',
+          }),
+        }),
+      );
+    });
+  });
 });
