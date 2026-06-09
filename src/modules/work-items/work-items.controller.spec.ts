@@ -35,8 +35,8 @@ describe('WorkItemsController', () => {
   });
 
   it('findAll delegates to service', async () => {
-    await controller.findAll(1, 20);
-    expect(workItemsService.findAll).toHaveBeenCalledWith(1, 20);
+    await controller.findAll(1, 20, 'search_code');
+    expect(workItemsService.findAll).toHaveBeenCalledWith(1, 20, 'search_code');
   });
 
   it('assignEmployee delegates to service with auth user context', async () => {
@@ -58,12 +58,13 @@ describe('WorkItemsController', () => {
       WorkItemsController['getMyWorkItems']
     >[0];
 
-    await controller.getMyWorkItems(req, 2, 10);
+    await controller.getMyWorkItems(req, 2, 10, 'search_code');
     expect(workItemsService.getMyWorkItems).toHaveBeenCalledWith(
       'u1',
       UserRole.CO,
       2,
       10,
+      'search_code',
     );
   });
 

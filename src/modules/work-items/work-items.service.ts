@@ -13,6 +13,7 @@ import {
   EntityManager,
   FindOptionsWhere,
   In,
+  ILike,
   Not,
   Repository,
 } from 'typeorm';
@@ -384,6 +385,7 @@ export class WorkItemsService {
   async findAll(
     page: number = 1,
     limit: number = 20,
+    search?: string,
   ): Promise<{
     data: WorkItem[];
     total: number;
@@ -394,7 +396,13 @@ export class WorkItemsService {
     const safePage = Number.isNaN(Number(page)) ? 1 : Number(page);
     const safeLimit = Number.isNaN(Number(limit)) ? 20 : Number(limit);
 
+    const where: FindOptionsWhere<WorkItem> = {};
+    if (search) {
+      where.work_code = ILike(`%${search}%`);
+    }
+
     const [items, total] = await this.workItemsRepository.findAndCount({
+      where,
       skip: (safePage - 1) * safeLimit,
       take: safeLimit,
       order: { created_at: 'DESC' },
@@ -415,6 +423,7 @@ export class WorkItemsService {
     role: UserRole,
     page: number = 1,
     limit: number = 20,
+    search?: string,
   ): Promise<{
     data: WorkItem[];
     total: number;
@@ -497,6 +506,10 @@ export class WorkItemsService {
 
     // Exclude temporary work items for all roles
     where.schemetype = Not('TEMP');
+
+    if (search) {
+      where.work_code = ILike(`%${search}%`);
+    }
 
     const [items, total] = await this.workItemsRepository.findAndCount({
       where,
