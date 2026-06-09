@@ -133,6 +133,7 @@ export const importWorkItemMapping: Record<
   schemetype: 'schemetype',
   serial_no: 'sr',
   created_at: 'systemdate',
+  workcodeid: 'workcodeid',
 };
 
 type Contractor = {
