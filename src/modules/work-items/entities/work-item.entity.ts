@@ -79,11 +79,11 @@ export class WorkItem {
   payment_amount?: number; // payment_rs
 
   @Column({ type: 'int', nullable: true })
-  serial_no?: number; // sr
+  serial_no?: number | null; // sr
 
   @Index()
   @Column({ nullable: true })
-  contractor_id!: string; // contractor_code
+  contractor_id?: string | null; // contractor_code
 
   @ManyToOne(() => User, { nullable: true, onDelete: 'SET NULL' })
   @JoinColumn({ name: 'contractor_id', referencedColumnName: 'id' })
@@ -158,4 +158,7 @@ export class WorkItem {
 
   @Column({ type: 'varchar', length: 255, nullable: true })
   excel?: string; // excel
+
+  @Column({ type: 'varchar', length: 100, nullable: true })
+  workcodeid?: string | null;
 }

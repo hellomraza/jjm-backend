@@ -64,7 +64,7 @@ export class CreateAgreementDto {
   })
   @IsDateString()
   @IsOptional()
-  workorderdate?: Date;
+  workorderdate?: string;
 
   @ApiPropertyOptional({
     description: 'Work item IDs',

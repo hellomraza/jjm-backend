@@ -37,7 +37,7 @@ export class Agreement {
   workorderno!: string; // workorderno
 
   @Column({ type: 'date', nullable: true })
-  workorderdate!: Date; // workorderdate
+  workorderdate!: string | null; // workorderdate
 
   @Column({ type: 'varchar', length: 20, nullable: true })
   sr!: string; // sr

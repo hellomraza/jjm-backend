@@ -100,8 +100,9 @@ export class AgreementWorkItemResponseDto {
   @ApiProperty({
     description: 'ID of the contractor responsible for executing the work item',
     example: 'contractor-123',
+    nullable: true,
   })
-  contractor_id: string;
+  contractor_id?: string | null;
 
   @ApiProperty({
     description: 'Latitude coordinate of the work item location',
@@ -336,7 +337,7 @@ export class AgreementResponseDto {
     example: '2026-06-09',
     nullable: true,
   })
-  workorderdate?: Date | null;
+  workorderdate?: string | null;
 
   @ApiProperty({
     description: 'Uni-tag identifier',

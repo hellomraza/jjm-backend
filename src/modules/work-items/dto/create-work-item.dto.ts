@@ -16,12 +16,36 @@ import { WorkItemStatus } from '../entities/work-item.entity';
 
 export class CreateWorkItemDto {
   @ApiProperty({
+    description: 'Work code identifier',
+    example: 'W123456789012',
+  })
+  @IsString()
+  @IsNotEmpty()
+  work_code!: string;
+
+  @ApiProperty({
+    description: 'Scheme type (NVARCHAR 100 equivalent)',
+    example: 'PWS',
+  })
+  @IsString()
+  @IsNotEmpty()
+  schemetype!: string;
+
+  @ApiPropertyOptional({
+    description: 'Work code ID',
+    example: 'workcode-123',
+  })
+  @IsString()
+  @IsOptional()
+  workcodeid?: string;
+
+  @ApiPropertyOptional({
     description: 'Work item title',
     example: 'Pipeline extension phase 1',
   })
   @IsString()
-  @IsNotEmpty()
-  title!: string;
+  @IsOptional()
+  title?: string;
 
   @ApiPropertyOptional({
     description: 'Detailed description of the work item',
@@ -31,12 +55,13 @@ export class CreateWorkItemDto {
   @IsOptional()
   description?: string;
 
-  @ApiProperty({
+  @ApiPropertyOptional({
     description: 'District Code',
     example: 'DIST001',
   })
   @IsString()
-  district_id!: string;
+  @IsOptional()
+  district_id?: string;
 
   @ApiPropertyOptional({
     description: 'Block Code',
@@ -86,14 +111,6 @@ export class CreateWorkItemDto {
   @IsOptional()
   zone_id?: string;
 
-  @ApiProperty({
-    description: 'Scheme type (NVARCHAR 100 equivalent)',
-    example: 'PWS',
-  })
-  @IsString()
-  @IsNotEmpty()
-  schemetype!: string;
-
   @ApiPropertyOptional({
     description: 'Number of FHTC (NVARCHAR 110 equivalent)',
     example: '1250',
@@ -119,27 +136,38 @@ export class CreateWorkItemDto {
   payment_amount?: number;
 
   @ApiPropertyOptional({
-    description: 'Serial number (INT)',
+    description: 'Serial number (INT) / SR',
     example: 1,
   })
   @IsInt()
   @IsOptional()
-  serial_no?: number;
+  sr?: number;
 
-  @ApiProperty({
-    description: 'Contractor user ID',
-    example: '550e8400-e29b-41d4-a716-446655440001',
+  @ApiPropertyOptional({
+    description: 'Agreement ID',
+    example: '550e8400-e29b-41d4-a716-446655440010',
   })
   @IsUUID()
-  contractor_id!: string;
+  @IsOptional()
+  agreement_id?: string;
 
-  @ApiProperty({ description: 'Latitude of work location', example: 25.5941 })
+  @ApiPropertyOptional({
+    description: 'Excel file reference name',
+    example: 'sheet1.xlsx',
+  })
+  @IsString()
+  @IsOptional()
+  excel?: string;
+
+  @ApiPropertyOptional({ description: 'Latitude of work location', example: 25.5941 })
   @IsLatitude()
-  latitude!: number;
+  @IsOptional()
+  latitude?: number;
 
-  @ApiProperty({ description: 'Longitude of work location', example: 85.1376 })
+  @ApiPropertyOptional({ description: 'Longitude of work location', example: 85.1376 })
   @IsLongitude()
-  longitude!: number;
+  @IsOptional()
+  longitude?: number;
 
   @ApiPropertyOptional({
     description: 'Initial progress percentage (0-100)',
