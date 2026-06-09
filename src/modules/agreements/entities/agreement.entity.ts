@@ -26,12 +26,10 @@ export class Agreement {
   agreementyear!: string; //agreementyear
 
   @Index()
-  @Column({ type: 'varchar', length: 36 })
-  contractor_id!: string; //contractor_code
+  @Column({ type: 'varchar', length: 36, nullable: true })
+  contractor_id?: string | null; //contractor_code
 
-  @Index()
-  @Column({ type: 'varchar', length: 36 })
-  work_id!: string; // workcode
+
 
   // workorderno. workorderdate, sr, excel, unitag, agrid
 
@@ -39,7 +37,7 @@ export class Agreement {
   workorderno!: string; // workorderno
 
   @Column({ type: 'date', nullable: true })
-  workorderdate!: Date; // workorderdate
+  workorderdate!: string | null; // workorderdate
 
   @Column({ type: 'varchar', length: 20, nullable: true })
   sr!: string; // sr
@@ -62,13 +60,12 @@ export class Agreement {
   @Column({ type: 'decimal', precision: 10, scale: 7, nullable: true })
   longitude?: number;
 
-  @ManyToOne(() => User, { onDelete: 'RESTRICT', onUpdate: 'CASCADE' })
+  @ManyToOne(() => User, { onDelete: 'RESTRICT', onUpdate: 'CASCADE', nullable: true })
   @JoinColumn({ name: 'contractor_id', referencedColumnName: 'id' })
-  contractor!: User;
+  contractor?: User | null;
 
-  @ManyToOne(() => WorkItem, { onDelete: 'RESTRICT', onUpdate: 'CASCADE' })
-  @JoinColumn({ name: 'work_id', referencedColumnName: 'id' })
-  work!: WorkItem;
+  @OneToMany(() => WorkItem, (workItem) => workItem.agreement)
+  workItems?: WorkItem[];
 
   @OneToMany(
     () => AgreementFileMap,

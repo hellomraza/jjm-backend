@@ -100,8 +100,9 @@ export class AgreementWorkItemResponseDto {
   @ApiProperty({
     description: 'ID of the contractor responsible for executing the work item',
     example: 'contractor-123',
+    nullable: true,
   })
-  contractor_id: string;
+  contractor_id?: string | null;
 
   @ApiProperty({
     description: 'Latitude coordinate of the work item location',
@@ -307,14 +308,57 @@ export class AgreementResponseDto {
   @ApiProperty({
     description: 'Contractor user ID',
     example: 'contractor-123',
+    nullable: true,
   })
-  contractor_id: string;
+  contractor_id?: string | null;
 
   @ApiProperty({
-    description: 'Work item ID',
-    example: 'work-item-123',
+    description: 'Division code',
+    example: 'division-123',
   })
-  work_id: string;
+  division_code: string;
+
+  @ApiProperty({
+    description: 'SR number',
+    example: 'sr-123',
+    nullable: true,
+  })
+  sr?: string | null;
+
+  @ApiProperty({
+    description: 'Work order number',
+    example: 'WO-123',
+    nullable: true,
+  })
+  workorderno?: string | null;
+
+  @ApiProperty({
+    description: 'Work order date',
+    example: '2026-06-09',
+    nullable: true,
+  })
+  workorderdate?: string | null;
+
+  @ApiProperty({
+    description: 'Uni-tag identifier',
+    example: 'tag-123',
+    nullable: true,
+  })
+  unitag?: string | null;
+
+  @ApiProperty({
+    description: 'AGRID reference ID',
+    example: 'agrid-123',
+    nullable: true,
+  })
+  agrid?: string | null;
+
+  @ApiProperty({
+    description: 'Excel file reference name',
+    example: 'sheet1.xlsx',
+    nullable: true,
+  })
+  excel?: string | null;
 
   @ApiProperty({
     description: 'Contractor user details',
@@ -324,11 +368,11 @@ export class AgreementResponseDto {
   contractor?: AgreementContractorResponseDto;
 
   @ApiProperty({
-    description: 'Work item details',
-    type: AgreementWorkItemResponseDto,
-    nullable: true,
+    description: 'Work items details',
+    type: [AgreementWorkItemResponseDto],
+    default: [],
   })
-  workItem?: AgreementWorkItemResponseDto;
+  workItems: AgreementWorkItemResponseDto[];
 
   @ApiProperty({
     description: 'Attached agreement files',
@@ -355,7 +399,13 @@ export class AgreementResponseDto {
       agreementno: agreement.agreementno,
       agreementyear: agreement.agreementyear,
       contractor_id: agreement.contractor_id,
-      work_id: agreement.work_id,
+      division_code: agreement.division_code,
+      sr: agreement.sr,
+      workorderno: agreement.workorderno,
+      workorderdate: agreement.workorderdate,
+      unitag: agreement.unitag,
+      agrid: agreement.agrid,
+      excel: agreement.excel,
       contractor: agreement.contractor
         ? {
             id: agreement.contractor.id,
@@ -368,23 +418,23 @@ export class AgreementResponseDto {
             updated_at: agreement.contractor.updated_at,
           }
         : undefined,
-      workItem: agreement.work
-        ? {
-            id: agreement.work.id,
-            work_code: agreement.work.work_code,
-            title: agreement.work.title,
-            description: agreement.work.description,
-            district_id: agreement.work.district_id,
-            schemetype: agreement.work.schemetype,
-            contractor_id: agreement.work.contractor_id,
-            latitude: Number(agreement.work.latitude),
-            longitude: Number(agreement.work.longitude),
-            progress_percentage: Number(agreement.work.progress_percentage),
-            status: agreement.work.status,
-            created_at: agreement.work.created_at,
-            updated_at: agreement.work.updated_at,
-          }
-        : undefined,
+      workItems: agreement.workItems
+        ? agreement.workItems.map((item) => ({
+            id: item.id,
+            work_code: item.work_code,
+            title: item.title,
+            description: item.description,
+            district_id: item.district_id,
+            schemetype: item.schemetype,
+            contractor_id: item.contractor_id,
+            latitude: Number(item.latitude),
+            longitude: Number(item.longitude),
+            progress_percentage: Number(item.progress_percentage),
+            status: item.status,
+            created_at: item.created_at,
+            updated_at: item.updated_at,
+          }))
+        : [],
       files:
         agreement.agreementFileMaps?.map((agreementFileMap) =>
           AgreementFileResponseDto.fromEntity(agreementFileMap.agreementFile),

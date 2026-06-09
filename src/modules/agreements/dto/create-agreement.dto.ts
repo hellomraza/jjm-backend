@@ -1,48 +1,94 @@
-import { ApiProperty } from '@nestjs/swagger';
-import { IsUUID } from 'class-validator';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { IsArray, IsDateString, IsNotEmpty, IsOptional, IsString, IsUUID } from 'class-validator';
 
 export class CreateAgreementDto {
-  @ApiProperty({
-    description: 'Contractor user ID',
-    example: '550e8400-e29b-41d4-a716-446655440001',
-  })
-  @IsUUID()
-  contractor_id: string;
-
-  @ApiProperty({
-    description: 'Work item ID',
-    example: '550e8400-e29b-41d4-a716-446655440010',
-  })
-  @IsUUID()
-  work_id: string;
-
   @ApiProperty({
     description: 'Agreement number',
     example: 'AG-2023-001',
   })
-  agreementno: string;
+  @IsString()
+  @IsNotEmpty()
+  agreementno!: string;
 
   @ApiProperty({
     description: 'Agreement year',
-    example: '2023',
+    example: '2023-2024',
   })
-  agreementyear: string;
+  @IsString()
+  @IsNotEmpty()
+  agreementyear!: string;
 
   @ApiProperty({
     description: 'Division code',
     example: 'DIST001',
   })
-  division_code: string;
+  @IsString()
+  @IsNotEmpty()
+  division_code!: string;
 
-  @ApiProperty({
+  @ApiPropertyOptional({
+    description: 'AGRID reference ID',
+    example: 'agrid-123',
+  })
+  @IsString()
+  @IsOptional()
+  agrid?: string;
+
+  @ApiPropertyOptional({
+    description: 'Contractor user ID',
+    example: '550e8400-e29b-41d4-a716-446655440001',
+  })
+  @IsUUID()
+  @IsOptional()
+  contractor_id?: string;
+
+  @ApiPropertyOptional({
+    description: 'SR number',
+    example: 'sr-123',
+  })
+  @IsString()
+  @IsOptional()
+  sr?: string;
+
+  @ApiPropertyOptional({
     description: 'Work order number',
     example: 'WO-2023-001',
   })
-  workorderno: string;
+  @IsString()
+  @IsOptional()
+  workorderno?: string;
 
-  @ApiProperty({
+  @ApiPropertyOptional({
     description: 'Work order date',
     example: '2023-01-01',
   })
-  workorderdate: Date;
+  @IsDateString()
+  @IsOptional()
+  workorderdate?: string;
+
+  @ApiPropertyOptional({
+    description: 'Work item IDs',
+    example: ['550e8400-e29b-41d4-a716-446655440010'],
+    type: [String],
+  })
+  @IsArray()
+  @IsUUID(undefined, { each: true })
+  @IsOptional()
+  work_ids?: string[];
+
+  @ApiPropertyOptional({
+    description: 'Uni-tag identifier',
+    example: 'tag-123',
+  })
+  @IsString()
+  @IsOptional()
+  unitag?: string;
+
+  @ApiPropertyOptional({
+    description: 'Excel file reference name',
+    example: 'sheet1.xlsx',
+  })
+  @IsString()
+  @IsOptional()
+  excel?: string;
 }

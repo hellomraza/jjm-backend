@@ -62,18 +62,42 @@ export class WorkItemsController {
   })
   @ApiQuery({ name: 'page', required: false, type: Number, example: 1 })
   @ApiQuery({ name: 'limit', required: false, type: Number, example: 20 })
+  @ApiQuery({
+    name: 'search',
+    required: false,
+    type: String,
+    description: 'Search by work code (partial match)',
+  })
   @ApiPaginatedResponse(WorkItemResponseDto)
   async getMyWorkItems(
     @Request() req: { user: { userId: string; role: UserRole } },
     @Query('page') page: number = 1,
     @Query('limit') limit: number = 20,
+    @Query('search') search?: string,
   ): Promise<PaginatedResponse<WorkItem>> {
     return await this.workItemsService.getMyWorkItems(
       req.user.userId,
       req.user.role,
       page,
       limit,
+      search,
     );
+  }
+
+  @Get('without-agreement')
+  @Roles(UserRole.HO, UserRole.DO, UserRole.CO, UserRole.EM)
+  @ApiOperation({
+    summary: 'List work items without agreement',
+    description: 'Returns paginated work items that are not associated with any agreement',
+  })
+  @ApiQuery({ name: 'page', required: false, type: Number, example: 1 })
+  @ApiQuery({ name: 'limit', required: false, type: Number, example: 20 })
+  @ApiPaginatedResponse(WorkItemResponseDto)
+  async findWithoutAgreement(
+    @Query('page') page: number = 1,
+    @Query('limit') limit: number = 20,
+  ): Promise<PaginatedResponse<WorkItem>> {
+    return await this.workItemsService.findWithoutAgreement(page, limit);
   }
 
   @Post()
@@ -145,12 +169,19 @@ export class WorkItemsController {
   })
   @ApiQuery({ name: 'page', required: false, type: Number, example: 1 })
   @ApiQuery({ name: 'limit', required: false, type: Number, example: 20 })
+  @ApiQuery({
+    name: 'search',
+    required: false,
+    type: String,
+    description: 'Search by work code (partial match)',
+  })
   @ApiPaginatedResponse(WorkItemResponseDto)
   async findAll(
     @Query('page') page: number = 1,
     @Query('limit') limit: number = 20,
+    @Query('search') search?: string,
   ): Promise<PaginatedResponse<WorkItem>> {
-    return await this.workItemsService.findAll(page, limit);
+    return await this.workItemsService.findAll(page, limit, search);
   }
 
   @Get(':id')

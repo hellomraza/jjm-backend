@@ -1,11 +1,12 @@
 /* eslint-disable @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-assignment */
 import {
+  BadRequestException,
   ConflictException,
   ForbiddenException,
   NotFoundException,
   UnprocessableEntityException,
 } from '@nestjs/common';
-import { Repository } from 'typeorm';
+import { In, Repository } from 'typeorm';
 import { User, UserRole } from '../users/entities/user.entity';
 import {
   WorkItem,
@@ -17,6 +18,7 @@ import { CreateAgreementDto } from './dto/create-agreement.dto';
 import { AgreementFile } from './entities/agreement-file.entity';
 import { AgreementFileMap } from './entities/agreement-file-map.entity';
 import { Agreement } from './entities/agreement.entity';
+import { WorkItemEmployeeAssignment } from '../work-items/entities/work-item-employee-assignment.entity';
 
 describe('AgreementsService', () => {
   let service: AgreementsService;
@@ -35,6 +37,9 @@ describe('AgreementsService', () => {
 
   const workItemsRepository = {
     findOne: jest.fn(),
+    find: jest.fn(),
+    findAndCount: jest.fn(),
+    update: jest.fn(),
   } as unknown as Repository<WorkItem>;
 
   beforeEach(() => {
@@ -57,17 +62,62 @@ describe('AgreementsService', () => {
 
     const dto: CreateAgreementDto = {
       contractor_id: 'c1',
-      work_id: 'w1',
+      work_ids: ['w1'],
       agreementno: 'AG-001',
       agreementyear: '2025',
       division_code: 'DIST001',
       workorderno: 'WO-001',
-      workorderdate: new Date(),
+      workorderdate: '2025-01-01',
     };
 
     await expect(service.create(dto)).rejects.toThrow(
       UnprocessableEntityException,
     );
+  });
+
+  it('create successfully creates agreement with optional fields (contractor_id and work_ids)', async () => {
+    (usersRepository.findOne as jest.Mock).mockResolvedValue({ id: 'c1' });
+    (workItemsRepository.find as jest.Mock).mockResolvedValue([{ id: 'w1' }]);
+    (agreementsRepository.create as jest.Mock).mockImplementation((data) => data);
+    (agreementsRepository.save as jest.Mock).mockResolvedValue({ id: 'a1', agreementno: 'AG-001', contractor_id: 'c1' });
+    (agreementsRepository.findOne as jest.Mock).mockResolvedValue({ id: 'a1', agreementno: 'AG-001', contractor_id: 'c1' });
+
+    const dto: CreateAgreementDto = {
+      contractor_id: 'c1',
+      work_ids: ['w1'],
+      agreementno: 'AG-001',
+      agreementyear: '2025',
+      division_code: 'DIST001',
+      workorderno: 'WO-001',
+      workorderdate: '2025-01-01',
+      excel: 'sheet1.xlsx',
+    };
+
+    const result = await service.create(dto);
+    expect(result).toBeDefined();
+    expect(result.id).toBe('a1');
+    expect(result.agreementno).toBe('AG-001');
+    expect(workItemsRepository.update).toHaveBeenCalledWith(
+      { id: In(['w1']) },
+      { agreement_id: 'a1', contractor_id: 'c1' },
+    );
+  });
+
+  it('create successfully creates agreement without optional contractor_id and work_ids', async () => {
+    (agreementsRepository.create as jest.Mock).mockImplementation((data) => data);
+    (agreementsRepository.save as jest.Mock).mockResolvedValue({ id: 'a2', agreementno: 'AG-002' });
+    (agreementsRepository.findOne as jest.Mock).mockResolvedValue({ id: 'a2', agreementno: 'AG-002' });
+
+    const dto: CreateAgreementDto = {
+      agreementno: 'AG-002',
+      agreementyear: '2025',
+      division_code: 'DIST001',
+    };
+
+    const result = await service.create(dto);
+    expect(result).toBeDefined();
+    expect(result.id).toBe('a2');
+    expect(result.agreementno).toBe('AG-002');
   });
 
   it('bulkCreateFromImport creates temporary contractor and work item when codes are missing', async () => {
@@ -97,12 +147,15 @@ describe('AgreementsService', () => {
       }
 
       if (entity === Agreement) {
+        if (options?.where && 'agreementno' in options.where) {
+          return null;
+        }
         return {
           id: 'agreement-id',
           agreementno: 'AGR001',
           agreementyear: '2025-2026',
           contractor_id: 'temp-contractor-id',
-          work_id: 'work-id',
+          workItems: [{ id: 'work-id' } as any],
         };
       }
 
@@ -170,7 +223,6 @@ describe('AgreementsService', () => {
       Agreement,
       expect.objectContaining({
         contractor_id: 'temp-contractor-id',
-        work_id: 'temp-work-id',
       }),
     );
   });
@@ -227,12 +279,15 @@ describe('AgreementsService', () => {
       }
 
       if (entity === Agreement) {
+        if (options?.where && 'agreementno' in options.where) {
+          return null;
+        }
         return {
           id: 'agreement-id',
           agreementno: 'AGR001',
           agreementyear: '2025-2026',
           contractor_id: 'temp-contractor-id',
-          work_id: 'temp-work-id',
+          workItems: [{ id: 'temp-work-id' } as any],
         };
       }
 
@@ -306,7 +361,7 @@ describe('AgreementsService', () => {
       agreementno: 'AGR001',
       agreementyear: '2025-2026',
       contractor_id: 'temp-contractor-id',
-      work_id: 'temp-work-id',
+      workItems: [{ id: 'temp-work-id' } as any],
       created_at: new Date(),
       updated_at: new Date(),
       agreementFileMaps: [],
@@ -400,7 +455,7 @@ describe('AgreementsService', () => {
           agreementno: 'AGR001',
           agreementyear: '2025-2026',
           contractor_id: 'temp-contractor-id',
-          work_id: 'temp-work-id',
+          workItems: [{ id: 'temp-work-id' } as any],
         } as Agreement;
       }
 
@@ -487,6 +542,248 @@ describe('AgreementsService', () => {
           }),
         }),
       );
+    });
+
+    it('should restrict agreements to assigned work items for EM role', async () => {
+      const manager = {
+        find: jest.fn().mockResolvedValue([{ work_item_id: 'w-123' }]),
+      };
+      (agreementsRepository as any).manager = manager;
+
+      (agreementsRepository.findAndCount as jest.Mock).mockResolvedValue([[], 0]);
+
+      await service.findAllForUser('employee-id', UserRole.EM, 1, 10);
+
+      expect(manager.find).toHaveBeenCalledWith(
+        WorkItemEmployeeAssignment,
+        expect.objectContaining({
+          where: { employee_id: 'employee-id' },
+          select: ['work_item_id'],
+        }),
+      );
+      expect(agreementsRepository.findAndCount).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            workItems: { id: In(['w-123']) },
+          }),
+        }),
+      );
+    });
+
+    it('should return no access if EM role has no assignments', async () => {
+      const manager = {
+        find: jest.fn().mockResolvedValue([]),
+      };
+      (agreementsRepository as any).manager = manager;
+
+      (agreementsRepository.findAndCount as jest.Mock).mockResolvedValue([[], 0]);
+
+      await service.findAllForUser('employee-id', UserRole.EM, 1, 10);
+
+      expect(agreementsRepository.findAndCount).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            id: '__no_access__',
+          }),
+        }),
+      );
+    });
+  });
+
+  describe('update', () => {
+    it('throws BadRequestException if trying to edit contractor_id when already assigned', async () => {
+      const agreement = { id: 'a1', contractor_id: 'c1', workItems: [] };
+      (agreementsRepository.findOne as jest.Mock).mockResolvedValue(agreement);
+
+      await expect(service.update('a1', { contractor_id: 'c2' })).rejects.toThrow(
+        BadRequestException,
+      );
+    });
+
+    it('assigns contractor_id if not previously assigned, and propagates to work items', async () => {
+      const agreement = { id: 'a1', contractor_id: null, workItems: [] };
+      const contractor = { id: 'c1' };
+      (agreementsRepository.findOne as jest.Mock).mockResolvedValue(agreement);
+      (usersRepository.findOne as jest.Mock).mockResolvedValue(contractor);
+      (agreementsRepository.save as jest.Mock).mockImplementation(async (item) => item);
+
+      const result = await service.update('a1', { contractor_id: 'c1' });
+
+      expect(result.contractor_id).toBe('c1');
+      expect(usersRepository.findOne).toHaveBeenCalledWith({ where: { id: 'c1' } });
+      expect(workItemsRepository.update).toHaveBeenCalledWith(
+        { agreement_id: 'a1' },
+        { contractor_id: 'c1' },
+      );
+    });
+
+    it('throws BadRequestException if trying to remove an existing work order from the agreement', async () => {
+      const agreement = {
+        id: 'a1',
+        contractor_id: 'c1',
+        workItems: [{ id: 'w1' }, { id: 'w2' }],
+      };
+      (agreementsRepository.findOne as jest.Mock).mockResolvedValue(agreement);
+
+      await expect(service.update('a1', { work_ids: ['w2'] })).rejects.toThrow(
+        BadRequestException,
+      );
+    });
+
+    it('throws BadRequestException if adding a work order that already has another agreement assigned', async () => {
+      const agreement = {
+        id: 'a1',
+        contractor_id: 'c1',
+        workItems: [{ id: 'w1' }],
+      };
+      const existingWorkItems = [
+        { id: 'w2', agreement_id: 'a2' },
+      ];
+      (agreementsRepository.findOne as jest.Mock).mockResolvedValue(agreement);
+      (workItemsRepository.find as jest.Mock).mockResolvedValue(existingWorkItems);
+
+      await expect(service.update('a1', { work_ids: ['w1', 'w2'] })).rejects.toThrow(
+        BadRequestException,
+      );
+    });
+
+    it('successfully adds new work orders with no agreement assigned to the agreement', async () => {
+      const agreement = {
+        id: 'a1',
+        contractor_id: 'c1',
+        workItems: [{ id: 'w1' }],
+      };
+      const addedWorkItems = [
+        { id: 'w2', agreement_id: null },
+      ];
+      (agreementsRepository.findOne as jest.Mock).mockResolvedValue(agreement);
+      (workItemsRepository.find as jest.Mock).mockResolvedValue(addedWorkItems);
+      (agreementsRepository.save as jest.Mock).mockImplementation(async (item) => item);
+
+      const result = await service.update('a1', { work_ids: ['w1', 'w2'] });
+
+      expect(workItemsRepository.update).toHaveBeenCalledWith(
+        { id: In(['w2']) },
+        { agreement_id: 'a1', contractor_id: 'c1' },
+      );
+    });
+  });
+
+  describe('findWorkItemsForAgreement', () => {
+    it('throws when agreement is not found or user lacks access', async () => {
+      (agreementsRepository.findOne as jest.Mock).mockResolvedValue(null);
+
+      await expect(
+        service.findWorkItemsForAgreement('a1', 'u1', UserRole.CO),
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it('returns only assigned work items for EM role', async () => {
+      const agreement = { id: 'a1', workItems: [] };
+      (agreementsRepository.findOne as jest.Mock).mockResolvedValue(agreement);
+
+      const manager = {
+        find: jest.fn().mockResolvedValue([{ work_item_id: 'w1' }]),
+      };
+      (agreementsRepository as any).manager = manager;
+
+      const mockWorkItems = [{ id: 'w1', agreement_id: 'a1' }];
+      (workItemsRepository.findAndCount as jest.Mock).mockResolvedValue([mockWorkItems, 1]);
+
+      const result = await service.findWorkItemsForAgreement(
+        'a1',
+        'em1',
+        UserRole.EM,
+        1,
+        10,
+      );
+
+      expect(manager.find).toHaveBeenCalledWith(
+        WorkItemEmployeeAssignment,
+        expect.objectContaining({
+          where: { employee_id: 'em1' },
+          select: ['work_item_id'],
+        }),
+      );
+      expect(workItemsRepository.findAndCount).toHaveBeenCalledWith({
+        where: {
+          agreement_id: 'a1',
+          id: In(['w1']),
+        },
+        skip: 0,
+        take: 10,
+        order: { created_at: 'DESC' },
+        relations: {
+          contractor: true,
+        },
+      });
+      expect(result).toEqual({
+        data: mockWorkItems,
+        total: 1,
+        page: 1,
+        limit: 10,
+        totalPages: 1,
+      });
+    });
+
+    it('returns empty pagination payload for EM role if they have no assignments', async () => {
+      const agreement = { id: 'a1', workItems: [] };
+      (agreementsRepository.findOne as jest.Mock).mockResolvedValue(agreement);
+
+      const manager = {
+        find: jest.fn().mockResolvedValue([]),
+      };
+      (agreementsRepository as any).manager = manager;
+
+      const result = await service.findWorkItemsForAgreement(
+        'a1',
+        'em1',
+        UserRole.EM,
+        1,
+        10,
+      );
+
+      expect(result).toEqual({
+        data: [],
+        total: 0,
+        page: 1,
+        limit: 10,
+        totalPages: 0,
+      });
+      expect(workItemsRepository.findAndCount).not.toHaveBeenCalled();
+    });
+
+    it('returns all work items for HO role', async () => {
+      const agreement = { id: 'a1', workItems: [] };
+      (agreementsRepository.findOne as jest.Mock).mockResolvedValue(agreement);
+
+      const mockWorkItems = [{ id: 'w1', agreement_id: 'a1' }, { id: 'w2', agreement_id: 'a1' }];
+      (workItemsRepository.findAndCount as jest.Mock).mockResolvedValue([mockWorkItems, 2]);
+
+      const result = await service.findWorkItemsForAgreement(
+        'a1',
+        'ho1',
+        UserRole.HO,
+        2,
+        1,
+      );
+
+      expect(workItemsRepository.findAndCount).toHaveBeenCalledWith({
+        where: { agreement_id: 'a1' },
+        skip: 1,
+        take: 1,
+        order: { created_at: 'DESC' },
+        relations: {
+          contractor: true,
+        },
+      });
+      expect(result).toEqual({
+        data: mockWorkItems,
+        total: 2,
+        page: 2,
+        limit: 1,
+        totalPages: 2,
+      });
     });
   });
 });

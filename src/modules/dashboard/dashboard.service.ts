@@ -98,7 +98,7 @@ export class DashboardService {
       this.getDistrictWorkItemStats(districtId),
       this.getDistrictWorkItems(districtId),
       this.agreementRepository.count({
-        where: { work: { district_id: districtId } },
+        where: { workItems: { district_id: districtId } },
       }),
     ]);
 

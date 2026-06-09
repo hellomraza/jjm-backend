@@ -1,4 +1,6 @@
 import {
+  BadRequestException,
+  ConflictException,
   ForbiddenException,
   Injectable,
   InternalServerErrorException,
@@ -13,10 +15,13 @@ import {
   EntityManager,
   FindOptionsWhere,
   In,
+  ILike,
+  IsNull,
   Not,
   Repository,
 } from 'typeorm';
 import { AgreementsService } from '../agreements/agreements.service';
+import { Agreement } from '../agreements/entities/agreement.entity';
 import { Component } from '../components/entities/component.entity';
 import {
   WorkItemComponent,
@@ -158,29 +163,66 @@ export class WorkItemsService {
         );
       }
 
-      const workCode = await this.generateUniqueWorkCode(manager);
-
-      const workItem = manager.create(WorkItem, {
-        ...createWorkItemDto,
-        work_code: workCode,
-        progress_percentage: createWorkItemDto.progress_percentage ?? 0,
-        status: createWorkItemDto.status ?? WorkItemStatus.PENDING,
+      let workItem = await manager.findOne(WorkItem, {
+        where: { work_code: createWorkItemDto.work_code },
       });
 
-      const savedWorkItem = await manager.save(WorkItem, workItem);
+      const isNew = !workItem;
+      if (workItem && workItem.schemetype !== 'TEMP') {
+        throw new ConflictException(
+          `Work item with work code #${createWorkItemDto.work_code} already exists`,
+        );
+      }
 
-      const agreementCreator: Pick<AgreementsService, 'createWithManager'> =
-        this.agreementsService;
+      let contractorId: string | null = null;
+      if (createWorkItemDto.agreement_id) {
+        const agreement = await manager.findOne(Agreement, {
+          where: { id: createWorkItemDto.agreement_id },
+        });
+        if (!agreement) {
+          throw new NotFoundException(
+            `Agreement #${createWorkItemDto.agreement_id} not found`,
+          );
+        }
+        contractorId = agreement.contractor_id ?? null;
+      }
 
-      await agreementCreator.createWithManager(manager, {
-        agreementno: `AG-${workCode}`,
-        agreementyear: new Date().getFullYear().toString(),
-        division_code: createWorkItemDto.district_id,
-        workorderdate: new Date(),
-        workorderno: `WO-${workCode}`,
-        contractor_id: savedWorkItem.contractor_id,
-        work_id: savedWorkItem.id,
-      });
+      const { sr, agreement_id, title, latitude, longitude, ...rest } =
+        createWorkItemDto;
+
+      if (isNew) {
+        workItem = manager.create(WorkItem, {
+          ...rest,
+          title: title || createWorkItemDto.work_code,
+          latitude: latitude ?? 0,
+          longitude: longitude ?? 0,
+          serial_no: sr ?? null,
+          agreement_id: agreement_id ?? null,
+          contractor_id: contractorId,
+          progress_percentage: 0,
+          status: WorkItemStatus.PENDING,
+        } as any);
+      } else {
+        Object.assign(workItem!, {
+          ...rest,
+          title: title || createWorkItemDto.work_code,
+          latitude: latitude ?? 0,
+          longitude: longitude ?? 0,
+          serial_no: sr ?? null,
+          agreement_id: agreement_id ?? null,
+          contractor_id: contractorId,
+          status: WorkItemStatus.PENDING,
+        });
+      }
+
+      const savedWorkItem = await manager.save(WorkItem, workItem!);
+
+      if (!isNew) {
+        const existingComponents = await manager.find(WorkItemComponent, {
+          where: { work_item_id: savedWorkItem.id },
+        });
+        await manager.remove(WorkItemComponent, existingComponents);
+      }
 
       const mappings = masterComponents.map((component) => {
         const mapping = new WorkItemComponent();
@@ -256,6 +298,7 @@ export class WorkItemsService {
             case 'district_id':
             case 'block_id':
             case 'panchayat_id':
+            case 'workcodeid':
               mappedWorkItem[entityKey] = String(rawValue);
               break;
             case 'serial_no':
@@ -384,6 +427,7 @@ export class WorkItemsService {
   async findAll(
     page: number = 1,
     limit: number = 20,
+    search?: string,
   ): Promise<{
     data: WorkItem[];
     total: number;
@@ -394,7 +438,13 @@ export class WorkItemsService {
     const safePage = Number.isNaN(Number(page)) ? 1 : Number(page);
     const safeLimit = Number.isNaN(Number(limit)) ? 20 : Number(limit);
 
+    const where: FindOptionsWhere<WorkItem> = {};
+    if (search) {
+      where.work_code = ILike(`%${search}%`);
+    }
+
     const [items, total] = await this.workItemsRepository.findAndCount({
+      where,
       skip: (safePage - 1) * safeLimit,
       take: safeLimit,
       order: { created_at: 'DESC' },
@@ -415,6 +465,7 @@ export class WorkItemsService {
     role: UserRole,
     page: number = 1,
     limit: number = 20,
+    search?: string,
   ): Promise<{
     data: WorkItem[];
     total: number;
@@ -497,6 +548,10 @@ export class WorkItemsService {
 
     // Exclude temporary work items for all roles
     where.schemetype = Not('TEMP');
+
+    if (search) {
+      where.work_code = ILike(`%${search}%`);
+    }
 
     const [items, total] = await this.workItemsRepository.findAndCount({
       where,
@@ -722,7 +777,31 @@ export class WorkItemsService {
     updateWorkItemDto: UpdateWorkItemDto,
   ): Promise<WorkItem> {
     const workItem = await this.findOne(id);
-    Object.assign(workItem, updateWorkItemDto);
+
+    if (updateWorkItemDto.hasOwnProperty('agreement_id')) {
+      const newAgreementId = updateWorkItemDto.agreement_id;
+      if (workItem.agreement_id) {
+        if (newAgreementId !== workItem.agreement_id) {
+          throw new BadRequestException('agreement_id cannot be edited once assigned');
+        }
+      } else if (newAgreementId) {
+        const agreement = await this.workItemsRepository.manager.findOne(Agreement, {
+          where: { id: newAgreementId },
+        });
+        if (!agreement) {
+          throw new NotFoundException(`Agreement #${newAgreementId} not found`);
+        }
+        workItem.agreement_id = newAgreementId;
+        workItem.contractor_id = agreement.contractor_id ?? null;
+      }
+    }
+
+    if (updateWorkItemDto.hasOwnProperty('sr')) {
+      workItem.serial_no = updateWorkItemDto.sr ?? null;
+    }
+
+    const { sr, agreement_id, ...remainingDto } = updateWorkItemDto;
+    Object.assign(workItem, remainingDto);
     return this.workItemsRepository.save(workItem);
   }
 
@@ -739,6 +818,36 @@ export class WorkItemsService {
     }
 
     return this.workItemsRepository.save(workItem);
+  }
+
+  async findWithoutAgreement(
+    page: number = 1,
+    limit: number = 20,
+  ): Promise<{
+    data: WorkItem[];
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+  }> {
+    const safePage = Number.isNaN(Number(page)) ? 1 : Number(page);
+    const safeLimit = Number.isNaN(Number(limit)) ? 20 : Number(limit);
+
+    const [items, total] = await this.workItemsRepository.findAndCount({
+      where: { agreement_id: IsNull() },
+      skip: (safePage - 1) * safeLimit,
+      take: safeLimit,
+      order: { created_at: 'DESC' },
+      relations: this.locationRelations,
+    });
+
+    return {
+      data: items,
+      total,
+      page: safePage,
+      limit: safeLimit,
+      totalPages: Math.ceil(total / safeLimit),
+    };
   }
 
   async remove(id: string): Promise<void> {

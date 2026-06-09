@@ -28,7 +28,7 @@ import { MailModule } from './common/mail/mail.module';
         synchronize: true,
         url: configService.get<string>('DB_URL'),
         entities: [__dirname + '/../**/*.entity{.ts,.js}'],
-        migrations: [__dirname + '/../migrations/*{.ts,.js}'],
+        migrations: [__dirname + '/database/migrations/*{.ts,.js}'],
         migrationsRun: true,
         ssl: {
           rejectUnauthorized: true,

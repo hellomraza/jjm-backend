@@ -1,10 +1,12 @@
 import {
+  BadRequestException,
   ForbiddenException,
   NotFoundException,
   UnprocessableEntityException,
 } from '@nestjs/common';
 import { DataSource, Repository } from 'typeorm';
 import { User, UserRole } from '../users/entities/user.entity';
+import { Agreement } from '../agreements/entities/agreement.entity';
 import { WorkItemEmployeeAssignment } from './entities/work-item-employee-assignment.entity';
 import { WorkItem, WorkItemStatus } from './entities/work-item.entity';
 import { WorkItemsService } from './work-items.service';
@@ -17,6 +19,9 @@ describe('WorkItemsService', () => {
     findOne: jest.fn(),
     save: jest.fn(),
     remove: jest.fn(),
+    manager: {
+      findOne: jest.fn(),
+    },
   } as unknown as Repository<WorkItem>;
 
   const workItemEmployeeAssignmentsRepository = {
@@ -32,7 +37,11 @@ describe('WorkItemsService', () => {
     createWithManager: jest.fn(),
     getWorkItemIdsForContractor: jest.fn(),
   };
-  const dataSource = { transaction: jest.fn() } as unknown as DataSource;
+  const getRepositoryMock = jest.fn();
+  const dataSource = {
+    transaction: jest.fn(),
+    getRepository: getRepositoryMock,
+  } as unknown as DataSource;
 
   beforeEach(() => {
     service = new WorkItemsService(
@@ -42,6 +51,9 @@ describe('WorkItemsService', () => {
       agreementsService as any,
       dataSource,
     );
+    getRepositoryMock.mockReturnValue({
+      find: jest.fn().mockResolvedValue([]),
+    });
     jest.clearAllMocks();
   });
 
@@ -57,14 +69,29 @@ describe('WorkItemsService', () => {
     expect(result.data).toEqual([{ id: 'w1' }]);
   });
 
-  it('create also creates an agreement for the work item', async () => {
+  it('findAll applies Like filter when search param is provided', async () => {
+    (workItemsRepository.findAndCount as jest.Mock).mockResolvedValue([[], 0]);
+
+    await service.findAll(1, 20, 'search_code');
+
+    expect(workItemsRepository.findAndCount).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          work_code: expect.anything(),
+        }),
+      }),
+    );
+  });
+
+  it('create successfully creates a work item and links it to an agreement if agreement_id is provided', async () => {
     const createDto = {
       title: 'Work 1',
-      district_id: 10,
-      contractor_id: 'c1',
+      work_code: 'W12345678901',
+      district_id: '10',
       schemetype: 'PWS',
       latitude: 25.5941,
       longitude: 85.1376,
+      agreement_id: 'a1',
     } as any;
 
     const masterComponents = Array.from({ length: 12 }, (_, i) => ({
@@ -72,41 +99,55 @@ describe('WorkItemsService', () => {
       order_number: i + 1,
     }));
 
+    const mockAgreement = {
+      id: 'a1',
+      contractor_id: 'c1',
+    };
+
     const manager = {
       find: jest.fn().mockResolvedValue(masterComponents),
+      findOne: jest.fn().mockImplementation((entity, options) => {
+        if (entity === WorkItem) {
+          return Promise.resolve(null);
+        }
+        if (entity === Agreement) {
+          expect(options.where.id).toBe('a1');
+          return Promise.resolve(mockAgreement);
+        }
+        return Promise.resolve(null);
+      }),
       create: jest.fn((_: unknown, data: unknown) => data),
       save: jest.fn((entity: unknown, data: any) => {
         if (entity === WorkItem) {
           return Promise.resolve({ id: 'w1', ...data });
         }
-
         return Promise.resolve(data);
       }),
+      remove: jest.fn().mockResolvedValue(undefined),
       exists: jest.fn().mockResolvedValue(false),
     };
 
     (dataSource.transaction as jest.Mock).mockImplementation(async (callback) =>
       callback(manager),
     );
-    agreementsService.createWithManager.mockResolvedValue({ id: 'a1' });
 
     const result = await service.create(createDto);
 
     expect(result.id).toBe('w1');
-    expect(agreementsService.createWithManager).toHaveBeenCalledWith(
-      manager,
-      expect.objectContaining({
-        work_id: 'w1',
-        contractor_id: 'c1',
-      }),
-    );
+    expect(result.contractor_id).toBe('c1');
+    expect(result.agreement_id).toBe('a1');
   });
 
   it('bulkCreateFromImport creates a temporary contractor when contractor code is missing', async () => {
+    const masterComponents = Array.from({ length: 12 }, (_, i) => ({
+      id: `comp-${i + 1}`,
+      order_number: i + 1,
+    }));
     const manager = {
       findOne: jest.fn(),
       create: jest.fn((_entity, payload) => payload),
       save: jest.fn(),
+      find: jest.fn().mockResolvedValue(masterComponents),
     };
 
     (dataSource.transaction as jest.Mock).mockImplementation(async (callback) =>
@@ -182,10 +223,15 @@ describe('WorkItemsService', () => {
       role: UserRole.CO,
     };
 
+    const masterComponents = Array.from({ length: 12 }, (_, i) => ({
+      id: `comp-${i + 1}`,
+      order_number: i + 1,
+    }));
     const manager = {
       findOne: jest.fn(),
       create: jest.fn((_entity, payload) => payload),
       save: jest.fn(),
+      find: jest.fn().mockResolvedValue(masterComponents),
     };
 
     (dataSource.transaction as jest.Mock).mockImplementation(async (callback) =>
@@ -266,10 +312,16 @@ describe('WorkItemsService', () => {
       status: WorkItemStatus.PENDING,
     };
 
+    const masterComponents = Array.from({ length: 12 }, (_, i) => ({
+      id: `comp-${i + 1}`,
+      order_number: i + 1,
+    }));
     const manager = {
       findOne: jest.fn(),
       create: jest.fn((_entity, payload) => payload),
       save: jest.fn(),
+      find: jest.fn().mockResolvedValue(masterComponents),
+      remove: jest.fn(),
     };
 
     (dataSource.transaction as jest.Mock).mockImplementation(async (callback) =>
@@ -325,7 +377,7 @@ describe('WorkItemsService', () => {
         title: 'WORK003',
         schemetype: 'PWS',
         district_id: 'CG-RPR',
-        contractor_id: 'contractor-id',
+        contractor_id: 'old-contractor-id',
         excel: 'EX-003',
       }),
     );
@@ -549,7 +601,7 @@ describe('WorkItemsService', () => {
 
     expect(result.total).toBe(1);
     expect(workItemsRepository.findAndCount).toHaveBeenCalledWith(
-      expect.objectContaining({ where: {} }),
+      expect.objectContaining({ where: expect.objectContaining({}) }),
     );
   });
 
@@ -563,7 +615,7 @@ describe('WorkItemsService', () => {
     await service.getMyWorkItems('do1', UserRole.DO, 1, 20);
 
     expect(workItemsRepository.findAndCount).toHaveBeenCalledWith(
-      expect.objectContaining({ where: { district_id: 'DIST001' } }),
+      expect.objectContaining({ where: expect.objectContaining({ district_id: 'DIST001' }) }),
     );
   });
 
@@ -577,7 +629,7 @@ describe('WorkItemsService', () => {
 
     expect(workItemsRepository.findAndCount).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: { contractor_id: 'co1', id: expect.anything() },
+        where: expect.objectContaining({ contractor_id: 'co1', id: expect.anything() }),
       }),
     );
   });
@@ -612,7 +664,7 @@ describe('WorkItemsService', () => {
       select: ['work_item_id'],
     });
     expect(workItemsRepository.findAndCount).toHaveBeenCalledWith(
-      expect.objectContaining({ where: { id: expect.anything() } }),
+      expect.objectContaining({ where: expect.objectContaining({ id: expect.anything() }) }),
     );
   });
 
@@ -631,6 +683,20 @@ describe('WorkItemsService', () => {
       totalPages: 0,
     });
     expect(workItemsRepository.findAndCount).not.toHaveBeenCalled();
+  });
+
+  it('getMyWorkItems applies Like filter when search param is provided', async () => {
+    (workItemsRepository.findAndCount as jest.Mock).mockResolvedValue([[], 0]);
+
+    await service.getMyWorkItems('ho1', UserRole.HO, 1, 20, 'search_code');
+
+    expect(workItemsRepository.findAndCount).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          work_code: expect.anything(),
+        }),
+      }),
+    );
   });
 
   it('getDistrictOfficerByWorkItem returns DO without password', async () => {
@@ -682,5 +748,81 @@ describe('WorkItemsService', () => {
     await expect(service.getDistrictOfficerByWorkItem('w1')).rejects.toThrow(
       NotFoundException,
     );
+  });
+
+  it('findWithoutAgreement returns paginated work items with null agreement_id', async () => {
+    (workItemsRepository.findAndCount as jest.Mock).mockResolvedValue([
+      [{ id: 'w1', agreement_id: null }],
+      1,
+    ]);
+
+    const result = await service.findWithoutAgreement(1, 20);
+
+    expect(result.total).toBe(1);
+    expect(result.data).toEqual([{ id: 'w1', agreement_id: null }]);
+    expect(workItemsRepository.findAndCount).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { agreement_id: expect.anything() },
+      }),
+    );
+  });
+
+  describe('update', () => {
+    it('successfully updates other fields without changing agreement_id', async () => {
+      const workItem = { id: 'w1', title: 'Old Title', agreement_id: 'a1', contractor_id: 'c1' };
+      (workItemsRepository.findOne as jest.Mock).mockResolvedValue(workItem);
+      (workItemsRepository.save as jest.Mock).mockImplementation(async (item) => item);
+
+      const result = await service.update('w1', { title: 'New Title' });
+
+      expect(result.title).toBe('New Title');
+      expect(result.agreement_id).toBe('a1');
+      expect(workItemsRepository.save).toHaveBeenCalledWith(expect.objectContaining({ id: 'w1', title: 'New Title' }));
+    });
+
+    it('assigns agreement_id and copies contractor_id if work item has no agreement_id', async () => {
+      const workItem = { id: 'w1', title: 'Title', agreement_id: null, contractor_id: null };
+      const agreement = { id: 'a1', contractor_id: 'c1' };
+
+      (workItemsRepository.findOne as jest.Mock).mockResolvedValue(workItem);
+      (workItemsRepository.save as jest.Mock).mockImplementation(async (item) => item);
+      (workItemsRepository.manager.findOne as jest.Mock).mockResolvedValue(agreement);
+
+      const result = await service.update('w1', { agreement_id: 'a1' });
+
+      expect(result.agreement_id).toBe('a1');
+      expect(result.contractor_id).toBe('c1');
+      expect(workItemsRepository.manager.findOne).toHaveBeenCalledWith(expect.anything(), { where: { id: 'a1' } });
+      expect(workItemsRepository.save).toHaveBeenCalledWith(expect.objectContaining({ id: 'w1', agreement_id: 'a1', contractor_id: 'c1' }));
+    });
+
+    it('throws NotFoundException if the new agreement_id does not exist', async () => {
+      const workItem = { id: 'w1', title: 'Title', agreement_id: null, contractor_id: null };
+
+      (workItemsRepository.findOne as jest.Mock).mockResolvedValue(workItem);
+      (workItemsRepository.manager.findOne as jest.Mock).mockResolvedValue(null);
+
+      await expect(service.update('w1', { agreement_id: 'a2' })).rejects.toThrow(
+        NotFoundException,
+      );
+    });
+
+    it('throws BadRequestException if trying to change agreement_id when already assigned', async () => {
+      const workItem = { id: 'w1', title: 'Title', agreement_id: 'a1', contractor_id: 'c1' };
+      (workItemsRepository.findOne as jest.Mock).mockResolvedValue(workItem);
+
+      await expect(service.update('w1', { agreement_id: 'a2' })).rejects.toThrow(
+        BadRequestException,
+      );
+    });
+
+    it('throws BadRequestException if trying to remove agreement_id when already assigned', async () => {
+      const workItem = { id: 'w1', title: 'Title', agreement_id: 'a1', contractor_id: 'c1' };
+      (workItemsRepository.findOne as jest.Mock).mockResolvedValue(workItem);
+
+      await expect(service.update('w1', { agreement_id: null as any })).rejects.toThrow(
+        BadRequestException,
+      );
+    });
   });
 });

@@ -99,7 +99,7 @@ describe('DashboardService', () => {
       expect(mockUserRepository.findOne).toHaveBeenCalledWith({ where: { id: 'user-do' } });
       expect(mockDistrictRepository.findOne).toHaveBeenCalledWith({ where: { district_code: 'DIST-001' } });
       expect(mockAgreementRepository.count).toHaveBeenCalledWith({
-        where: { work: { district_id: 'DIST-001' } },
+        where: { workItems: { district_id: 'DIST-001' } },
       });
       expect(result).toHaveProperty('districtName', 'Test District');
       expect(result).toHaveProperty('totalAgreements', 4);

@@ -26,7 +26,7 @@ describe('AgreementsController', () => {
   });
 
   it('create delegates to service', async () => {
-    const dto = { contractor_id: 'c1', work_id: 'w1' } as Parameters<
+    const dto = { contractor_id: 'c1', work_ids: ['w1'] } as Parameters<
       AgreementsController['create']
     >[0];
     agreementsService.create.mockResolvedValue({
@@ -34,9 +34,8 @@ describe('AgreementsController', () => {
       agreementno: 'AGR001',
       agreementyear: '2025-2026',
       contractor_id: 'c1',
-      work_id: 'w1',
       contractor: undefined,
-      work: undefined,
+      workItems: [],
       agreementFileMaps: [],
       created_at: new Date(),
       updated_at: new Date(),
@@ -54,9 +53,8 @@ describe('AgreementsController', () => {
           agreementno: 'AGR001',
           agreementyear: '2025-2026',
           contractor_id: 'c1',
-          work_id: 'w1',
           contractor: undefined,
-          work: undefined,
+          workItems: [],
           agreementFileMaps: [
             {
               agreementFile: {
@@ -87,6 +85,8 @@ describe('AgreementsController', () => {
       'HO',
       1,
       20,
+      undefined,
+      undefined,
     );
   });
 
@@ -97,9 +97,8 @@ describe('AgreementsController', () => {
       agreementno: 'AGR001',
       agreementyear: '2025-2026',
       contractor_id: 'c1',
-      work_id: 'w1',
       contractor: undefined,
-      work: undefined,
+      workItems: [],
       agreementFileMaps: [
         {
           agreementFile: {
@@ -143,9 +142,8 @@ describe('AgreementsController', () => {
         agreementno: 'AGR001',
         agreementyear: '2025-2026',
         contractor_id: 'c1',
-        work_id: 'w1',
         contractor: undefined,
-        work: undefined,
+        workItems: [],
         agreementFileMaps: [],
         created_at: new Date(),
         updated_at: new Date(),
