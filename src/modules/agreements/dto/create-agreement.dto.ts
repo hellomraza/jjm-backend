@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsUUID } from 'class-validator';
+import { IsArray, IsUUID } from 'class-validator';
 
 export class CreateAgreementDto {
   @ApiProperty({
@@ -10,11 +10,13 @@ export class CreateAgreementDto {
   contractor_id: string;
 
   @ApiProperty({
-    description: 'Work item ID',
-    example: '550e8400-e29b-41d4-a716-446655440010',
+    description: 'Work item IDs',
+    example: ['550e8400-e29b-41d4-a716-446655440010'],
+    type: [String],
   })
-  @IsUUID()
-  work_id: string;
+  @IsArray()
+  @IsUUID(undefined, { each: true })
+  work_ids: string[];
 
   @ApiProperty({
     description: 'Agreement number',
