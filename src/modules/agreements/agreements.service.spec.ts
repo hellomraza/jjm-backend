@@ -5,7 +5,7 @@ import {
   NotFoundException,
   UnprocessableEntityException,
 } from '@nestjs/common';
-import { Repository } from 'typeorm';
+import { In, Repository } from 'typeorm';
 import { User, UserRole } from '../users/entities/user.entity';
 import {
   WorkItem,
@@ -35,6 +35,8 @@ describe('AgreementsService', () => {
 
   const workItemsRepository = {
     findOne: jest.fn(),
+    find: jest.fn(),
+    update: jest.fn(),
   } as unknown as Repository<WorkItem>;
 
   beforeEach(() => {
@@ -68,6 +70,51 @@ describe('AgreementsService', () => {
     await expect(service.create(dto)).rejects.toThrow(
       UnprocessableEntityException,
     );
+  });
+
+  it('create successfully creates agreement with optional fields (contractor_id and work_ids)', async () => {
+    (usersRepository.findOne as jest.Mock).mockResolvedValue({ id: 'c1' });
+    (workItemsRepository.find as jest.Mock).mockResolvedValue([{ id: 'w1' }]);
+    (agreementsRepository.create as jest.Mock).mockImplementation((data) => data);
+    (agreementsRepository.save as jest.Mock).mockResolvedValue({ id: 'a1', agreementno: 'AG-001' });
+    (agreementsRepository.findOne as jest.Mock).mockResolvedValue({ id: 'a1', agreementno: 'AG-001', contractor_id: 'c1' });
+
+    const dto: CreateAgreementDto = {
+      contractor_id: 'c1',
+      work_ids: ['w1'],
+      agreementno: 'AG-001',
+      agreementyear: '2025',
+      division_code: 'DIST001',
+      workorderno: 'WO-001',
+      workorderdate: new Date(),
+      excel: 'sheet1.xlsx',
+    };
+
+    const result = await service.create(dto);
+    expect(result).toBeDefined();
+    expect(result.id).toBe('a1');
+    expect(result.agreementno).toBe('AG-001');
+    expect(workItemsRepository.update).toHaveBeenCalledWith(
+      { id: In(['w1']) },
+      { agreement_id: 'a1' },
+    );
+  });
+
+  it('create successfully creates agreement without optional contractor_id and work_ids', async () => {
+    (agreementsRepository.create as jest.Mock).mockImplementation((data) => data);
+    (agreementsRepository.save as jest.Mock).mockResolvedValue({ id: 'a2', agreementno: 'AG-002' });
+    (agreementsRepository.findOne as jest.Mock).mockResolvedValue({ id: 'a2', agreementno: 'AG-002' });
+
+    const dto: CreateAgreementDto = {
+      agreementno: 'AG-002',
+      agreementyear: '2025',
+      division_code: 'DIST001',
+    };
+
+    const result = await service.create(dto);
+    expect(result).toBeDefined();
+    expect(result.id).toBe('a2');
+    expect(result.agreementno).toBe('AG-002');
   });
 
   it('bulkCreateFromImport creates temporary contractor and work item when codes are missing', async () => {

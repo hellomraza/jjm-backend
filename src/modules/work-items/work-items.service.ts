@@ -14,6 +14,7 @@ import {
   FindOptionsWhere,
   In,
   ILike,
+  IsNull,
   Not,
   Repository,
 } from 'typeorm';
@@ -176,7 +177,7 @@ export class WorkItemsService {
       await agreementCreator.createWithManager(manager, {
         agreementno: `AG-${workCode}`,
         agreementyear: new Date().getFullYear().toString(),
-        division_code: createWorkItemDto.district_id,
+        division_code: String(createWorkItemDto.district_id),
         workorderdate: new Date(),
         workorderno: `WO-${workCode}`,
         contractor_id: savedWorkItem.contractor_id,
@@ -752,6 +753,36 @@ export class WorkItemsService {
     }
 
     return this.workItemsRepository.save(workItem);
+  }
+
+  async findWithoutAgreement(
+    page: number = 1,
+    limit: number = 20,
+  ): Promise<{
+    data: WorkItem[];
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+  }> {
+    const safePage = Number.isNaN(Number(page)) ? 1 : Number(page);
+    const safeLimit = Number.isNaN(Number(limit)) ? 20 : Number(limit);
+
+    const [items, total] = await this.workItemsRepository.findAndCount({
+      where: { agreement_id: IsNull() },
+      skip: (safePage - 1) * safeLimit,
+      take: safeLimit,
+      order: { created_at: 'DESC' },
+      relations: this.locationRelations,
+    });
+
+    return {
+      data: items,
+      total,
+      page: safePage,
+      limit: safeLimit,
+      totalPages: Math.ceil(total / safeLimit),
+    };
   }
 
   async remove(id: string): Promise<void> {

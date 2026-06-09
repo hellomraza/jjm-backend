@@ -307,14 +307,57 @@ export class AgreementResponseDto {
   @ApiProperty({
     description: 'Contractor user ID',
     example: 'contractor-123',
+    nullable: true,
   })
-  contractor_id: string;
+  contractor_id?: string | null;
 
   @ApiProperty({
     description: 'Division code',
     example: 'division-123',
   })
   division_code: string;
+
+  @ApiProperty({
+    description: 'SR number',
+    example: 'sr-123',
+    nullable: true,
+  })
+  sr?: string | null;
+
+  @ApiProperty({
+    description: 'Work order number',
+    example: 'WO-123',
+    nullable: true,
+  })
+  workorderno?: string | null;
+
+  @ApiProperty({
+    description: 'Work order date',
+    example: '2026-06-09',
+    nullable: true,
+  })
+  workorderdate?: Date | null;
+
+  @ApiProperty({
+    description: 'Uni-tag identifier',
+    example: 'tag-123',
+    nullable: true,
+  })
+  unitag?: string | null;
+
+  @ApiProperty({
+    description: 'AGRID reference ID',
+    example: 'agrid-123',
+    nullable: true,
+  })
+  agrid?: string | null;
+
+  @ApiProperty({
+    description: 'Excel file reference name',
+    example: 'sheet1.xlsx',
+    nullable: true,
+  })
+  excel?: string | null;
 
   @ApiProperty({
     description: 'Contractor user details',
@@ -356,6 +399,12 @@ export class AgreementResponseDto {
       agreementyear: agreement.agreementyear,
       contractor_id: agreement.contractor_id,
       division_code: agreement.division_code,
+      sr: agreement.sr,
+      workorderno: agreement.workorderno,
+      workorderdate: agreement.workorderdate,
+      unitag: agreement.unitag,
+      agrid: agreement.agrid,
+      excel: agreement.excel,
       contractor: agreement.contractor
         ? {
             id: agreement.contractor.id,

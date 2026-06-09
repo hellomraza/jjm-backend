@@ -99,20 +99,22 @@ export class AgreementsService {
   }
 
   private async validateForeignKeys(
-    contractorId: string,
-    workIds: string[],
+    contractorId?: string | null,
+    workIds?: string[] | null,
   ): Promise<void> {
-    const contractor = await this.usersRepository.findOne({
-      where: { id: contractorId },
-    });
+    if (contractorId) {
+      const contractor = await this.usersRepository.findOne({
+        where: { id: contractorId },
+      });
 
-    if (!contractor) {
-      throw new UnprocessableEntityException(
-        `Contractor user #${contractorId} not found`,
-      );
+      if (!contractor) {
+        throw new UnprocessableEntityException(
+          `Contractor user #${contractorId} not found`,
+        );
+      }
     }
 
-    if (workIds.length > 0) {
+    if (workIds && workIds.length > 0) {
       const workItems = await this.workItemsRepository.find({
         where: { id: In(workIds) },
       });
@@ -296,13 +298,8 @@ export class AgreementsService {
       work_ids || [],
     );
 
-    const agreementyear = this.getCurrentFinancialYear();
-    const agreementno = await this.generateAgreementNumber(agreementyear);
-
     const agreement = this.agreementsRepository.create({
       ...agreementData,
-      agreementno,
-      agreementyear,
     });
     const savedAgreement = await this.agreementsRepository.save(agreement);
 
@@ -413,14 +410,16 @@ export class AgreementsService {
     manager: EntityManager,
     createAgreementDto: CreateAgreementDto,
   ): Promise<Agreement> {
-    const contractor = await manager.findOne(User, {
-      where: { id: createAgreementDto.contractor_id },
-    });
+    if (createAgreementDto.contractor_id) {
+      const contractor = await manager.findOne(User, {
+        where: { id: createAgreementDto.contractor_id },
+      });
 
-    if (!contractor) {
-      throw new UnprocessableEntityException(
-        `Contractor user #${createAgreementDto.contractor_id} not found`,
-      );
+      if (!contractor) {
+        throw new UnprocessableEntityException(
+          `Contractor user #${createAgreementDto.contractor_id} not found`,
+        );
+      }
     }
 
     const { work_ids, ...agreementData } = createAgreementDto;
@@ -437,21 +436,8 @@ export class AgreementsService {
       }
     }
 
-    const agreementyear = this.getCurrentFinancialYear();
-    const latestAgreement = await manager.findOne(Agreement, {
-      where: { agreementyear },
-      order: { created_at: 'DESC' },
-    });
-
-    const lastSequence = latestAgreement?.agreementno.match(/(\d+)$/)?.[1];
-    const nextSequence = lastSequence ? Number(lastSequence) + 1 : 1;
-    const paddedSequence = String(nextSequence).padStart(4, '0');
-    const agreementno = `AGR-${agreementyear}-${paddedSequence}`;
-
     const agreement = manager.create(Agreement, {
       ...agreementData,
-      agreementno,
-      agreementyear,
     });
     const savedAgreement = await manager.save(Agreement, agreement);
 

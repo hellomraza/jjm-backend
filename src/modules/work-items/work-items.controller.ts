@@ -84,6 +84,22 @@ export class WorkItemsController {
     );
   }
 
+  @Get('without-agreement')
+  @Roles(UserRole.HO, UserRole.DO, UserRole.CO, UserRole.EM)
+  @ApiOperation({
+    summary: 'List work items without agreement',
+    description: 'Returns paginated work items that are not associated with any agreement',
+  })
+  @ApiQuery({ name: 'page', required: false, type: Number, example: 1 })
+  @ApiQuery({ name: 'limit', required: false, type: Number, example: 20 })
+  @ApiPaginatedResponse(WorkItemResponseDto)
+  async findWithoutAgreement(
+    @Query('page') page: number = 1,
+    @Query('limit') limit: number = 20,
+  ): Promise<PaginatedResponse<WorkItem>> {
+    return await this.workItemsService.findWithoutAgreement(page, limit);
+  }
+
   @Post()
   @Roles(UserRole.HO, UserRole.DO, UserRole.CO)
   @ApiOperation({

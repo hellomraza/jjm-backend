@@ -26,8 +26,8 @@ export class Agreement {
   agreementyear!: string; //agreementyear
 
   @Index()
-  @Column({ type: 'varchar', length: 36 })
-  contractor_id!: string; //contractor_code
+  @Column({ type: 'varchar', length: 36, nullable: true })
+  contractor_id?: string | null; //contractor_code
 
 
 
@@ -60,9 +60,9 @@ export class Agreement {
   @Column({ type: 'decimal', precision: 10, scale: 7, nullable: true })
   longitude?: number;
 
-  @ManyToOne(() => User, { onDelete: 'RESTRICT', onUpdate: 'CASCADE' })
+  @ManyToOne(() => User, { onDelete: 'RESTRICT', onUpdate: 'CASCADE', nullable: true })
   @JoinColumn({ name: 'contractor_id', referencedColumnName: 'id' })
-  contractor!: User;
+  contractor?: User | null;
 
   @OneToMany(() => WorkItem, (workItem) => workItem.agreement)
   workItems?: WorkItem[];

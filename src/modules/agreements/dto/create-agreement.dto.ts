@@ -1,50 +1,94 @@
-import { ApiProperty } from '@nestjs/swagger';
-import { IsArray, IsUUID } from 'class-validator';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { IsArray, IsDateString, IsNotEmpty, IsOptional, IsString, IsUUID } from 'class-validator';
 
 export class CreateAgreementDto {
   @ApiProperty({
+    description: 'Agreement number',
+    example: 'AG-2023-001',
+  })
+  @IsString()
+  @IsNotEmpty()
+  agreementno!: string;
+
+  @ApiProperty({
+    description: 'Agreement year',
+    example: '2023-2024',
+  })
+  @IsString()
+  @IsNotEmpty()
+  agreementyear!: string;
+
+  @ApiProperty({
+    description: 'Division code',
+    example: 'DIST001',
+  })
+  @IsString()
+  @IsNotEmpty()
+  division_code!: string;
+
+  @ApiPropertyOptional({
+    description: 'AGRID reference ID',
+    example: 'agrid-123',
+  })
+  @IsString()
+  @IsOptional()
+  agrid?: string;
+
+  @ApiPropertyOptional({
     description: 'Contractor user ID',
     example: '550e8400-e29b-41d4-a716-446655440001',
   })
   @IsUUID()
-  contractor_id: string;
+  @IsOptional()
+  contractor_id?: string;
 
-  @ApiProperty({
+  @ApiPropertyOptional({
+    description: 'SR number',
+    example: 'sr-123',
+  })
+  @IsString()
+  @IsOptional()
+  sr?: string;
+
+  @ApiPropertyOptional({
+    description: 'Work order number',
+    example: 'WO-2023-001',
+  })
+  @IsString()
+  @IsOptional()
+  workorderno?: string;
+
+  @ApiPropertyOptional({
+    description: 'Work order date',
+    example: '2023-01-01',
+  })
+  @IsDateString()
+  @IsOptional()
+  workorderdate?: Date;
+
+  @ApiPropertyOptional({
     description: 'Work item IDs',
     example: ['550e8400-e29b-41d4-a716-446655440010'],
     type: [String],
   })
   @IsArray()
   @IsUUID(undefined, { each: true })
-  work_ids: string[];
+  @IsOptional()
+  work_ids?: string[];
 
-  @ApiProperty({
-    description: 'Agreement number',
-    example: 'AG-2023-001',
+  @ApiPropertyOptional({
+    description: 'Uni-tag identifier',
+    example: 'tag-123',
   })
-  agreementno: string;
+  @IsString()
+  @IsOptional()
+  unitag?: string;
 
-  @ApiProperty({
-    description: 'Agreement year',
-    example: '2023',
+  @ApiPropertyOptional({
+    description: 'Excel file reference name',
+    example: 'sheet1.xlsx',
   })
-  agreementyear: string;
-
-  @ApiProperty({
-    description: 'Division code',
-    example: 'DIST001',
-  })
-  division_code: string;
-
-  @ApiProperty({
-    description: 'Work order number',
-    example: 'WO-2023-001',
-  })
-  workorderno: string;
-
-  @ApiProperty({
-    description: 'Work order date',
-    example: '2023-01-01',
-  })
-  workorderdate: Date;
+  @IsString()
+  @IsOptional()
+  excel?: string;
 }

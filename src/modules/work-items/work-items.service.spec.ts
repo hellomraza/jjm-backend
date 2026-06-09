@@ -734,4 +734,21 @@ describe('WorkItemsService', () => {
       NotFoundException,
     );
   });
+
+  it('findWithoutAgreement returns paginated work items with null agreement_id', async () => {
+    (workItemsRepository.findAndCount as jest.Mock).mockResolvedValue([
+      [{ id: 'w1', agreement_id: null }],
+      1,
+    ]);
+
+    const result = await service.findWithoutAgreement(1, 20);
+
+    expect(result.total).toBe(1);
+    expect(result.data).toEqual([{ id: 'w1', agreement_id: null }]);
+    expect(workItemsRepository.findAndCount).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { agreement_id: expect.anything() },
+      }),
+    );
+  });
 });
