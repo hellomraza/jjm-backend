@@ -64,7 +64,7 @@ describe('AgreementsService', () => {
       agreementyear: '2025',
       division_code: 'DIST001',
       workorderno: 'WO-001',
-      workorderdate: new Date(),
+      workorderdate: '2025-01-01',
     };
 
     await expect(service.create(dto)).rejects.toThrow(
@@ -76,7 +76,7 @@ describe('AgreementsService', () => {
     (usersRepository.findOne as jest.Mock).mockResolvedValue({ id: 'c1' });
     (workItemsRepository.find as jest.Mock).mockResolvedValue([{ id: 'w1' }]);
     (agreementsRepository.create as jest.Mock).mockImplementation((data) => data);
-    (agreementsRepository.save as jest.Mock).mockResolvedValue({ id: 'a1', agreementno: 'AG-001' });
+    (agreementsRepository.save as jest.Mock).mockResolvedValue({ id: 'a1', agreementno: 'AG-001', contractor_id: 'c1' });
     (agreementsRepository.findOne as jest.Mock).mockResolvedValue({ id: 'a1', agreementno: 'AG-001', contractor_id: 'c1' });
 
     const dto: CreateAgreementDto = {
@@ -86,7 +86,7 @@ describe('AgreementsService', () => {
       agreementyear: '2025',
       division_code: 'DIST001',
       workorderno: 'WO-001',
-      workorderdate: new Date(),
+      workorderdate: '2025-01-01',
       excel: 'sheet1.xlsx',
     };
 
@@ -96,7 +96,7 @@ describe('AgreementsService', () => {
     expect(result.agreementno).toBe('AG-001');
     expect(workItemsRepository.update).toHaveBeenCalledWith(
       { id: In(['w1']) },
-      { agreement_id: 'a1' },
+      { agreement_id: 'a1', contractor_id: 'c1' },
     );
   });
 

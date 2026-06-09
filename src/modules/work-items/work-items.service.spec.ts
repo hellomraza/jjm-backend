@@ -5,6 +5,7 @@ import {
 } from '@nestjs/common';
 import { DataSource, Repository } from 'typeorm';
 import { User, UserRole } from '../users/entities/user.entity';
+import { Agreement } from '../agreements/entities/agreement.entity';
 import { WorkItemEmployeeAssignment } from './entities/work-item-employee-assignment.entity';
 import { WorkItem, WorkItemStatus } from './entities/work-item.entity';
 import { WorkItemsService } from './work-items.service';
@@ -78,14 +79,15 @@ describe('WorkItemsService', () => {
     );
   });
 
-  it('create also creates an agreement for the work item', async () => {
+  it('create successfully creates a work item and links it to an agreement if agreement_id is provided', async () => {
     const createDto = {
       title: 'Work 1',
-      district_id: 10,
-      contractor_id: 'c1',
+      work_code: 'W12345678901',
+      district_id: '10',
       schemetype: 'PWS',
       latitude: 25.5941,
       longitude: 85.1376,
+      agreement_id: 'a1',
     } as any;
 
     const masterComponents = Array.from({ length: 12 }, (_, i) => ({
@@ -93,34 +95,43 @@ describe('WorkItemsService', () => {
       order_number: i + 1,
     }));
 
+    const mockAgreement = {
+      id: 'a1',
+      contractor_id: 'c1',
+    };
+
     const manager = {
       find: jest.fn().mockResolvedValue(masterComponents),
+      findOne: jest.fn().mockImplementation((entity, options) => {
+        if (entity === WorkItem) {
+          return Promise.resolve(null);
+        }
+        if (entity === Agreement) {
+          expect(options.where.id).toBe('a1');
+          return Promise.resolve(mockAgreement);
+        }
+        return Promise.resolve(null);
+      }),
       create: jest.fn((_: unknown, data: unknown) => data),
       save: jest.fn((entity: unknown, data: any) => {
         if (entity === WorkItem) {
           return Promise.resolve({ id: 'w1', ...data });
         }
-
         return Promise.resolve(data);
       }),
+      remove: jest.fn().mockResolvedValue(undefined),
       exists: jest.fn().mockResolvedValue(false),
     };
 
     (dataSource.transaction as jest.Mock).mockImplementation(async (callback) =>
       callback(manager),
     );
-    agreementsService.createWithManager.mockResolvedValue({ id: 'a1' });
 
     const result = await service.create(createDto);
 
     expect(result.id).toBe('w1');
-    expect(agreementsService.createWithManager).toHaveBeenCalledWith(
-      manager,
-      expect.objectContaining({
-        work_ids: ['w1'],
-        contractor_id: 'c1',
-      }),
-    );
+    expect(result.contractor_id).toBe('c1');
+    expect(result.agreement_id).toBe('a1');
   });
 
   it('bulkCreateFromImport creates a temporary contractor when contractor code is missing', async () => {
