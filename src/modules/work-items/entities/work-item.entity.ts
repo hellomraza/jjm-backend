@@ -16,6 +16,7 @@ import { Subdivision } from '../../locations/entities/subdivision.entity';
 import { Village } from '../../locations/entities/village.entity';
 import { Zone } from '../../locations/entities/zone.entity';
 import { User } from '../../users/entities/user.entity';
+import { Agreement } from '../../agreements/entities/agreement.entity';
 
 export enum WorkItemStatus {
   PENDING = 'PENDING',
@@ -87,6 +88,17 @@ export class WorkItem {
   @ManyToOne(() => User, { nullable: true, onDelete: 'SET NULL' })
   @JoinColumn({ name: 'contractor_id', referencedColumnName: 'id' })
   contractor?: User;
+
+  @Index()
+  @Column({ type: 'varchar', length: 36, nullable: true })
+  agreement_id?: string | null;
+
+  @ManyToOne(() => Agreement, (agreement) => agreement.workItems, {
+    nullable: true,
+    onDelete: 'SET NULL',
+  })
+  @JoinColumn({ name: 'agreement_id' })
+  agreement?: Agreement | null;
 
   @ManyToOne(() => District, { nullable: true, onDelete: 'SET NULL' })
   @JoinColumn({ name: 'district_id', referencedColumnName: 'district_code' })

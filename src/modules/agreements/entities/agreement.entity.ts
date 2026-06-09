@@ -29,9 +29,7 @@ export class Agreement {
   @Column({ type: 'varchar', length: 36 })
   contractor_id!: string; //contractor_code
 
-  @Index()
-  @Column({ type: 'varchar', length: 36 })
-  work_id!: string; // workcode
+
 
   // workorderno. workorderdate, sr, excel, unitag, agrid
 
@@ -66,9 +64,8 @@ export class Agreement {
   @JoinColumn({ name: 'contractor_id', referencedColumnName: 'id' })
   contractor!: User;
 
-  @ManyToOne(() => WorkItem, { onDelete: 'RESTRICT', onUpdate: 'CASCADE' })
-  @JoinColumn({ name: 'work_id', referencedColumnName: 'id' })
-  work!: WorkItem;
+  @OneToMany(() => WorkItem, (workItem) => workItem.agreement)
+  workItems?: WorkItem[];
 
   @OneToMany(
     () => AgreementFileMap,
