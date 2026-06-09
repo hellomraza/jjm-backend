@@ -1,4 +1,5 @@
 import {
+  ConflictException,
   ForbiddenException,
   Injectable,
   InternalServerErrorException,
@@ -19,6 +20,7 @@ import {
   Repository,
 } from 'typeorm';
 import { AgreementsService } from '../agreements/agreements.service';
+import { Agreement } from '../agreements/entities/agreement.entity';
 import { Component } from '../components/entities/component.entity';
 import {
   WorkItemComponent,
@@ -160,29 +162,66 @@ export class WorkItemsService {
         );
       }
 
-      const workCode = await this.generateUniqueWorkCode(manager);
-
-      const workItem = manager.create(WorkItem, {
-        ...createWorkItemDto,
-        work_code: workCode,
-        progress_percentage: createWorkItemDto.progress_percentage ?? 0,
-        status: createWorkItemDto.status ?? WorkItemStatus.PENDING,
+      let workItem = await manager.findOne(WorkItem, {
+        where: { work_code: createWorkItemDto.work_code },
       });
 
-      const savedWorkItem = await manager.save(WorkItem, workItem);
+      const isNew = !workItem;
+      if (workItem && workItem.schemetype !== 'TEMP') {
+        throw new ConflictException(
+          `Work item with work code #${createWorkItemDto.work_code} already exists`,
+        );
+      }
 
-      const agreementCreator: Pick<AgreementsService, 'createWithManager'> =
-        this.agreementsService;
+      let contractorId: string | null = null;
+      if (createWorkItemDto.agreement_id) {
+        const agreement = await manager.findOne(Agreement, {
+          where: { id: createWorkItemDto.agreement_id },
+        });
+        if (!agreement) {
+          throw new NotFoundException(
+            `Agreement #${createWorkItemDto.agreement_id} not found`,
+          );
+        }
+        contractorId = agreement.contractor_id ?? null;
+      }
 
-      await agreementCreator.createWithManager(manager, {
-        agreementno: `AG-${workCode}`,
-        agreementyear: new Date().getFullYear().toString(),
-        division_code: String(createWorkItemDto.district_id),
-        workorderdate: new Date(),
-        workorderno: `WO-${workCode}`,
-        contractor_id: savedWorkItem.contractor_id,
-        work_ids: [savedWorkItem.id],
-      });
+      const { sr, agreement_id, title, latitude, longitude, ...rest } =
+        createWorkItemDto;
+
+      if (isNew) {
+        workItem = manager.create(WorkItem, {
+          ...rest,
+          title: title || createWorkItemDto.work_code,
+          latitude: latitude ?? 0,
+          longitude: longitude ?? 0,
+          serial_no: sr ?? null,
+          agreement_id: agreement_id ?? null,
+          contractor_id: contractorId,
+          progress_percentage: 0,
+          status: WorkItemStatus.PENDING,
+        } as any);
+      } else {
+        Object.assign(workItem!, {
+          ...rest,
+          title: title || createWorkItemDto.work_code,
+          latitude: latitude ?? 0,
+          longitude: longitude ?? 0,
+          serial_no: sr ?? null,
+          agreement_id: agreement_id ?? null,
+          contractor_id: contractorId,
+          status: WorkItemStatus.PENDING,
+        });
+      }
+
+      const savedWorkItem = await manager.save(WorkItem, workItem!);
+
+      if (!isNew) {
+        const existingComponents = await manager.find(WorkItemComponent, {
+          where: { work_item_id: savedWorkItem.id },
+        });
+        await manager.remove(WorkItemComponent, existingComponents);
+      }
 
       const mappings = masterComponents.map((component) => {
         const mapping = new WorkItemComponent();
@@ -258,6 +297,7 @@ export class WorkItemsService {
             case 'district_id':
             case 'block_id':
             case 'panchayat_id':
+            case 'workcodeid':
               mappedWorkItem[entityKey] = String(rawValue);
               break;
             case 'serial_no':
@@ -736,7 +776,28 @@ export class WorkItemsService {
     updateWorkItemDto: UpdateWorkItemDto,
   ): Promise<WorkItem> {
     const workItem = await this.findOne(id);
-    Object.assign(workItem, updateWorkItemDto);
+
+    if (updateWorkItemDto.hasOwnProperty('agreement_id')) {
+      const newAgreementId = updateWorkItemDto.agreement_id;
+      if (newAgreementId) {
+        const agreement = await this.workItemsRepository.manager.findOne(Agreement, {
+          where: { id: newAgreementId },
+        });
+        if (!agreement) {
+          throw new NotFoundException(`Agreement #${newAgreementId} not found`);
+        }
+        workItem.contractor_id = agreement.contractor_id ?? null;
+      } else {
+        workItem.contractor_id = null;
+      }
+    }
+
+    if (updateWorkItemDto.hasOwnProperty('sr')) {
+      workItem.serial_no = updateWorkItemDto.sr ?? null;
+    }
+
+    const { sr, ...remainingDto } = updateWorkItemDto;
+    Object.assign(workItem, remainingDto);
     return this.workItemsRepository.save(workItem);
   }
 

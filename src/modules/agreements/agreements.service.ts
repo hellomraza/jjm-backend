@@ -306,7 +306,10 @@ export class AgreementsService {
     if (work_ids && work_ids.length > 0) {
       await this.workItemsRepository.update(
         { id: In(work_ids) },
-        { agreement_id: savedAgreement.id },
+        {
+          agreement_id: savedAgreement.id,
+          contractor_id: savedAgreement.contractor_id ?? null,
+        },
       );
     }
 
@@ -445,7 +448,10 @@ export class AgreementsService {
       await manager.update(
         WorkItem,
         { id: In(work_ids) },
-        { agreement_id: savedAgreement.id },
+        {
+          agreement_id: savedAgreement.id,
+          contractor_id: savedAgreement.contractor_id ?? null,
+        },
       );
     }
 
@@ -532,6 +538,7 @@ export class AgreementsService {
 
               if (agreement) {
                 workItem.agreement_id = agreement.id;
+                workItem.contractor_id = agreement.contractor_id ?? null;
                 await manager.save(WorkItem, workItem);
               } else {
                 const workOrderValue = mappedAgreement.workorderno;
@@ -560,6 +567,7 @@ export class AgreementsService {
                 agreement = await manager.save(Agreement, newAgreement);
 
                 workItem.agreement_id = agreement.id;
+                workItem.contractor_id = agreement.contractor_id ?? null;
                 await manager.save(WorkItem, workItem);
               }
 
@@ -748,14 +756,22 @@ export class AgreementsService {
     if (work_ids) {
       await this.workItemsRepository.update(
         { agreement_id: agreement.id },
-        { agreement_id: null },
+        { agreement_id: null, contractor_id: null },
       );
       if (work_ids.length > 0) {
         await this.workItemsRepository.update(
           { id: In(work_ids) },
-          { agreement_id: agreement.id },
+          {
+            agreement_id: agreement.id,
+            contractor_id: updatedAgreement.contractor_id ?? null,
+          },
         );
       }
+    } else if (updateAgreementDto.hasOwnProperty('contractor_id')) {
+      await this.workItemsRepository.update(
+        { agreement_id: agreement.id },
+        { contractor_id: updatedAgreement.contractor_id ?? null },
+      );
     }
 
     return this.findOne(updatedAgreement.id);
