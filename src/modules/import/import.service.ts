@@ -59,17 +59,7 @@ export type AgreementImport = {
 };
 
 export const importAgreementMapping: Record<
-  keyof Omit<
-    Agreement,
-    | 'created_at'
-    | 'updated_at'
-    | 'id'
-    | 'work'
-    | 'contractor'
-    | 'agreementFileMaps'
-    | 'latitude'
-    | 'longitude'
-  >,
+  string,
   keyof AgreementImport
 > = {
   agreementno: 'agreementno',
@@ -126,6 +116,7 @@ export const importWorkItemMapping: Record<
     | 'village_id'
     | 'zone_id'
     | 'subdivision_id'
+    | 'agreement_id'
   >,
   keyof WorkItemImport
 > = {

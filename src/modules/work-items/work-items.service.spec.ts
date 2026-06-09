@@ -117,7 +117,7 @@ describe('WorkItemsService', () => {
     expect(agreementsService.createWithManager).toHaveBeenCalledWith(
       manager,
       expect.objectContaining({
-        work_id: 'w1',
+        work_ids: ['w1'],
         contractor_id: 'c1',
       }),
     );

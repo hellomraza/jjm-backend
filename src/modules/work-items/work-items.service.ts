@@ -180,7 +180,7 @@ export class WorkItemsService {
         workorderdate: new Date(),
         workorderno: `WO-${workCode}`,
         contractor_id: savedWorkItem.contractor_id,
-        work_id: savedWorkItem.id,
+        work_ids: [savedWorkItem.id],
       });
 
       const mappings = masterComponents.map((component) => {

@@ -41,10 +41,10 @@ describe('ImportService', () => {
     ]);
     sheet.addRow([
       null,
-      null,
       'AG-001',
+      null,
       '2025-26',
-      1,
+      '1',
       'CON-001',
       'W-12',
       'WO-9001',
@@ -76,7 +76,8 @@ describe('ImportService', () => {
       new Date('2025-01-10').toISOString(),
     );
     expect(result.agreementTable?.[0]).toMatchObject({
-      agreementyear: 'AG-001',
+      agreementno: 'AG-001',
+      agreementyear: '2025-26',
       division_code: '1',
       contractor_code: 'CON-001',
       workcode: 'W-12',
@@ -117,8 +118,8 @@ describe('ImportService', () => {
     ]);
     sheet.addRow([
       null,
-      null,
       'AG-002',
+      null,
       '2025-26',
       2,
       'CON-002',
