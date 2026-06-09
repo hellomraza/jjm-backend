@@ -740,6 +740,72 @@ export class AgreementsService {
     return agreement;
   }
 
+  async findWorkItemsForAgreement(
+    agreementId: string,
+    userId: string,
+    role: UserRole,
+    page: number = 1,
+    limit: number = 20,
+  ): Promise<{
+    data: WorkItem[];
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+  }> {
+    const safePage = Number.isNaN(Number(page)) ? 1 : Number(page);
+    const safeLimit = Number.isNaN(Number(limit)) ? 20 : Number(limit);
+
+    // 1. Verify access to the agreement
+    await this.findOneForUser(agreementId, userId, role);
+
+    let where: FindOptionsWhere<WorkItem> = { agreement_id: agreementId };
+
+    // 2. Query work items based on role
+    if (role === UserRole.EM) {
+      const assignments = await this.agreementsRepository.manager.find(
+        WorkItemEmployeeAssignment,
+        {
+          where: { employee_id: userId },
+          select: ['work_item_id'],
+        },
+      );
+      const workItemIds = assignments.map((a) => a.work_item_id);
+      if (workItemIds.length === 0) {
+        return {
+          data: [],
+          total: 0,
+          page: safePage,
+          limit: safeLimit,
+          totalPages: 0,
+        };
+      }
+
+      where = {
+        agreement_id: agreementId,
+        id: In(workItemIds),
+      };
+    }
+
+    const [items, total] = await this.workItemsRepository.findAndCount({
+      where,
+      skip: (safePage - 1) * safeLimit,
+      take: safeLimit,
+      order: { created_at: 'DESC' },
+      relations: {
+        contractor: true,
+      },
+    });
+
+    return {
+      data: items,
+      total,
+      page: safePage,
+      limit: safeLimit,
+      totalPages: Math.ceil(total / safeLimit),
+    };
+  }
+
   async findOne(id: string): Promise<Agreement> {
     const agreement = await this.agreementsRepository.findOne({
       where: { id },

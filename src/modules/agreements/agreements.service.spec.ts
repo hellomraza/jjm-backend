@@ -38,6 +38,7 @@ describe('AgreementsService', () => {
   const workItemsRepository = {
     findOne: jest.fn(),
     find: jest.fn(),
+    findAndCount: jest.fn(),
     update: jest.fn(),
   } as unknown as Repository<WorkItem>;
 
@@ -665,6 +666,124 @@ describe('AgreementsService', () => {
         { id: In(['w2']) },
         { agreement_id: 'a1', contractor_id: 'c1' },
       );
+    });
+  });
+
+  describe('findWorkItemsForAgreement', () => {
+    it('throws when agreement is not found or user lacks access', async () => {
+      (agreementsRepository.findOne as jest.Mock).mockResolvedValue(null);
+
+      await expect(
+        service.findWorkItemsForAgreement('a1', 'u1', UserRole.CO),
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it('returns only assigned work items for EM role', async () => {
+      const agreement = { id: 'a1', workItems: [] };
+      (agreementsRepository.findOne as jest.Mock).mockResolvedValue(agreement);
+
+      const manager = {
+        find: jest.fn().mockResolvedValue([{ work_item_id: 'w1' }]),
+      };
+      (agreementsRepository as any).manager = manager;
+
+      const mockWorkItems = [{ id: 'w1', agreement_id: 'a1' }];
+      (workItemsRepository.findAndCount as jest.Mock).mockResolvedValue([mockWorkItems, 1]);
+
+      const result = await service.findWorkItemsForAgreement(
+        'a1',
+        'em1',
+        UserRole.EM,
+        1,
+        10,
+      );
+
+      expect(manager.find).toHaveBeenCalledWith(
+        WorkItemEmployeeAssignment,
+        expect.objectContaining({
+          where: { employee_id: 'em1' },
+          select: ['work_item_id'],
+        }),
+      );
+      expect(workItemsRepository.findAndCount).toHaveBeenCalledWith({
+        where: {
+          agreement_id: 'a1',
+          id: In(['w1']),
+        },
+        skip: 0,
+        take: 10,
+        order: { created_at: 'DESC' },
+        relations: {
+          contractor: true,
+        },
+      });
+      expect(result).toEqual({
+        data: mockWorkItems,
+        total: 1,
+        page: 1,
+        limit: 10,
+        totalPages: 1,
+      });
+    });
+
+    it('returns empty pagination payload for EM role if they have no assignments', async () => {
+      const agreement = { id: 'a1', workItems: [] };
+      (agreementsRepository.findOne as jest.Mock).mockResolvedValue(agreement);
+
+      const manager = {
+        find: jest.fn().mockResolvedValue([]),
+      };
+      (agreementsRepository as any).manager = manager;
+
+      const result = await service.findWorkItemsForAgreement(
+        'a1',
+        'em1',
+        UserRole.EM,
+        1,
+        10,
+      );
+
+      expect(result).toEqual({
+        data: [],
+        total: 0,
+        page: 1,
+        limit: 10,
+        totalPages: 0,
+      });
+      expect(workItemsRepository.findAndCount).not.toHaveBeenCalled();
+    });
+
+    it('returns all work items for HO role', async () => {
+      const agreement = { id: 'a1', workItems: [] };
+      (agreementsRepository.findOne as jest.Mock).mockResolvedValue(agreement);
+
+      const mockWorkItems = [{ id: 'w1', agreement_id: 'a1' }, { id: 'w2', agreement_id: 'a1' }];
+      (workItemsRepository.findAndCount as jest.Mock).mockResolvedValue([mockWorkItems, 2]);
+
+      const result = await service.findWorkItemsForAgreement(
+        'a1',
+        'ho1',
+        UserRole.HO,
+        2,
+        1,
+      );
+
+      expect(workItemsRepository.findAndCount).toHaveBeenCalledWith({
+        where: { agreement_id: 'a1' },
+        skip: 1,
+        take: 1,
+        order: { created_at: 'DESC' },
+        relations: {
+          contractor: true,
+        },
+      });
+      expect(result).toEqual({
+        data: mockWorkItems,
+        total: 2,
+        page: 2,
+        limit: 1,
+        totalPages: 2,
+      });
     });
   });
 });

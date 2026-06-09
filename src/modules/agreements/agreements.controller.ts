@@ -26,6 +26,7 @@ import {
   ApiUnprocessableEntityResponse,
 } from '@nestjs/swagger';
 import { ApiPaginatedResponse } from '../../common/decorators/paginated.responce.decorator';
+import { PaginatedResponse } from '../../common/types/response.type';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
@@ -35,6 +36,7 @@ import { AttachAgreementFileDto } from './dto/attach-agreement-file.dto';
 import {
   AgreementFileAttachmentResponseDto,
   AgreementResponseDto,
+  AgreementWorkItemResponseDto,
 } from './dto/agreement-response.dto';
 import { CreateAgreementDto } from './dto/create-agreement.dto';
 import { UpdateAgreementDto } from './dto/update-agreement.dto';
@@ -133,6 +135,53 @@ export class AgreementsController {
     );
 
     return AgreementResponseDto.fromEntity(agreement);
+  }
+
+  @Get(':id/work-items')
+  @Roles(UserRole.HO, UserRole.DO, UserRole.CO, UserRole.EM)
+  @ApiOperation({
+    summary: 'Get work items of a particular agreement',
+    description:
+      'Returns paginated work items of an agreement. For EM role, returns only assigned work items.',
+  })
+  @ApiParam({ name: 'id', type: String, description: 'Agreement ID' })
+  @ApiQuery({ name: 'page', required: false, type: Number, example: 1 })
+  @ApiQuery({ name: 'limit', required: false, type: Number, example: 20 })
+  @ApiPaginatedResponse(AgreementWorkItemResponseDto)
+  @ApiNotFoundResponse({ description: 'Agreement not found' })
+  async findWorkItems(
+    @Request() req: { user: { userId: string; role: UserRole } },
+    @Param('id') id: string,
+    @Query('page') page: number = 1,
+    @Query('limit') limit: number = 20,
+  ): Promise<PaginatedResponse<AgreementWorkItemResponseDto>> {
+    const result = await this.agreementsService.findWorkItemsForAgreement(
+      id,
+      req.user.userId,
+      req.user.role,
+      page,
+      limit,
+    );
+
+    return {
+      ...result,
+      data: result.data.map((item) => ({
+        id: item.id,
+        work_code: item.work_code,
+        title: item.title,
+        description: item.description,
+        district_id: item.district_id,
+        schemetype: item.schemetype,
+        contractor_id: item.contractor_id,
+        latitude: Number(item.latitude),
+        longitude: Number(item.longitude),
+        progress_percentage: Number(item.progress_percentage),
+        status: item.status,
+        created_at: item.created_at,
+        updated_at: item.updated_at,
+        contractor: item.contractor,
+      })),
+    };
   }
 
   @Patch(':id')
