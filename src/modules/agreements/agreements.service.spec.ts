@@ -57,7 +57,7 @@ describe('AgreementsService', () => {
 
     const dto: CreateAgreementDto = {
       contractor_id: 'c1',
-      work_id: 'w1',
+      work_ids: ['w1'],
       agreementno: 'AG-001',
       agreementyear: '2025',
       division_code: 'DIST001',
@@ -97,12 +97,15 @@ describe('AgreementsService', () => {
       }
 
       if (entity === Agreement) {
+        if (options?.where && 'agreementno' in options.where) {
+          return null;
+        }
         return {
           id: 'agreement-id',
           agreementno: 'AGR001',
           agreementyear: '2025-2026',
           contractor_id: 'temp-contractor-id',
-          work_id: 'work-id',
+          workItems: [{ id: 'work-id' } as any],
         };
       }
 
@@ -170,7 +173,6 @@ describe('AgreementsService', () => {
       Agreement,
       expect.objectContaining({
         contractor_id: 'temp-contractor-id',
-        work_id: 'temp-work-id',
       }),
     );
   });
@@ -227,12 +229,15 @@ describe('AgreementsService', () => {
       }
 
       if (entity === Agreement) {
+        if (options?.where && 'agreementno' in options.where) {
+          return null;
+        }
         return {
           id: 'agreement-id',
           agreementno: 'AGR001',
           agreementyear: '2025-2026',
           contractor_id: 'temp-contractor-id',
-          work_id: 'temp-work-id',
+          workItems: [{ id: 'temp-work-id' } as any],
         };
       }
 
@@ -306,7 +311,7 @@ describe('AgreementsService', () => {
       agreementno: 'AGR001',
       agreementyear: '2025-2026',
       contractor_id: 'temp-contractor-id',
-      work_id: 'temp-work-id',
+      workItems: [{ id: 'temp-work-id' } as any],
       created_at: new Date(),
       updated_at: new Date(),
       agreementFileMaps: [],
@@ -400,7 +405,7 @@ describe('AgreementsService', () => {
           agreementno: 'AGR001',
           agreementyear: '2025-2026',
           contractor_id: 'temp-contractor-id',
-          work_id: 'temp-work-id',
+          workItems: [{ id: 'temp-work-id' } as any],
         } as Agreement;
       }
 

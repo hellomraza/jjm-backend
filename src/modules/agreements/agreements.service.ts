@@ -9,7 +9,15 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import * as bcrypt from 'bcryptjs';
 import { createHash } from 'crypto';
-import { EntityManager, FindOptionsWhere, Like, Repository } from 'typeorm';
+import {
+  EntityManager,
+  FindOptionsWhere,
+  In,
+  IsNull,
+  Like,
+  Not,
+  Repository,
+} from 'typeorm';
 import {
   importAgreementMapping,
   type AgreementImport,
@@ -45,7 +53,7 @@ export class AgreementsService {
 
   private readonly agreementRelations = {
     contractor: true,
-    work: true,
+    workItems: true,
     agreementFileMaps: {
       agreementFile: true,
     },
@@ -92,7 +100,7 @@ export class AgreementsService {
 
   private async validateForeignKeys(
     contractorId: string,
-    workId: string,
+    workIds: string[],
   ): Promise<void> {
     const contractor = await this.usersRepository.findOne({
       where: { id: contractorId },
@@ -104,12 +112,16 @@ export class AgreementsService {
       );
     }
 
-    const workItem = await this.workItemsRepository.findOne({
-      where: { id: workId },
-    });
+    if (workIds.length > 0) {
+      const workItems = await this.workItemsRepository.find({
+        where: { id: In(workIds) },
+      });
 
-    if (!workItem) {
-      throw new UnprocessableEntityException(`Work item #${workId} not found`);
+      if (workItems.length !== workIds.length) {
+        throw new UnprocessableEntityException(
+          `One or more work items not found`,
+        );
+      }
     }
   }
 
@@ -137,20 +149,20 @@ export class AgreementsService {
 
   private mapImportedAgreement(
     agreementImport: AgreementImport,
-  ): Partial<Agreement> {
-    const mappedAgreement: Record<string, unknown> = {};
+  ): Record<string, any> {
+    const mappedAgreement: Record<string, any> = {};
 
     for (const [agreementKey, importKey] of Object.entries(
       importAgreementMapping,
-    ) as Array<[keyof Agreement, keyof AgreementImport]>) {
+    )) {
       const value = agreementImport[importKey];
 
       if (value !== undefined) {
-        mappedAgreement[agreementKey as string] = value;
+        mappedAgreement[agreementKey] = value;
       }
     }
 
-    return mappedAgreement as Partial<Agreement>;
+    return mappedAgreement;
   }
 
   private isTemporaryContractor(contractor: User): boolean {
@@ -217,12 +229,12 @@ export class AgreementsService {
   }
 
   async getWorkItemIdsForContractor(contractorId: string): Promise<string[]> {
-    const agreements = await this.agreementsRepository.find({
-      where: { contractor_id: contractorId },
-      select: ['work_id'],
+    const workItems = await this.workItemsRepository.find({
+      where: { contractor_id: contractorId, agreement_id: Not(IsNull()) },
+      select: ['id'],
     });
 
-    return agreements.map((agreement) => agreement.work_id);
+    return workItems.map((item) => item.id);
   }
 
   private isTemporaryWorkItem(workItem: WorkItem): boolean {
@@ -278,20 +290,29 @@ export class AgreementsService {
   }
 
   async create(createAgreementDto: CreateAgreementDto): Promise<Agreement> {
+    const { work_ids, ...agreementData } = createAgreementDto;
     await this.validateForeignKeys(
       createAgreementDto.contractor_id,
-      createAgreementDto.work_id,
+      work_ids || [],
     );
 
     const agreementyear = this.getCurrentFinancialYear();
     const agreementno = await this.generateAgreementNumber(agreementyear);
 
     const agreement = this.agreementsRepository.create({
-      ...createAgreementDto,
+      ...agreementData,
       agreementno,
       agreementyear,
     });
     const savedAgreement = await this.agreementsRepository.save(agreement);
+
+    if (work_ids && work_ids.length > 0) {
+      await this.workItemsRepository.update(
+        { id: In(work_ids) },
+        { agreement_id: savedAgreement.id },
+      );
+    }
+
     return this.findOne(savedAgreement.id);
   }
 
@@ -402,14 +423,18 @@ export class AgreementsService {
       );
     }
 
-    const workItem = await manager.findOne(WorkItem, {
-      where: { id: createAgreementDto.work_id },
-    });
+    const { work_ids, ...agreementData } = createAgreementDto;
 
-    if (!workItem) {
-      throw new UnprocessableEntityException(
-        `Work item #${createAgreementDto.work_id} not found`,
-      );
+    if (work_ids && work_ids.length > 0) {
+      const workItemsCount = await manager.count(WorkItem, {
+        where: { id: In(work_ids) },
+      });
+
+      if (workItemsCount !== work_ids.length) {
+        throw new UnprocessableEntityException(
+          `One or more work items not found`,
+        );
+      }
     }
 
     const agreementyear = this.getCurrentFinancialYear();
@@ -424,11 +449,19 @@ export class AgreementsService {
     const agreementno = `AGR-${agreementyear}-${paddedSequence}`;
 
     const agreement = manager.create(Agreement, {
-      ...createAgreementDto,
+      ...agreementData,
       agreementno,
       agreementyear,
     });
     const savedAgreement = await manager.save(Agreement, agreement);
+
+    if (work_ids && work_ids.length > 0) {
+      await manager.update(
+        WorkItem,
+        { id: In(work_ids) },
+        { agreement_id: savedAgreement.id },
+      );
+    }
 
     const reloadedAgreement = await manager.findOne(Agreement, {
       where: { id: savedAgreement.id },
@@ -449,13 +482,14 @@ export class AgreementsService {
     const inserted: Agreement[] = [];
     const errors: { index: number; reason: string; item: AgreementImport }[] =
       [];
-    const seenWorkOrders = new Set<string>();
+
+    const batchAgreementsMap = new Map<string, Agreement>();
 
     for (let i = 0; i < agreementImports.length; i++) {
       const agreementImport = agreementImports[i];
 
       try {
-        const createdAgreement =
+        const createdOrUpdatedAgreement =
           await this.agreementsRepository.manager.transaction(
             async (manager) => {
               const mappedAgreement =
@@ -465,11 +499,11 @@ export class AgreementsService {
                 | null;
               const workCode = mappedAgreement.work_id as string | null;
 
-              const workOrderValue = mappedAgreement.workorderno;
-              const normalizedWorkOrder =
-                workOrderValue === null || workOrderValue === undefined
+              const agreementNoValue = mappedAgreement.agreementno;
+              const normalizedAgreementNo =
+                agreementNoValue === null || agreementNoValue === undefined
                   ? null
-                  : String(workOrderValue).trim() || null;
+                  : String(agreementNoValue).trim() || null;
 
               if (!contractorCode) {
                 throw new UnprocessableEntityException(
@@ -483,24 +517,10 @@ export class AgreementsService {
                 );
               }
 
-              if (normalizedWorkOrder) {
-                const workOrderKey = normalizedWorkOrder.toLowerCase();
-                if (seenWorkOrders.has(workOrderKey)) {
-                  throw new UnprocessableEntityException(
-                    `Agreement with work order #${normalizedWorkOrder} appears multiple times in import payload`,
-                  );
-                }
-
-                const existingAgreement = await manager.findOne(Agreement, {
-                  where: { workorderno: normalizedWorkOrder },
-                  select: ['id'],
-                });
-
-                if (existingAgreement) {
-                  throw new UnprocessableEntityException(
-                    `Agreement with work order #${normalizedWorkOrder} already exists`,
-                  );
-                }
+              if (!normalizedAgreementNo) {
+                throw new UnprocessableEntityException(
+                  'agreementno is required for agreement import',
+                );
               }
 
               const contractor = await this.findOrCreateTemporaryContractor(
@@ -514,45 +534,66 @@ export class AgreementsService {
                 contractor.id,
               );
 
-              const agreement = manager.create(Agreement, {
-                agreementno: mappedAgreement.agreementno as string,
-                agreementyear: mappedAgreement.agreementyear as string,
-                contractor_id: contractor.id,
-                work_id: workItem.id,
-                workorderno: normalizedWorkOrder,
-                workorderdate: mappedAgreement.workorderdate ?? null,
-                sr: mappedAgreement.sr ?? null,
-                excel: mappedAgreement.excel ?? null,
-                unitag: mappedAgreement.unitag ?? null,
-                agrid:
-                  mappedAgreement.agrid === null ||
-                  mappedAgreement.agrid === undefined
-                    ? null
-                    : String(mappedAgreement.agrid),
-                division_code: mappedAgreement.division_code ?? null,
-              } as Partial<Agreement>);
+              const agreementNoKey = normalizedAgreementNo.toLowerCase();
+              let agreement: Agreement | null | undefined =
+                batchAgreementsMap.get(agreementNoKey);
 
-              const savedAgreement = await manager.save(Agreement, agreement);
+              if (!agreement) {
+                agreement = await manager.findOne(Agreement, {
+                  where: { agreementno: normalizedAgreementNo },
+                });
+              }
+
+              if (agreement) {
+                workItem.agreement_id = agreement.id;
+                await manager.save(WorkItem, workItem);
+              } else {
+                const workOrderValue = mappedAgreement.workorderno;
+                const normalizedWorkOrder =
+                  workOrderValue === null || workOrderValue === undefined
+                    ? null
+                    : String(workOrderValue).trim() || null;
+
+                const newAgreement = manager.create(Agreement, {
+                  agreementno: normalizedAgreementNo,
+                  agreementyear: mappedAgreement.agreementyear as string,
+                  contractor_id: contractor.id,
+                  workorderno: normalizedWorkOrder,
+                  workorderdate: mappedAgreement.workorderdate ?? null,
+                  sr: mappedAgreement.sr ?? null,
+                  excel: mappedAgreement.excel ?? null,
+                  unitag: mappedAgreement.unitag ?? null,
+                  agrid:
+                    mappedAgreement.agrid === null ||
+                    mappedAgreement.agrid === undefined
+                      ? null
+                      : String(mappedAgreement.agrid),
+                  division_code: mappedAgreement.division_code ?? null,
+                } as Partial<Agreement>);
+
+                agreement = await manager.save(Agreement, newAgreement);
+
+                workItem.agreement_id = agreement.id;
+                await manager.save(WorkItem, workItem);
+              }
+
               const reloadedAgreement = await manager.findOne(Agreement, {
-                where: { id: savedAgreement.id },
+                where: { id: agreement.id },
                 relations: this.agreementRelations,
               });
 
               if (!reloadedAgreement) {
                 throw new NotFoundException(
-                  `Agreement #${savedAgreement.id} not found`,
+                  `Agreement #${agreement.id} not found`,
                 );
               }
 
-              if (normalizedWorkOrder) {
-                seenWorkOrders.add(normalizedWorkOrder.toLowerCase());
-              }
-
+              batchAgreementsMap.set(agreementNoKey, reloadedAgreement);
               return reloadedAgreement;
             },
           );
 
-        inserted.push(createdAgreement);
+        inserted.push(createdOrUpdatedAgreement);
       } catch (err) {
         errors.push({
           index: i,
@@ -614,7 +655,7 @@ export class AgreementsService {
         return { id: '__no_access__' };
       }
 
-      return { work: { district_id: user.district_id } };
+      return { workItems: { district_id: user.district_id } };
     }
 
     return { id: '__no_access__' };
@@ -639,6 +680,7 @@ export class AgreementsService {
 
     const where: FindOptionsWhere<Agreement> = {};
     const accessWhere = await this.getAccessWhereClause(userId, role);
+
     if (accessWhere) {
       Object.assign(where, accessWhere);
     }
@@ -708,11 +750,28 @@ export class AgreementsService {
 
     const contractorId =
       updateAgreementDto.contractor_id ?? agreement.contractor_id;
-    const workId = updateAgreementDto.work_id ?? agreement.work_id;
-    await this.validateForeignKeys(contractorId, workId);
+    const { work_ids, ...updateData } = updateAgreementDto;
 
-    Object.assign(agreement, updateAgreementDto);
+    if (work_ids) {
+      await this.validateForeignKeys(contractorId, work_ids);
+    }
+
+    Object.assign(agreement, updateData);
     const updatedAgreement = await this.agreementsRepository.save(agreement);
+
+    if (work_ids) {
+      await this.workItemsRepository.update(
+        { agreement_id: agreement.id },
+        { agreement_id: null },
+      );
+      if (work_ids.length > 0) {
+        await this.workItemsRepository.update(
+          { id: In(work_ids) },
+          { agreement_id: agreement.id },
+        );
+      }
+    }
+
     return this.findOne(updatedAgreement.id);
   }
 
