@@ -18,6 +18,7 @@ import { CreateAgreementDto } from './dto/create-agreement.dto';
 import { AgreementFile } from './entities/agreement-file.entity';
 import { AgreementFileMap } from './entities/agreement-file-map.entity';
 import { Agreement } from './entities/agreement.entity';
+import { WorkItemEmployeeAssignment } from '../work-items/entities/work-item-employee-assignment.entity';
 
 describe('AgreementsService', () => {
   let service: AgreementsService;
@@ -537,6 +538,51 @@ describe('AgreementsService', () => {
             contractor_id: 'contractor-id',
             agreementno: expect.anything(),
             agreementyear: '2026-27',
+          }),
+        }),
+      );
+    });
+
+    it('should restrict agreements to assigned work items for EM role', async () => {
+      const manager = {
+        find: jest.fn().mockResolvedValue([{ work_item_id: 'w-123' }]),
+      };
+      (agreementsRepository as any).manager = manager;
+
+      (agreementsRepository.findAndCount as jest.Mock).mockResolvedValue([[], 0]);
+
+      await service.findAllForUser('employee-id', UserRole.EM, 1, 10);
+
+      expect(manager.find).toHaveBeenCalledWith(
+        WorkItemEmployeeAssignment,
+        expect.objectContaining({
+          where: { employee_id: 'employee-id' },
+          select: ['work_item_id'],
+        }),
+      );
+      expect(agreementsRepository.findAndCount).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            workItems: { id: In(['w-123']) },
+          }),
+        }),
+      );
+    });
+
+    it('should return no access if EM role has no assignments', async () => {
+      const manager = {
+        find: jest.fn().mockResolvedValue([]),
+      };
+      (agreementsRepository as any).manager = manager;
+
+      (agreementsRepository.findAndCount as jest.Mock).mockResolvedValue([[], 0]);
+
+      await service.findAllForUser('employee-id', UserRole.EM, 1, 10);
+
+      expect(agreementsRepository.findAndCount).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            id: '__no_access__',
           }),
         }),
       );

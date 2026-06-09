@@ -30,6 +30,7 @@ import {
 import { AttachAgreementFileDto } from './dto/attach-agreement-file.dto';
 import { CreateAgreementDto } from './dto/create-agreement.dto';
 import { UpdateAgreementDto } from './dto/update-agreement.dto';
+import { WorkItemEmployeeAssignment } from '../work-items/entities/work-item-employee-assignment.entity';
 import { AgreementFile } from './entities/agreement-file.entity';
 import { AgreementFileMap } from './entities/agreement-file-map.entity';
 import { Agreement } from './entities/agreement.entity';
@@ -650,6 +651,22 @@ export class AgreementsService {
       }
 
       return { workItems: { district_id: user.district_id } };
+    }
+
+    if (role === UserRole.EM) {
+      const assignments = await this.agreementsRepository.manager.find(
+        WorkItemEmployeeAssignment,
+        {
+          where: { employee_id: userId },
+          select: ['work_item_id'],
+        },
+      );
+      const workItemIds = assignments.map((a) => a.work_item_id);
+      if (workItemIds.length === 0) {
+        return { id: '__no_access__' };
+      }
+
+      return { workItems: { id: In(workItemIds) } };
     }
 
     return { id: '__no_access__' };
