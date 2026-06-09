@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ForbiddenException,
   NotFoundException,
   UnprocessableEntityException,
@@ -18,6 +19,9 @@ describe('WorkItemsService', () => {
     findOne: jest.fn(),
     save: jest.fn(),
     remove: jest.fn(),
+    manager: {
+      findOne: jest.fn(),
+    },
   } as unknown as Repository<WorkItem>;
 
   const workItemEmployeeAssignmentsRepository = {
@@ -761,5 +765,64 @@ describe('WorkItemsService', () => {
         where: { agreement_id: expect.anything() },
       }),
     );
+  });
+
+  describe('update', () => {
+    it('successfully updates other fields without changing agreement_id', async () => {
+      const workItem = { id: 'w1', title: 'Old Title', agreement_id: 'a1', contractor_id: 'c1' };
+      (workItemsRepository.findOne as jest.Mock).mockResolvedValue(workItem);
+      (workItemsRepository.save as jest.Mock).mockImplementation(async (item) => item);
+
+      const result = await service.update('w1', { title: 'New Title' });
+
+      expect(result.title).toBe('New Title');
+      expect(result.agreement_id).toBe('a1');
+      expect(workItemsRepository.save).toHaveBeenCalledWith(expect.objectContaining({ id: 'w1', title: 'New Title' }));
+    });
+
+    it('assigns agreement_id and copies contractor_id if work item has no agreement_id', async () => {
+      const workItem = { id: 'w1', title: 'Title', agreement_id: null, contractor_id: null };
+      const agreement = { id: 'a1', contractor_id: 'c1' };
+
+      (workItemsRepository.findOne as jest.Mock).mockResolvedValue(workItem);
+      (workItemsRepository.save as jest.Mock).mockImplementation(async (item) => item);
+      (workItemsRepository.manager.findOne as jest.Mock).mockResolvedValue(agreement);
+
+      const result = await service.update('w1', { agreement_id: 'a1' });
+
+      expect(result.agreement_id).toBe('a1');
+      expect(result.contractor_id).toBe('c1');
+      expect(workItemsRepository.manager.findOne).toHaveBeenCalledWith(expect.anything(), { where: { id: 'a1' } });
+      expect(workItemsRepository.save).toHaveBeenCalledWith(expect.objectContaining({ id: 'w1', agreement_id: 'a1', contractor_id: 'c1' }));
+    });
+
+    it('throws NotFoundException if the new agreement_id does not exist', async () => {
+      const workItem = { id: 'w1', title: 'Title', agreement_id: null, contractor_id: null };
+
+      (workItemsRepository.findOne as jest.Mock).mockResolvedValue(workItem);
+      (workItemsRepository.manager.findOne as jest.Mock).mockResolvedValue(null);
+
+      await expect(service.update('w1', { agreement_id: 'a2' })).rejects.toThrow(
+        NotFoundException,
+      );
+    });
+
+    it('throws BadRequestException if trying to change agreement_id when already assigned', async () => {
+      const workItem = { id: 'w1', title: 'Title', agreement_id: 'a1', contractor_id: 'c1' };
+      (workItemsRepository.findOne as jest.Mock).mockResolvedValue(workItem);
+
+      await expect(service.update('w1', { agreement_id: 'a2' })).rejects.toThrow(
+        BadRequestException,
+      );
+    });
+
+    it('throws BadRequestException if trying to remove agreement_id when already assigned', async () => {
+      const workItem = { id: 'w1', title: 'Title', agreement_id: 'a1', contractor_id: 'c1' };
+      (workItemsRepository.findOne as jest.Mock).mockResolvedValue(workItem);
+
+      await expect(service.update('w1', { agreement_id: null as any })).rejects.toThrow(
+        BadRequestException,
+      );
+    });
   });
 });

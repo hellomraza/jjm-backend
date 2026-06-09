@@ -742,35 +742,71 @@ export class AgreementsService {
   ): Promise<Agreement> {
     const agreement = await this.findOne(id);
 
-    const contractorId =
-      updateAgreementDto.contractor_id ?? agreement.contractor_id;
+    let isContractorNewlyAssigned = false;
+    if (updateAgreementDto.hasOwnProperty('contractor_id')) {
+      const newContractorId = updateAgreementDto.contractor_id;
+      if (agreement.contractor_id) {
+        if (newContractorId !== agreement.contractor_id) {
+          throw new BadRequestException('contractor_id cannot be edited once assigned');
+        }
+      } else if (newContractorId) {
+        await this.validateForeignKeys(newContractorId, []);
+        agreement.contractor_id = newContractorId;
+        isContractorNewlyAssigned = true;
+      }
+    }
+
     const { work_ids, ...updateData } = updateAgreementDto;
 
     if (work_ids) {
-      await this.validateForeignKeys(contractorId, work_ids);
-    }
+      const currentWorkItemIds = agreement.workItems?.map((item) => item.id);
 
-    Object.assign(agreement, updateData);
-    const updatedAgreement = await this.agreementsRepository.save(agreement);
+      // 1. Cannot remove work orders from the agreement
+      const removedIds = currentWorkItemIds?.filter((id) => !work_ids.includes(id));
+      if (removedIds && removedIds.length > 0) {
+        throw new BadRequestException(
+          `Cannot remove work orders from agreement. Removed IDs: ${removedIds.join(', ')}`,
+        );
+      }
 
-    if (work_ids) {
-      await this.workItemsRepository.update(
-        { agreement_id: agreement.id },
-        { agreement_id: null, contractor_id: null },
-      );
-      if (work_ids.length > 0) {
+      // 2. Newly added work orders must not have any agreement ID assigned already
+      const addedWorkIds = work_ids.filter((id) => !currentWorkItemIds?.includes(id));
+      if (addedWorkIds.length > 0) {
+        await this.validateForeignKeys(agreement.contractor_id, addedWorkIds);
+
+        const addedWorkItems = await this.workItemsRepository.find({
+          where: { id: In(addedWorkIds) },
+        });
+
+        for (const workItem of addedWorkItems) {
+          if (workItem.agreement_id) {
+            throw new BadRequestException(
+              `Work item #${workItem.id} already has an agreement assigned`,
+            );
+          }
+        }
+
+        // Link newly added work items to the agreement and contractor
         await this.workItemsRepository.update(
-          { id: In(work_ids) },
+          { id: In(addedWorkIds) },
           {
             agreement_id: agreement.id,
-            contractor_id: updatedAgreement.contractor_id ?? null,
+            contractor_id: agreement.contractor_id ?? null,
           },
         );
       }
-    } else if (updateAgreementDto.hasOwnProperty('contractor_id')) {
+    }
+
+    // Exclude contractor_id from updateData because it's handled separately
+    const { contractor_id, ...remainingUpdateData } = updateData as any;
+    Object.assign(agreement, remainingUpdateData);
+    const updatedAgreement = await this.agreementsRepository.save(agreement);
+
+    // If contractor_id was newly assigned, propagate it to all work items in this agreement
+    if (isContractorNewlyAssigned) {
       await this.workItemsRepository.update(
         { agreement_id: agreement.id },
-        { contractor_id: updatedAgreement.contractor_id ?? null },
+        { contractor_id: updatedAgreement.contractor_id },
       );
     }
 

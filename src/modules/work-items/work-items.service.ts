@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ConflictException,
   ForbiddenException,
   Injectable,
@@ -779,16 +780,19 @@ export class WorkItemsService {
 
     if (updateWorkItemDto.hasOwnProperty('agreement_id')) {
       const newAgreementId = updateWorkItemDto.agreement_id;
-      if (newAgreementId) {
+      if (workItem.agreement_id) {
+        if (newAgreementId !== workItem.agreement_id) {
+          throw new BadRequestException('agreement_id cannot be edited once assigned');
+        }
+      } else if (newAgreementId) {
         const agreement = await this.workItemsRepository.manager.findOne(Agreement, {
           where: { id: newAgreementId },
         });
         if (!agreement) {
           throw new NotFoundException(`Agreement #${newAgreementId} not found`);
         }
+        workItem.agreement_id = newAgreementId;
         workItem.contractor_id = agreement.contractor_id ?? null;
-      } else {
-        workItem.contractor_id = null;
       }
     }
 
@@ -796,7 +800,7 @@ export class WorkItemsService {
       workItem.serial_no = updateWorkItemDto.sr ?? null;
     }
 
-    const { sr, ...remainingDto } = updateWorkItemDto;
+    const { sr, agreement_id, ...remainingDto } = updateWorkItemDto;
     Object.assign(workItem, remainingDto);
     return this.workItemsRepository.save(workItem);
   }
