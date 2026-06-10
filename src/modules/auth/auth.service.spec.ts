@@ -77,10 +77,11 @@ describe('AuthService', () => {
       expect(mailService.sendMail).not.toHaveBeenCalled();
     });
 
-    it('generates, hashes, stores, and sends OTP if email is registered', async () => {
+    it('generates, hashes, stores, and sends OTP if email is registered and role is CO', async () => {
       usersService.findByEmail.mockResolvedValue({
         id: 'u1',
         email: 'user@example.com',
+        role: UserRole.CO,
       });
       (otpRepository.create as jest.Mock).mockReturnValue({ email: 'user@example.com' });
       (otpRepository.save as jest.Mock).mockResolvedValue({ id: 'otp1' });
@@ -93,6 +94,20 @@ describe('AuthService', () => {
       expect(otpRepository.create).toHaveBeenCalled();
       expect(otpRepository.save).toHaveBeenCalled();
       expect(mailService.sendMail).toHaveBeenCalled();
+    });
+
+    it('does not generate or send OTP if email is registered but role is not CO', async () => {
+      usersService.findByEmail.mockResolvedValue({
+        id: 'u1',
+        email: 'user@example.com',
+        role: UserRole.HO,
+      });
+
+      await expect(
+        service.forgotPassword('user@example.com'),
+      ).rejects.toThrow(BadRequestException);
+      expect(otpRepository.create).not.toHaveBeenCalled();
+      expect(mailService.sendMail).not.toHaveBeenCalled();
     });
   });
 
@@ -109,8 +124,20 @@ describe('AuthService', () => {
       ).rejects.toThrow(BadRequestException);
     });
 
+    it('throws BadRequestException if user is not CO', async () => {
+      usersService.findByEmail.mockResolvedValue({ id: 'u1', email: 'user@example.com', role: UserRole.HO });
+
+      await expect(
+        service.resetPassword({
+          email: 'user@example.com',
+          otp: '123456',
+          newPassword: 'Password@123',
+        }),
+      ).rejects.toThrow(BadRequestException);
+    });
+
     it('throws BadRequestException if no active OTP record is found', async () => {
-      usersService.findByEmail.mockResolvedValue({ id: 'u1', email: 'user@example.com' });
+      usersService.findByEmail.mockResolvedValue({ id: 'u1', email: 'user@example.com', role: UserRole.CO });
       (otpRepository.findOne as jest.Mock).mockResolvedValue(null);
 
       await expect(
@@ -123,7 +150,7 @@ describe('AuthService', () => {
     });
 
     it('throws BadRequestException if OTP record is expired', async () => {
-      usersService.findByEmail.mockResolvedValue({ id: 'u1', email: 'user@example.com' });
+      usersService.findByEmail.mockResolvedValue({ id: 'u1', email: 'user@example.com', role: UserRole.CO });
       (otpRepository.findOne as jest.Mock).mockResolvedValue({
         email: 'user@example.com',
         otp_hash: 'hashed',
@@ -142,7 +169,7 @@ describe('AuthService', () => {
     });
 
     it('throws BadRequestException if OTP record has too many attempts', async () => {
-      usersService.findByEmail.mockResolvedValue({ id: 'u1', email: 'user@example.com' });
+      usersService.findByEmail.mockResolvedValue({ id: 'u1', email: 'user@example.com', role: UserRole.CO });
       (otpRepository.findOne as jest.Mock).mockResolvedValue({
         email: 'user@example.com',
         otp_hash: 'hashed',
@@ -161,7 +188,7 @@ describe('AuthService', () => {
     });
 
     it('increments attempts if OTP is incorrect', async () => {
-      usersService.findByEmail.mockResolvedValue({ id: 'u1', email: 'user@example.com' });
+      usersService.findByEmail.mockResolvedValue({ id: 'u1', email: 'user@example.com', role: UserRole.CO });
       const record = {
         email: 'user@example.com',
         otp_hash: await bcrypt.hash('111111', 10),
@@ -184,7 +211,7 @@ describe('AuthService', () => {
     });
 
     it('resets user password and marks OTP as used if verification succeeds', async () => {
-      usersService.findByEmail.mockResolvedValue({ id: 'u1', email: 'user@example.com' });
+      usersService.findByEmail.mockResolvedValue({ id: 'u1', email: 'user@example.com', role: UserRole.CO });
       const record = {
         email: 'user@example.com',
         otp_hash: await bcrypt.hash('123456', 10),
@@ -221,14 +248,16 @@ describe('AuthService', () => {
       expect(mailService.sendMail).not.toHaveBeenCalled();
     });
 
-    it('delegates to forgotPassword with email if code is registered', async () => {
+    it('delegates to forgotPassword with email if code is registered and role is CO', async () => {
       usersService.findByCode.mockResolvedValue({
         id: 'u1',
         email: 'co@example.com',
+        role: UserRole.CO,
       });
       usersService.findByEmail.mockResolvedValue({
         id: 'u1',
         email: 'co@example.com',
+        role: UserRole.CO,
       });
       (otpRepository.create as jest.Mock).mockReturnValue({ email: 'co@example.com' });
       (otpRepository.save as jest.Mock).mockResolvedValue({ id: 'otp1' });
@@ -241,6 +270,20 @@ describe('AuthService', () => {
       expect(usersService.findByCode).toHaveBeenCalledWith('CO_123');
       expect(otpRepository.create).toHaveBeenCalled();
       expect(mailService.sendMail).toHaveBeenCalled();
+    });
+
+    it('does not delegate or generate OTP if code is registered but role is not CO', async () => {
+      usersService.findByCode.mockResolvedValue({
+        id: 'u1',
+        email: 'co@example.com',
+        role: UserRole.HO,
+      });
+
+      await expect(
+        service.forgotPasswordByCode('CO_123'),
+      ).rejects.toThrow(BadRequestException);
+      expect(otpRepository.create).not.toHaveBeenCalled();
+      expect(mailService.sendMail).not.toHaveBeenCalled();
     });
   });
 
@@ -257,9 +300,21 @@ describe('AuthService', () => {
       ).rejects.toThrow(BadRequestException);
     });
 
-    it('delegates to resetPassword if user exists', async () => {
-      usersService.findByCode.mockResolvedValue({ id: 'u1', email: 'co@example.com' });
-      usersService.findByEmail.mockResolvedValue({ id: 'u1', email: 'co@example.com' });
+    it('throws BadRequestException if user is not CO', async () => {
+      usersService.findByCode.mockResolvedValue({ id: 'u1', email: 'co@example.com', role: UserRole.HO });
+
+      await expect(
+        service.resetPasswordByCode({
+          code: 'CO_123',
+          otp: '123456',
+          newPassword: 'Password@123',
+        }),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('delegates to resetPassword if user exists and is CO', async () => {
+      usersService.findByCode.mockResolvedValue({ id: 'u1', email: 'co@example.com', role: UserRole.CO });
+      usersService.findByEmail.mockResolvedValue({ id: 'u1', email: 'co@example.com', role: UserRole.CO });
       const record = {
         email: 'co@example.com',
         otp_hash: await bcrypt.hash('123456', 10),
