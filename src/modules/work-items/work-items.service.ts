@@ -1,5 +1,4 @@
 import {
-  BadRequestException,
   ConflictException,
   ForbiddenException,
   Injectable,
@@ -14,8 +13,8 @@ import {
   DataSource,
   EntityManager,
   FindOptionsWhere,
-  In,
   ILike,
+  In,
   IsNull,
   Not,
   Repository,
@@ -779,20 +778,33 @@ export class WorkItemsService {
     const workItem = await this.findOne(id);
 
     if (updateWorkItemDto.hasOwnProperty('agreement_id')) {
-      const newAgreementId = updateWorkItemDto.agreement_id;
-      if (workItem.agreement_id) {
-        if (newAgreementId !== workItem.agreement_id) {
-          throw new BadRequestException('agreement_id cannot be edited once assigned');
+      const newAgreementId = updateWorkItemDto.agreement_id
+        ? updateWorkItemDto.agreement_id
+        : null;
+      if (newAgreementId !== workItem.agreement_id) {
+        if (newAgreementId) {
+          const agreement = await this.workItemsRepository.manager.findOne(
+            Agreement,
+            {
+              where: { id: newAgreementId },
+              relations: ['contractor'],
+            },
+          );
+          if (!agreement) {
+            throw new NotFoundException(
+              `Agreement #${newAgreementId} not found`,
+            );
+          }
+          workItem.agreement_id = newAgreementId;
+          workItem.agreement = agreement;
+          workItem.contractor_id = agreement.contractor_id ?? null;
+          workItem.contractor = (agreement.contractor ?? null) as any;
+        } else {
+          workItem.agreement_id = null;
+          workItem.agreement = null;
+          workItem.contractor_id = null;
+          workItem.contractor = null as any;
         }
-      } else if (newAgreementId) {
-        const agreement = await this.workItemsRepository.manager.findOne(Agreement, {
-          where: { id: newAgreementId },
-        });
-        if (!agreement) {
-          throw new NotFoundException(`Agreement #${newAgreementId} not found`);
-        }
-        workItem.agreement_id = newAgreementId;
-        workItem.contractor_id = agreement.contractor_id ?? null;
       }
     }
 
@@ -801,6 +813,27 @@ export class WorkItemsService {
     }
 
     const { sr, agreement_id, ...remainingDto } = updateWorkItemDto;
+
+    const locationRelations = [
+      { idKey: 'district_id', relationKey: 'district' },
+      { idKey: 'block_id', relationKey: 'block' },
+      { idKey: 'panchayat_id', relationKey: 'panchayat' },
+      { idKey: 'village_id', relationKey: 'village' },
+      { idKey: 'subdivision_id', relationKey: 'subdivision' },
+      { idKey: 'circle_id', relationKey: 'circle' },
+      { idKey: 'zone_id', relationKey: 'zone' },
+    ];
+
+    for (const rel of locationRelations) {
+      if (remainingDto.hasOwnProperty(rel.idKey)) {
+        const newId = remainingDto[rel.idKey] ? remainingDto[rel.idKey] : null;
+        if (newId !== workItem[rel.idKey]) {
+          workItem[rel.idKey] = newId;
+          workItem[rel.relationKey] = null;
+        }
+      }
+    }
+
     Object.assign(workItem, remainingDto);
     return this.workItemsRepository.save(workItem);
   }
