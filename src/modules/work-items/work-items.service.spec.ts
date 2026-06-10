@@ -792,7 +792,10 @@ describe('WorkItemsService', () => {
 
       expect(result.agreement_id).toBe('a1');
       expect(result.contractor_id).toBe('c1');
-      expect(workItemsRepository.manager.findOne).toHaveBeenCalledWith(expect.anything(), { where: { id: 'a1' } });
+      expect(workItemsRepository.manager.findOne).toHaveBeenCalledWith(expect.anything(), {
+        where: { id: 'a1' },
+        relations: ['contractor'],
+      });
       expect(workItemsRepository.save).toHaveBeenCalledWith(expect.objectContaining({ id: 'w1', agreement_id: 'a1', contractor_id: 'c1' }));
     });
 
@@ -807,22 +810,32 @@ describe('WorkItemsService', () => {
       );
     });
 
-    it('throws BadRequestException if trying to change agreement_id when already assigned', async () => {
+    it('allows changing agreement_id if the new agreement exists, updating contractor_id accordingly', async () => {
       const workItem = { id: 'w1', title: 'Title', agreement_id: 'a1', contractor_id: 'c1' };
+      const newAgreement = { id: 'a2', contractor_id: 'c2' };
       (workItemsRepository.findOne as jest.Mock).mockResolvedValue(workItem);
+      (workItemsRepository.manager.findOne as jest.Mock).mockResolvedValue(newAgreement);
+      (workItemsRepository.save as jest.Mock).mockImplementation(async (item) => item);
 
-      await expect(service.update('w1', { agreement_id: 'a2' })).rejects.toThrow(
-        BadRequestException,
-      );
+      const result = await service.update('w1', { agreement_id: 'a2' });
+
+      expect(result.agreement_id).toBe('a2');
+      expect(result.contractor_id).toBe('c2');
+      expect(workItemsRepository.manager.findOne).toHaveBeenCalledWith(expect.anything(), {
+        where: { id: 'a2' },
+        relations: ['contractor'],
+      });
     });
 
-    it('throws BadRequestException if trying to remove agreement_id when already assigned', async () => {
+    it('allows removing agreement_id (setting it to null), clearing contractor_id', async () => {
       const workItem = { id: 'w1', title: 'Title', agreement_id: 'a1', contractor_id: 'c1' };
       (workItemsRepository.findOne as jest.Mock).mockResolvedValue(workItem);
+      (workItemsRepository.save as jest.Mock).mockImplementation(async (item) => item);
 
-      await expect(service.update('w1', { agreement_id: null as any })).rejects.toThrow(
-        BadRequestException,
-      );
+      const result = await service.update('w1', { agreement_id: null as any });
+
+      expect(result.agreement_id).toBeNull();
+      expect(result.contractor_id).toBeNull();
     });
   });
 });

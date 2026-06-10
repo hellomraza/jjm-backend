@@ -825,35 +825,38 @@ export class AgreementsService {
   ): Promise<Agreement> {
     const agreement = await this.findOne(id);
 
-    let isContractorNewlyAssigned = false;
+    let isContractorChanged = false;
     if (updateAgreementDto.hasOwnProperty('contractor_id')) {
-      const newContractorId = updateAgreementDto.contractor_id;
-      if (agreement.contractor_id) {
-        if (newContractorId !== agreement.contractor_id) {
-          throw new BadRequestException('contractor_id cannot be edited once assigned');
+      const newContractorId = updateAgreementDto.contractor_id ? updateAgreementDto.contractor_id : null;
+      if (newContractorId !== agreement.contractor_id) {
+        if (newContractorId) {
+          await this.validateForeignKeys(newContractorId, []);
         }
-      } else if (newContractorId) {
-        await this.validateForeignKeys(newContractorId, []);
         agreement.contractor_id = newContractorId;
-        isContractorNewlyAssigned = true;
+        agreement.contractor = newContractorId ? { id: newContractorId } as User : null;
+        isContractorChanged = true;
       }
     }
 
     const { work_ids, ...updateData } = updateAgreementDto;
 
     if (work_ids) {
-      const currentWorkItemIds = agreement.workItems?.map((item) => item.id);
+      const currentWorkItemIds = agreement.workItems?.map((item) => item.id) || [];
 
-      // 1. Cannot remove work orders from the agreement
-      const removedIds = currentWorkItemIds?.filter((id) => !work_ids.includes(id));
-      if (removedIds && removedIds.length > 0) {
-        throw new BadRequestException(
-          `Cannot remove work orders from agreement. Removed IDs: ${removedIds.join(', ')}`,
+      // 1. Identify removed work items
+      const removedIds = currentWorkItemIds.filter((id) => !work_ids.includes(id));
+      if (removedIds.length > 0) {
+        // Set agreement_id and contractor_id to null for removed work items
+        await this.workItemsRepository.update(
+          { id: In(removedIds) },
+          { agreement_id: null, contractor_id: null }
         );
+        // Sync in-memory relation array to remove these work items
+        agreement.workItems = agreement.workItems?.filter((item) => !removedIds.includes(item.id)) || [];
       }
 
       // 2. Newly added work orders must not have any agreement ID assigned already
-      const addedWorkIds = work_ids.filter((id) => !currentWorkItemIds?.includes(id));
+      const addedWorkIds = work_ids.filter((id) => !currentWorkItemIds.includes(id));
       if (addedWorkIds.length > 0) {
         await this.validateForeignKeys(agreement.contractor_id, addedWorkIds);
 
@@ -862,7 +865,7 @@ export class AgreementsService {
         });
 
         for (const workItem of addedWorkItems) {
-          if (workItem.agreement_id) {
+          if (workItem.agreement_id && workItem.agreement_id !== agreement.id) {
             throw new BadRequestException(
               `Work item #${workItem.id} already has an agreement assigned`,
             );
@@ -877,6 +880,12 @@ export class AgreementsService {
             contractor_id: agreement.contractor_id ?? null,
           },
         );
+
+        // Sync in-memory relation array to include added work items
+        if (!agreement.workItems) {
+          agreement.workItems = [];
+        }
+        agreement.workItems.push(...addedWorkItems);
       }
     }
 
@@ -885,8 +894,8 @@ export class AgreementsService {
     Object.assign(agreement, remainingUpdateData);
     const updatedAgreement = await this.agreementsRepository.save(agreement);
 
-    // If contractor_id was newly assigned, propagate it to all work items in this agreement
-    if (isContractorNewlyAssigned) {
+    // If contractor_id changed, propagate it to all work items currently in this agreement
+    if (isContractorChanged) {
       await this.workItemsRepository.update(
         { agreement_id: agreement.id },
         { contractor_id: updatedAgreement.contractor_id },
@@ -898,6 +907,11 @@ export class AgreementsService {
 
   async remove(id: string): Promise<void> {
     const agreement = await this.findOne(id);
+    // Before removing, nullify agreement_id and contractor_id on all of its work items
+    await this.workItemsRepository.update(
+      { agreement_id: agreement.id },
+      { agreement_id: null, contractor_id: null }
+    );
     await this.agreementsRepository.remove(agreement);
   }
 }
