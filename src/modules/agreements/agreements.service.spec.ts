@@ -591,12 +591,48 @@ describe('AgreementsService', () => {
   });
 
   describe('update', () => {
-    it('throws BadRequestException if trying to edit contractor_id when already assigned', async () => {
+    it('allows editing contractor_id when already assigned, and propagates to work items', async () => {
+      const agreement = { id: 'a1', contractor_id: 'c1', workItems: [] };
+      const contractor = { id: 'c2' };
+      (agreementsRepository.findOne as jest.Mock).mockResolvedValue(agreement);
+      (usersRepository.findOne as jest.Mock).mockResolvedValue(contractor);
+      (agreementsRepository.save as jest.Mock).mockImplementation(async (item) => item);
+
+      const result = await service.update('a1', { contractor_id: 'c2' });
+
+      expect(result.contractor_id).toBe('c2');
+      expect(usersRepository.findOne).toHaveBeenCalledWith({ where: { id: 'c2' } });
+      expect(workItemsRepository.update).toHaveBeenCalledWith(
+        { agreement_id: 'a1' },
+        { contractor_id: 'c2' },
+      );
+    });
+
+    it('allows removing a contractor (setting contractor_id to null) and propagates null to all work items in the agreement', async () => {
       const agreement = { id: 'a1', contractor_id: 'c1', workItems: [] };
       (agreementsRepository.findOne as jest.Mock).mockResolvedValue(agreement);
+      (agreementsRepository.save as jest.Mock).mockImplementation(async (item) => item);
 
-      await expect(service.update('a1', { contractor_id: 'c2' })).rejects.toThrow(
-        BadRequestException,
+      const result = await service.update('a1', { contractor_id: null } as any);
+
+      expect(result.contractor_id).toBeNull();
+      expect(workItemsRepository.update).toHaveBeenCalledWith(
+        { agreement_id: 'a1' },
+        { contractor_id: null },
+      );
+    });
+
+    it('allows removing a contractor (setting contractor_id to empty string) and propagates null to all work items in the agreement', async () => {
+      const agreement = { id: 'a1', contractor_id: 'c1', workItems: [] };
+      (agreementsRepository.findOne as jest.Mock).mockResolvedValue(agreement);
+      (agreementsRepository.save as jest.Mock).mockImplementation(async (item) => item);
+
+      const result = await service.update('a1', { contractor_id: '' } as any);
+
+      expect(result.contractor_id).toBeNull();
+      expect(workItemsRepository.update).toHaveBeenCalledWith(
+        { agreement_id: 'a1' },
+        { contractor_id: null },
       );
     });
 
@@ -617,16 +653,20 @@ describe('AgreementsService', () => {
       );
     });
 
-    it('throws BadRequestException if trying to remove an existing work order from the agreement', async () => {
+    it('allows removing an existing work order from the agreement and nullifies agreement_id and contractor_id', async () => {
       const agreement = {
         id: 'a1',
         contractor_id: 'c1',
         workItems: [{ id: 'w1' }, { id: 'w2' }],
       };
       (agreementsRepository.findOne as jest.Mock).mockResolvedValue(agreement);
+      (agreementsRepository.save as jest.Mock).mockImplementation(async (item) => item);
 
-      await expect(service.update('a1', { work_ids: ['w2'] })).rejects.toThrow(
-        BadRequestException,
+      const result = await service.update('a1', { work_ids: ['w2'] });
+
+      expect(workItemsRepository.update).toHaveBeenCalledWith(
+        { id: In(['w1']) },
+        { agreement_id: null, contractor_id: null },
       );
     });
 
