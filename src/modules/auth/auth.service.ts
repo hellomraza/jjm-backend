@@ -134,6 +134,9 @@ export class AuthService {
       this.logger.log(`Forgot password requested for non-existent email: ${email}`);
       return { message: 'If an account exists, an OTP has been sent.' };
     }
+    if (user.role !== UserRole.CO) {
+      throw new BadRequestException('Only Contractor (CO) accounts are allowed to reset their password.');
+    }
 
     // Generate 6-digit OTP
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
@@ -177,6 +180,9 @@ export class AuthService {
     const user = await this.usersService.findByEmail(email);
     if (!user) {
       throw new BadRequestException('Invalid email or OTP');
+    }
+    if (user.role !== UserRole.CO) {
+      throw new BadRequestException('Only Contractor (CO) accounts are allowed to reset their password.');
     }
 
     // Retrieve active unused OTP records for email
@@ -225,9 +231,16 @@ export class AuthService {
 
   async forgotPasswordByCode(code: string): Promise<{ message: string }> {
     const user = await this.usersService.findByCode(code);
-    if (!user || !user.email) {
-      this.logger.log(`Forgot password requested for non-existent code or user without email: ${code}`);
+    if (!user) {
+      this.logger.log(`Forgot password requested for non-existent code: ${code}`);
       return { message: 'If an account exists, an OTP has been sent.' };
+    }
+    if (!user.email) {
+      this.logger.log(`Forgot password requested for user without email: ${code}`);
+      return { message: 'If an account exists, an OTP has been sent.' };
+    }
+    if (user.role !== UserRole.CO) {
+      throw new BadRequestException('Only Contractor (CO) accounts are allowed to reset their password.');
     }
     return this.forgotPassword(user.email);
   }
@@ -237,6 +250,9 @@ export class AuthService {
     const user = await this.usersService.findByCode(code);
     if (!user || !user.email) {
       throw new BadRequestException('Invalid code or OTP');
+    }
+    if (user.role !== UserRole.CO) {
+      throw new BadRequestException('Only Contractor (CO) accounts are allowed to reset their password.');
     }
     return this.resetPassword({
       email: user.email,
