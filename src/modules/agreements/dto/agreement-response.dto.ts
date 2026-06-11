@@ -453,9 +453,13 @@ export class AgreementResponseDto {
           }))
         : [],
       files:
-        agreement.agreementFileMaps?.map((agreementFileMap) =>
-          AgreementFileResponseDto.fromEntity(agreementFileMap.agreementFile),
-        ) ?? [],
+        agreement.agreementFileMaps
+          ? [...agreement.agreementFileMaps]
+              .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+              .map((agreementFileMap) =>
+                AgreementFileResponseDto.fromEntity(agreementFileMap.agreementFile),
+              )
+          : [],
       created_at: agreement.created_at,
       updated_at: agreement.updated_at,
     };
