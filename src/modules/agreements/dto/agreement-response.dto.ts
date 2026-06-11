@@ -361,6 +361,21 @@ export class AgreementResponseDto {
   excel?: string | null;
 
   @ApiProperty({
+    description: 'Security deposit amount',
+    example: 10000.00,
+    nullable: true,
+    required: false,
+  })
+  security_deposit?: number | null;
+
+  @ApiProperty({
+    description: 'Security deposit released amount',
+    example: 0.00,
+    default: 0.00,
+  })
+  security_deposit_released: number;
+
+  @ApiProperty({
     description: 'Contractor user details',
     type: AgreementContractorResponseDto,
     nullable: true,
@@ -406,6 +421,8 @@ export class AgreementResponseDto {
       unitag: agreement.unitag,
       agrid: agreement.agrid,
       excel: agreement.excel,
+      security_deposit: agreement.security_deposit !== null && agreement.security_deposit !== undefined ? Number(agreement.security_deposit) : null,
+      security_deposit_released: agreement.security_deposit_released !== null && agreement.security_deposit_released !== undefined ? Number(agreement.security_deposit_released) : 0,
       contractor: agreement.contractor
         ? {
             id: agreement.contractor.id,

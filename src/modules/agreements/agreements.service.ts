@@ -905,6 +905,16 @@ export class AgreementsService {
     return this.findOne(updatedAgreement.id);
   }
 
+  async updateSecurityDeposit(
+    id: string,
+    securityDeposit: number,
+  ): Promise<Agreement> {
+    const agreement = await this.findOne(id);
+    agreement.security_deposit = securityDeposit;
+    const updatedAgreement = await this.agreementsRepository.save(agreement);
+    return this.findOne(updatedAgreement.id);
+  }
+
   async remove(id: string): Promise<void> {
     const agreement = await this.findOne(id);
     // Before removing, nullify agreement_id and contractor_id on all of its work items

@@ -40,6 +40,7 @@ import {
 } from './dto/agreement-response.dto';
 import { CreateAgreementDto } from './dto/create-agreement.dto';
 import { UpdateAgreementDto } from './dto/update-agreement.dto';
+import { UpdateSecurityDepositDto } from './dto/update-security-deposit.dto';
 
 @ApiTags('Agreements')
 @ApiBearerAuth('access-token')
@@ -207,6 +208,30 @@ export class AgreementsController {
     const agreement = await this.agreementsService.update(
       id,
       updateAgreementDto,
+    );
+    return AgreementResponseDto.fromEntity(agreement);
+  }
+
+  @Patch(':id/security-deposit')
+  @Roles(UserRole.HO, UserRole.DO)
+  @ApiOperation({
+    summary: 'Update security deposit of an agreement',
+    description: 'Updates only the security deposit field of an agreement',
+  })
+  @ApiParam({ name: 'id', type: String, description: 'Agreement ID' })
+  @ApiOkResponse({
+    description: 'Agreement security deposit updated successfully',
+    type: AgreementResponseDto,
+  })
+  @ApiBadRequestResponse({ description: 'Invalid request body' })
+  @ApiNotFoundResponse({ description: 'Agreement not found' })
+  async updateSecurityDeposit(
+    @Param('id') id: string,
+    @Body() updateSecurityDepositDto: UpdateSecurityDepositDto,
+  ) {
+    const agreement = await this.agreementsService.updateSecurityDeposit(
+      id,
+      updateSecurityDepositDto.security_deposit,
     );
     return AgreementResponseDto.fromEntity(agreement);
   }

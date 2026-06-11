@@ -60,6 +60,12 @@ export class Agreement {
   @Column({ type: 'decimal', precision: 10, scale: 7, nullable: true })
   longitude?: number;
 
+  @Column({ type: 'decimal', precision: 12, scale: 2, nullable: true })
+  security_deposit?: number | null;
+
+  @Column({ type: 'decimal', precision: 12, scale: 2, default: 0 })
+  security_deposit_released!: number;
+
   @ManyToOne(() => User, { onDelete: 'RESTRICT', onUpdate: 'CASCADE', nullable: true })
   @JoinColumn({ name: 'contractor_id', referencedColumnName: 'id' })
   contractor?: User | null;

@@ -826,4 +826,22 @@ describe('AgreementsService', () => {
       });
     });
   });
+
+  describe('updateSecurityDeposit', () => {
+    it('successfully updates security deposit amount', async () => {
+      const agreement = { id: 'a1', security_deposit: 1000.00 };
+      (agreementsRepository.findOne as jest.Mock).mockResolvedValue(agreement);
+      (agreementsRepository.save as jest.Mock).mockImplementation(async (item) => item);
+
+      const result = await service.updateSecurityDeposit('a1', 15000.00);
+
+      expect(result.security_deposit).toBe(15000.00);
+      expect(agreementsRepository.save).toHaveBeenCalledWith(
+        expect.objectContaining({
+          id: 'a1',
+          security_deposit: 15000.00,
+        }),
+      );
+    });
+  });
 });

@@ -11,6 +11,7 @@ describe('AgreementsController', () => {
     findAllForUser: jest.fn(),
     findOneForUser: jest.fn(),
     update: jest.fn(),
+    updateSecurityDeposit: jest.fn(),
     remove: jest.fn(),
     attachFileToAgreement: jest.fn(),
   };
@@ -191,5 +192,25 @@ describe('AgreementsController', () => {
   it('remove delegates to service', async () => {
     await controller.remove('a1');
     expect(agreementsService.remove).toHaveBeenCalledWith('a1');
+  });
+
+  it('updateSecurityDeposit delegates to service', async () => {
+    const dto = { security_deposit: 15000.00 };
+    agreementsService.updateSecurityDeposit.mockResolvedValue({
+      id: 'a1',
+      agreementno: 'AGR001',
+      agreementyear: '2025-2026',
+      contractor_id: 'c1',
+      security_deposit: 15000.00,
+      security_deposit_released: 0,
+      contractor: undefined,
+      workItems: [],
+      agreementFileMaps: [],
+      created_at: new Date(),
+      updated_at: new Date(),
+    });
+    const result = await controller.updateSecurityDeposit('a1', dto);
+    expect(agreementsService.updateSecurityDeposit).toHaveBeenCalledWith('a1', 15000.00);
+    expect(result.security_deposit).toBe(15000.00);
   });
 });

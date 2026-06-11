@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsArray, IsDateString, IsNotEmpty, IsOptional, IsString, IsUUID } from 'class-validator';
+import { IsArray, IsDateString, IsNotEmpty, IsNumber, IsOptional, IsString, IsUUID } from 'class-validator';
 
 export class CreateAgreementDto {
   @ApiProperty({
@@ -91,4 +91,21 @@ export class CreateAgreementDto {
   @IsString()
   @IsOptional()
   excel?: string;
+
+  @ApiPropertyOptional({
+    description: 'Security deposit amount',
+    example: 10000.00,
+  })
+  @IsNumber()
+  @IsOptional()
+  security_deposit?: number;
+
+  @ApiPropertyOptional({
+    description: 'Security deposit released amount',
+    example: 0.00,
+    default: 0.00,
+  })
+  @IsNumber()
+  @IsOptional()
+  security_deposit_released?: number;
 }
