@@ -141,7 +141,7 @@ export class UsersController {
   }
 
   @Patch('contractor/:id')
-  @Roles(UserRole.DO)
+  @Roles(UserRole.DO, UserRole.HO)
   @ApiOperation({
     summary: 'Edit contractor',
     description: 'Edits an existing contractor account (DO only)',
