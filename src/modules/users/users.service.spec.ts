@@ -42,13 +42,12 @@ describe('UsersService', () => {
     await expect(service.findOne('missing')).rejects.toThrow(NotFoundException);
   });
 
-  it('getAllContractors excludes temporary import contractors', async () => {
+  it('getAllContractors excludes temporary import contractors and filters by district for DO', async () => {
     const queryBuilder = {
       where: jest.fn().mockReturnThis(),
       andWhere: jest.fn().mockReturnThis(),
       addOrderBy: jest.fn().mockReturnThis(),
       orderBy: jest.fn().mockReturnThis(),
-      setParameter: jest.fn().mockReturnThis(),
       getMany: jest.fn().mockResolvedValue([
         {
           id: 'co1',
@@ -75,25 +74,20 @@ describe('UsersService', () => {
     expect(queryBuilder.where).toHaveBeenCalledWith('user.role = :role', {
       role: UserRole.CO,
     });
-    expect(queryBuilder.andWhere).toHaveBeenCalledWith(
+    expect(queryBuilder.andWhere).toHaveBeenNthCalledWith(
+      1,
       expect.stringContaining('NOT'),
       {
         temporaryEmailPattern: 'temp-contractor-%@import.local',
         temporaryNamePattern: 'Temporary Contractor %',
       },
     );
-    expect(queryBuilder.orderBy).toHaveBeenCalledWith(
-      'CASE WHEN user.district_id = :requesterDistrictId THEN 0 ELSE 1 END',
-      'ASC',
+    expect(queryBuilder.andWhere).toHaveBeenNthCalledWith(
+      2,
+      expect.stringContaining('user.district_id = :requesterDistrictId'),
+      { requesterDistrictId: 'D-001' },
     );
-    expect(queryBuilder.addOrderBy).toHaveBeenCalledWith(
-      'user.created_at',
-      'DESC',
-    );
-    expect(queryBuilder.setParameter).toHaveBeenCalledWith(
-      'requesterDistrictId',
-      'D-001',
-    );
+    expect(queryBuilder.orderBy).toHaveBeenCalledWith('user.created_at', 'DESC');
     expect(result).toEqual([
       {
         id: 'co1',

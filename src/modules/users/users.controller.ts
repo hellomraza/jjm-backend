@@ -144,7 +144,7 @@ export class UsersController {
   @Roles(UserRole.DO, UserRole.HO)
   @ApiOperation({
     summary: 'Edit contractor',
-    description: 'Edits an existing contractor account (DO only)',
+    description: 'Edits an existing contractor account (DO and HO)',
   })
   @ApiParam({ name: 'id', type: String, description: 'Contractor ID' })
   @ApiOkResponse({

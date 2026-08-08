@@ -721,18 +721,7 @@ export class UsersService {
     requesterUserId: string,
     requesterRole: UserRole,
   ): Promise<Omit<User, 'password'>[]> {
-    let requesterDistrictId: string | undefined;
-
-    if (requesterRole === UserRole.DO) {
-      const requester = await this.userRepository.findOne({
-        where: { id: requesterUserId, role: UserRole.DO },
-        select: ['id', 'district_id'],
-      });
-
-      requesterDistrictId = requester?.district_id;
-    }
-
-    const contractors = await this.userRepository
+    const query = this.userRepository
       .createQueryBuilder('user')
       .where('user.role = :role', { role: UserRole.CO })
       .andWhere(
@@ -744,16 +733,34 @@ export class UsersService {
           temporaryEmailPattern: 'temp-contractor-%@import.local',
           temporaryNamePattern: 'Temporary Contractor %',
         },
-      )
-      .orderBy(
-        'CASE WHEN user.district_id = :requesterDistrictId THEN 0 ELSE 1 END',
-        'ASC',
-      )
-      .setParameter(
-        'requesterDistrictId',
-        requesterDistrictId ?? '__no_district__',
-      )
-      .addOrderBy('user.created_at', 'DESC')
+      );
+
+    if (requesterRole === UserRole.DO) {
+      const requester = await this.userRepository.findOne({
+        where: { id: requesterUserId, role: UserRole.DO },
+        select: ['id', 'district_id'],
+      });
+
+      if (!requester?.district_id) {
+        return [];
+      }
+
+      query.andWhere(
+        `(
+          user.district_id = :requesterDistrictId
+          OR EXISTS (
+            SELECT 1 FROM work_items wi
+            LEFT JOIN agreements ag ON wi.agreement_id = ag.id
+            WHERE (wi.contractor_id = user.id OR ag.contractor_id = user.id)
+              AND wi.district_id = :requesterDistrictId
+          )
+        )`,
+        { requesterDistrictId: requester.district_id },
+      );
+    }
+
+    const contractors = await query
+      .orderBy('user.created_at', 'DESC')
       .getMany();
 
     // Remove password from all contractors
