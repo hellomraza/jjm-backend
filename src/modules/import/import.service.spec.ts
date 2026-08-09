@@ -278,6 +278,153 @@ describe('ImportService', () => {
     });
   });
 
+  it('parses new Agreement file format with DispatchNo, DispatchDate and alredysend', async () => {
+    const workbook = new ExcelJS.Workbook();
+    const sheet = workbook.addWorksheet('Agreement');
+
+    sheet.addRow([
+      'Sr.no',
+      'Agreement_No',
+      'year_of_agreement',
+      'ddocode',
+      'CId',
+      'WorkCodeNew',
+      'DispatchNo',
+      'DispatchDate',
+      'alredysend',
+    ]);
+    sheet.addRow([
+      '1',
+      '1',
+      '2026-2027 ',
+      '40134083',
+      'CGeR04150           ',
+      'W451212200828',
+      '1493',
+      '07:36.1',
+      'NULL',
+    ]);
+
+    const buffer = Buffer.from(await workbook.xlsx.writeBuffer());
+
+    const result = await service.parseWorkbook(
+      {
+        buffer,
+        originalname: 'new_agreements.xlsx',
+      } as ImportUploadFile,
+      ImportType.Agreement,
+    );
+
+    expect(result.agreementTable?.[0]).toMatchObject({
+      sr: '1',
+      agreementno: '1',
+      agreementyear: '2026-2027',
+      division_code: '40134083',
+      contractor_code: 'CGeR04150',
+      workcode: 'W451212200828',
+      dispatch_no: '1493',
+      dispatch_date: '07:36.1',
+      already_sent: 'NULL',
+    });
+  });
+
+  it('parses new Contractor file format', async () => {
+    const workbook = new ExcelJS.Workbook();
+    const sheet = workbook.addWorksheet('Contractor');
+
+    sheet.addRow([
+      'Sno',
+      'name_of_contractorEng',
+      'ContractorID',
+      'PANNo',
+      'ClassOfContractor',
+      'Email',
+      'Mobile',
+      'address_of_contractorEng',
+    ]);
+    sheet.addRow([
+      '1',
+      'Aarambh Construction',
+      'CGeR26999',
+      'DQVPS6779C',
+      'D',
+      'shrivastava.shudhanshu@gmail.com',
+      '7869646500',
+      'Thanganpara, Mayapur, Ambikapur, Distt. Sarguja C.G. PIn 497001',
+    ]);
+
+    const buffer = Buffer.from(await workbook.xlsx.writeBuffer());
+
+    const result = await service.parseWorkbook(
+      {
+        buffer,
+        originalname: 'new_contractors.xlsx',
+      } as ImportUploadFile,
+      ImportType.Contractor,
+    );
+
+    expect(result.contractorTable?.[0]).toMatchObject({
+      contractorname: 'Aarambh Construction',
+      contractor_code: 'CGeR26999',
+      pannumber: 'DQVPS6779C',
+      contractorclass: 'D',
+      contractoremail: 'shrivastava.shudhanshu@gmail.com',
+      contractorcno: '7869646500',
+      contractoraddress:
+        'Thanganpara, Mayapur, Ambikapur, Distt. Sarguja C.G. PIn 497001',
+    });
+  });
+
+  it('parses new Work Order file format', async () => {
+    const workbook = new ExcelJS.Workbook();
+    const sheet = workbook.addWorksheet('Work Order');
+
+    sheet.addRow([
+      'S.no.',
+      'WorkCode',
+      'DistrictID',
+      'BlockID',
+      'PanchayatID',
+      'scheme',
+      'No_FHTC',
+      'AA_Amount',
+      'payment_done',
+    ]);
+    sheet.addRow([
+      '1',
+      'W467222300764',
+      '705',
+      '5963',
+      '218691',
+      'SVS',
+      '105',
+      '79.81',
+      '76100',
+    ]);
+
+    const buffer = Buffer.from(await workbook.xlsx.writeBuffer());
+
+    const result = await service.parseWorkbook(
+      {
+        buffer,
+        originalname: 'new_workorders.xlsx',
+      } as ImportUploadFile,
+      ImportType.WorkItem,
+    );
+
+    expect(result.workItemTable?.[0]).toMatchObject({
+      sr: '1',
+      workcode: 'W467222300764',
+      district_code: '705',
+      block_code: '5963',
+      panchayat_code: '218691',
+      schemetype: 'SVS',
+      nofhtc: 105,
+      aa_amount: 79.81,
+      payment_rs: 76100,
+    });
+  });
+
   it('rejects unsupported import types', async () => {
     const workbook = new ExcelJS.Workbook();
     workbook.addWorksheet('Any').addRow(['x']);

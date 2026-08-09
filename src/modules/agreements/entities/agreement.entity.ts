@@ -54,6 +54,15 @@ export class Agreement {
   @Column({ type: 'varchar', length: 100, nullable: true })
   division_code!: string; //division_code
 
+  @Column({ type: 'varchar', length: 100, nullable: true })
+  dispatch_no?: string | null;
+
+  @Column({ type: 'varchar', length: 100, nullable: true })
+  dispatch_date?: string | null;
+
+  @Column({ type: 'varchar', length: 100, nullable: true })
+  already_sent?: string | null;
+
   @Column({ type: 'decimal', precision: 10, scale: 7, nullable: true })
   latitude?: number;
 

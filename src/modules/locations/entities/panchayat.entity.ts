@@ -10,5 +10,9 @@ export class Panchayat {
 
   @Index()
   @Column({ type: 'varchar', length: 100 })
-  panchayat_code: string;
+  panchayat_code!: string;
+
+  @Index()
+  @Column({ type: 'int', nullable: true })
+  block_id?: number | null;
 }

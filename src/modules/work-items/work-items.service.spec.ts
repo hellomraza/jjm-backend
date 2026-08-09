@@ -377,10 +377,100 @@ describe('WorkItemsService', () => {
         title: 'WORK003',
         schemetype: 'PWS',
         district_id: 'CG-RPR',
-        contractor_id: 'old-contractor-id',
+        contractor_id: 'contractor-id',
         excel: 'EX-003',
       }),
     );
+  });
+
+  it('bulkCreateFromImport infers contractor from existing agreement when contractor_code is missing', async () => {
+    const masterComponents = Array.from({ length: 12 }, (_, i) => ({
+      id: `comp-${i + 1}`,
+      order_number: i + 1,
+    }));
+    const manager = {
+      findOne: jest.fn(),
+      create: jest.fn((_entity, payload) => payload),
+      save: jest.fn().mockImplementation(async (_entity, payload) => payload),
+      find: jest.fn().mockResolvedValue(masterComponents),
+    };
+
+    (dataSource.transaction as jest.Mock).mockImplementation(async (callback) =>
+      callback(manager),
+    );
+
+    manager.findOne.mockImplementation(async (entity, _options) => {
+      if (entity === Agreement) {
+        return {
+          id: 'agr-100',
+          agreementno: 'AG-100',
+          contractor_id: 'inferred-contractor-id',
+        };
+      }
+      return null;
+    });
+
+    const result = await service.bulkCreateFromImport([
+      {
+        workcode: 'WORK_INFER',
+        schemetype: 'SVS',
+        contractor_code: null,
+        excel: null,
+        district_code: null,
+        block_code: null,
+        panchayat_code: null,
+        schemecategory: null,
+        nofhtc: null,
+        aa_amount: null,
+        payment_rs: null,
+        sr: null,
+        systemdate: null,
+        workcodeid: null,
+      },
+    ]);
+
+    expect(result).toHaveLength(1);
+    expect(result[0].contractor_id).toBe('inferred-contractor-id');
+    expect(result[0].agreement_id).toBe('agr-100');
+  });
+
+  it('bulkCreateFromImport sets contractor_id to null when contractor_code is missing and no agreement exists', async () => {
+    const masterComponents = Array.from({ length: 12 }, (_, i) => ({
+      id: `comp-${i + 1}`,
+      order_number: i + 1,
+    }));
+    const manager = {
+      findOne: jest.fn().mockResolvedValue(null),
+      create: jest.fn((_entity, payload) => payload),
+      save: jest.fn().mockImplementation(async (_entity, payload) => payload),
+      find: jest.fn().mockResolvedValue(masterComponents),
+    };
+
+    (dataSource.transaction as jest.Mock).mockImplementation(async (callback) =>
+      callback(manager),
+    );
+
+    const result = await service.bulkCreateFromImport([
+      {
+        workcode: 'WORK_NO_CON',
+        schemetype: 'SVS',
+        contractor_code: null,
+        excel: null,
+        district_code: null,
+        block_code: null,
+        panchayat_code: null,
+        schemecategory: null,
+        nofhtc: null,
+        aa_amount: null,
+        payment_rs: null,
+        sr: null,
+        systemdate: null,
+        workcodeid: null,
+      },
+    ]);
+
+    expect(result).toHaveLength(1);
+    expect(result[0].contractor_id).toBeNull();
   });
 
   it('findOne throws when missing', async () => {

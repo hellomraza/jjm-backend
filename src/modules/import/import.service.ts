@@ -52,6 +52,9 @@ export type AgreementImport = {
   workcode: string | null;
   workorderno: string | null;
   workorderdate: Date | null;
+  dispatch_no: string | null;
+  dispatch_date: string | null;
+  already_sent: string | null;
   systemdate: Date | null;
   unitag: string | null;
   excel: string | null;
@@ -69,6 +72,9 @@ export const importAgreementMapping: Record<
   work_id: 'workcode',
   workorderno: 'workorderno',
   workorderdate: 'workorderdate',
+  dispatch_no: 'dispatch_no',
+  dispatch_date: 'dispatch_date',
+  already_sent: 'already_sent',
   excel: 'excel',
   sr: 'sr',
   agrid: 'agrid',
@@ -282,7 +288,42 @@ export class ImportService {
 
     if (!sheet) return contractors;
 
-    const headers = sheet.headers.map((h) => String(h ?? '').toLowerCase());
+    const rows = sheet.allRows;
+
+    let headerRowIndex = -1;
+    const knownHeaders = [
+      'name_of_contractoreng',
+      'name_of_contractor',
+      'contractorid',
+      'contractor_id',
+      'contractor id',
+      'contractorname',
+      'contractor name',
+      'panno',
+      'pan_no',
+      'pannumber',
+      'classofcontractor',
+      'email',
+      'mobile',
+    ];
+
+    for (let i = 0; i < rows.length; i++) {
+      const rowStr = (rows[i] ?? [])
+        .map((val) => String(val ?? '').toLowerCase())
+        .join(' ');
+      if (knownHeaders.some((h) => rowStr.includes(h))) {
+        headerRowIndex = i;
+        break;
+      }
+    }
+
+    if (headerRowIndex === -1) {
+      headerRowIndex = 0;
+    }
+
+    const headers = (rows[headerRowIndex] ?? []).map((h) =>
+      String(h ?? '').toLowerCase().trim(),
+    );
 
     const findIndex = (names: string[]) => {
       for (const n of names) {
@@ -294,23 +335,46 @@ export class ImportService {
 
     const idxMap = {
       contractorid: findIndex([
+        'sno',
+        'sr.no',
+        'sr_no',
+        'sr',
         'contractorid',
         'contractor id',
         'contractor_id',
       ]),
       contractorname: findIndex([
+        'name_of_contractoreng',
+        'name_of_contractor',
         'contractorname',
         'contractor name',
         'contractor_name',
       ]),
-      contractor_code: findIndex(['contractor_code', 'contractor code']),
+      contractor_code: findIndex([
+        'contractor_code',
+        'contractor code',
+        'cid',
+        'contractorid',
+        'contractor_id',
+        'contractor id',
+      ]),
       contractorpass: findIndex([
         'contractorpass',
         'contractor pass',
         'contractor_pass',
+        'password',
       ]),
-      pannumber: findIndex(['pannumber', 'pan number', 'pan_number', 'pan']),
+      pannumber: findIndex([
+        'panno',
+        'pan_no',
+        'pannumber',
+        'pan number',
+        'pan_number',
+        'pan',
+      ]),
       contractorclass: findIndex([
+        'classofcontractor',
+        'class_of_contractor',
         'contractorclass',
         'contractor class',
         'contractor_class',
@@ -329,6 +393,8 @@ export class ImportService {
         'mobile',
       ]),
       contractoraddress: findIndex([
+        'address_of_contractoreng',
+        'address_of_contractor',
         'contractoraddress',
         'contractor address',
         'contractor_address',
@@ -340,19 +406,28 @@ export class ImportService {
         'system_date',
         'date',
       ]),
-    } as const;
+    };
 
-    const dataRows = sheet.allRows.slice(1);
+    const dataRows = rows.slice(headerRowIndex + 1);
 
     for (const row of dataRows) {
       if (!row || row.length === 0) continue;
 
       const get = (i: number): unknown => (i >= 0 ? row[i] : undefined);
 
+      const parsedCode = this.normalizeString(get(idxMap.contractor_code));
+      const parsedIdRaw = get(idxMap.contractorid);
+      const parsedIdNum = this.normalizeNumber(parsedIdRaw);
+
+      let contractorCode = parsedCode;
+      if (!contractorCode && parsedIdRaw !== undefined && parsedIdRaw !== null) {
+        contractorCode = String(parsedIdRaw).trim() || null;
+      }
+
       const contractor: Contractor = {
-        contractorid: this.normalizeNumber(get(idxMap.contractorid)),
+        contractorid: parsedIdNum,
         contractorname: this.normalizeString(get(idxMap.contractorname)),
-        contractor_code: this.normalizeString(get(idxMap.contractor_code)),
+        contractor_code: contractorCode,
         contractorpass: this.normalizeString(get(idxMap.contractorpass)),
         pannumber: this.normalizeString(get(idxMap.pannumber)),
         contractorclass: this.normalizeString(get(idxMap.contractorclass)),
@@ -383,7 +458,39 @@ export class ImportService {
 
     if (!sheet) return items;
 
-    const headers = sheet.headers.map((h) => String(h ?? '').toLowerCase());
+    const rows = sheet.allRows;
+
+    let headerRowIndex = -1;
+    const knownHeaders = [
+      'workcode',
+      'work_code',
+      'work code',
+      'workcodenew',
+      'districtid',
+      'district_id',
+      'blockid',
+      'panchayatid',
+      'aa_amount',
+      'payment_done',
+    ];
+
+    for (let i = 0; i < rows.length; i++) {
+      const rowStr = (rows[i] ?? [])
+        .map((val) => String(val ?? '').toLowerCase())
+        .join(' ');
+      if (knownHeaders.some((h) => rowStr.includes(h))) {
+        headerRowIndex = i;
+        break;
+      }
+    }
+
+    if (headerRowIndex === -1) {
+      headerRowIndex = 0;
+    }
+
+    const headers = (rows[headerRowIndex] ?? []).map((h) =>
+      String(h ?? '').toLowerCase().trim(),
+    );
 
     const findIndex = (names: string[]) => {
       for (const n of names) {
@@ -409,25 +516,62 @@ export class ImportService {
         'work id',
         'workid',
       ]),
-      workcode: findExactIndex(['workcode', 'work code', 'work_code']),
+      workcode: findExactIndex([
+        'workcode',
+        'work code',
+        'work_code',
+        'workcodenew',
+        'work_code_new',
+      ]),
       excel: findIndex(['excel']),
-      district_code: findIndex(['district_code', 'district code', 'district']),
-      block_code: findIndex(['block_code', 'block code', 'block']),
+      district_code: findIndex([
+        'districtid',
+        'district_id',
+        'district_code',
+        'district code',
+        'district',
+      ]),
+      block_code: findIndex([
+        'blockid',
+        'block_id',
+        'block_code',
+        'block code',
+        'block',
+      ]),
       panchayat_code: findIndex([
+        'panchayatid',
+        'panchayat_id',
         'panchayat_code',
         'panchayat code',
         'panchayat',
       ]),
-      schemetype: findIndex(['schemetype', 'scheme type', 'scheme_type']),
+      schemetype: findIndex([
+        'scheme',
+        'schemetype',
+        'scheme type',
+        'scheme_type',
+      ]),
       schemecategory: findIndex([
         'schemecategory',
         'scheme category',
         'scheme_category',
       ]),
-      nofhtc: findIndex(['nofhtc', 'no of htc', 'nof htc']),
+      nofhtc: findIndex([
+        'no_fhtc',
+        'no fhtc',
+        'nofhtc',
+        'no of htc',
+        'nof htc',
+      ]),
       aa_amount: findIndex(['aa_amount', 'aa amount', 'aaamount', 'aa_amt']),
-      payment_rs: findIndex(['payment_rs', 'payment rs', 'payment']),
-      sr: findIndex(['sr', 's/r', 's r']),
+      payment_rs: findIndex([
+        'payment_done',
+        'payment done',
+        'payment_rs',
+        'payment rs',
+        'payment',
+      ]),
+      sr: findIndex(['s.no.', 's.no', 'sno', 'sr', 's/r', 's r']),
       systemdate: findIndex([
         'systemdate',
         'system date',
@@ -437,11 +581,12 @@ export class ImportService {
       contractor_code: findIndex([
         'contractor_code',
         'contractor code',
-        'contractor_code',
+        'cid',
+        'contractorid',
       ]),
-    } as Record<string, number>;
+    };
 
-    const dataRows = sheet.allRows.slice(1);
+    const dataRows = rows.slice(headerRowIndex + 1);
 
     for (const row of dataRows) {
       if (!row || row.length === 0) continue;
@@ -486,9 +631,162 @@ export class ImportService {
 
     const rows = sheet.allRows;
 
-    // Find the header row by looking for known column names
     let headerRowIndex = -1;
-    const knownHeaders = [
+    const modernHeaderKeywords = [
+      'agreement_no',
+      'year_of_agreement',
+      'ddocode',
+      'workcodenew',
+      'dispatchno',
+      'dispatchdate',
+      'alredysend',
+      'sr.no',
+    ];
+
+    for (let i = 0; i < rows.length; i++) {
+      const row = rows[i];
+      const rowStr = row
+        .map((val) =>
+          val === null || val === undefined
+            ? ''
+            : typeof val === 'string' ||
+                typeof val === 'number' ||
+                typeof val === 'boolean'
+              ? String(val).toLowerCase()
+              : (JSON.stringify(val)?.toLowerCase() ?? ''),
+        )
+        .join(' ');
+      if (
+        modernHeaderKeywords.some((keyword) =>
+          rowStr.includes(keyword.toLowerCase()),
+        )
+      ) {
+        headerRowIndex = i;
+        break;
+      }
+    }
+
+    const isModernFormat = headerRowIndex !== -1;
+
+    if (isModernFormat) {
+      const headers = (rows[headerRowIndex] ?? []).map((h) =>
+        String(h ?? '').toLowerCase().trim(),
+      );
+
+      const findIndex = (names: string[]) => {
+        for (const n of names) {
+          const idx = headers.findIndex((h) => h.includes(n));
+          if (idx !== -1) return idx;
+        }
+        return -1;
+      };
+
+      const findExactIndex = (names: string[]) => {
+        for (const n of names) {
+          const idx = headers.findIndex((h) => h === n);
+          if (idx !== -1) return idx;
+        }
+        return -1;
+      };
+
+      const idxMap = {
+        agrid: findIndex(['agrid', 'agr id', 'agri_id']),
+        agreementno: findIndex(['agreement_no', 'agreement no', 'agreementno']),
+        agreementyear: findIndex([
+          'year_of_agreement',
+          'agreement_year',
+          'agreement year',
+          'agreementyear',
+        ]),
+        division_code: findIndex([
+          'ddocode',
+          'ddo_code',
+          'ddo code',
+          'division_code',
+          'division code',
+        ]),
+        contractor_code: findIndex([
+          'cid',
+          'contractorid',
+          'contractor_id',
+          'contractor_code',
+          'contractor code',
+        ]),
+        workcode: findExactIndex([
+          'workcodenew',
+          'work_code_new',
+          'workcode',
+          'work_code',
+          'work code',
+          'work_id',
+        ]),
+        workorderno: findIndex(['workorderno', 'work order no', 'work_order_no']),
+        workorderdate: findIndex([
+          'workorderdate',
+          'work order date',
+          'work_order_date',
+        ]),
+        dispatch_no: findIndex(['dispatchno', 'dispatch_no', 'dispatch no']),
+        dispatch_date: findIndex([
+          'dispatchdate',
+          'dispatch_date',
+          'dispatch date',
+        ]),
+        already_sent: findIndex([
+          'alredysend',
+          'already_send',
+          'already send',
+          'alredy_send',
+        ]),
+        unitag: findIndex(['unitag', 'unit ag']),
+        excel: findIndex(['excel']),
+        sr: findIndex(['sr.no', 'sr.no.', 'sr_no', 'sr no', 'sr', 'sno']),
+        systemdate: findIndex([
+          'systemdate',
+          'system date',
+          'system_date',
+          'date',
+        ]),
+      };
+
+      const dataRows = rows.slice(headerRowIndex + 1);
+
+      for (const row of dataRows) {
+        if (!row || row.length === 0) continue;
+
+        const get = (i: number): unknown => (i >= 0 ? row[i] : undefined);
+
+        const agreement: AgreementImport = {
+          agrid: this.normalizeNumber(get(idxMap.agrid)),
+          agreementno: this.normalizeString(get(idxMap.agreementno)),
+          agreementyear: this.normalizeString(get(idxMap.agreementyear)),
+          division_code: this.normalizeString(get(idxMap.division_code)),
+          contractor_code: this.normalizeString(get(idxMap.contractor_code)),
+          workcode: this.normalizeString(get(idxMap.workcode)),
+          workorderno: this.normalizeString(get(idxMap.workorderno)),
+          workorderdate: this.excelDateFix(get(idxMap.workorderdate)),
+          dispatch_no: this.normalizeString(get(idxMap.dispatch_no)),
+          dispatch_date: this.normalizeString(get(idxMap.dispatch_date)),
+          already_sent: this.normalizeString(get(idxMap.already_sent)),
+          unitag: this.normalizeString(get(idxMap.unitag)),
+          systemdate: this.excelDateFix(get(idxMap.systemdate)) || new Date(),
+          excel: this.normalizeString(get(idxMap.excel)),
+          sr: this.normalizeString(get(idxMap.sr)),
+        };
+
+        if (Object.values(agreement).every((val) => val === null)) {
+          continue;
+        }
+
+        agreements.push(agreement);
+      }
+
+      return agreements;
+    }
+
+    // Fallback for legacy format with fixed column positions
+    let legacyHeaderIndex = -1;
+    const legacyHeaders = [
       'agreement no',
       'agreement year',
       'contractor name',
@@ -501,29 +799,25 @@ export class ImportService {
       const rowStr = row
         .map((val) =>
           val === null || val === undefined
-            ? 'unknown'
+            ? ''
             : typeof val === 'string' ||
                 typeof val === 'number' ||
                 typeof val === 'boolean'
               ? String(val).toLowerCase()
-              : (JSON.stringify(val)?.toLowerCase() ?? 'unknown'),
+              : (JSON.stringify(val)?.toLowerCase() ?? ''),
         )
         .join(' ');
-      if (
-        knownHeaders.some((header) => rowStr.includes(header.toLowerCase()))
-      ) {
-        headerRowIndex = i;
+      if (legacyHeaders.some((header) => rowStr.includes(header))) {
+        legacyHeaderIndex = i;
         break;
       }
     }
 
-    // If header row not found, assume it's the first row
-    if (headerRowIndex === -1) {
-      headerRowIndex = 0;
+    if (legacyHeaderIndex === -1) {
+      legacyHeaderIndex = 0;
     }
 
-    // Data rows start after the header row
-    const dataRows = rows.slice(headerRowIndex + 1);
+    const dataRows = rows.slice(legacyHeaderIndex + 1);
 
     for (const row of dataRows) {
       if (!row || row.length === 0) continue;
@@ -537,6 +831,9 @@ export class ImportService {
         workcode: this.normalizeString(row[6]),
         workorderno: this.normalizeString(row[7]),
         workorderdate: this.excelDateFix(row[8]),
+        dispatch_no: null,
+        dispatch_date: null,
+        already_sent: null,
         unitag: this.normalizeString(row[16]),
         systemdate: this.excelDateFix(row[13]) || new Date(),
         excel: this.normalizeString(row[15]),

@@ -1,0 +1,167 @@
+[
+  {
+    "district_id": 544,
+    "districtname": "Bilaspur",
+    "district_code": "544"
+  },
+  {
+    "district_id": 545,
+    "districtname": "Kawardha",
+    "district_code": "545"
+  },
+  {
+    "district_id": 546,
+    "districtname": "Durg",
+    "district_code": "546"
+  },
+  {
+    "district_id": 547,
+    "districtname": "Rajnandagon",
+    "district_code": "547"
+  },
+  {
+    "district_id": 548,
+    "districtname": "Surguja",
+    "district_code": "548"
+  },
+  {
+    "district_id": 549,
+    "districtname": "Koriya",
+    "district_code": "549"
+  },
+  {
+    "district_id": 550,
+    "districtname": "Jashpur",
+    "district_code": "550"
+  },
+  {
+    "district_id": 551,
+    "districtname": "Korba",
+    "district_code": "551"
+  },
+  {
+    "district_id": 552,
+    "districtname": "Dhamtari",
+    "district_code": "552"
+  },
+  {
+    "district_id": 553,
+    "districtname": "Kanker",
+    "district_code": "553"
+  },
+  {
+    "district_id": 554,
+    "districtname": "Bastar",
+    "district_code": "554"
+  },
+  {
+    "district_id": 555,
+    "districtname": "Dantewada",
+    "district_code": "555"
+  },
+  {
+    "district_id": 556,
+    "districtname": "Raigarh",
+    "district_code": "556"
+  },
+  {
+    "district_id": 557,
+    "districtname": "Janjgir-champa",
+    "district_code": "557"
+  },
+  {
+    "district_id": 558,
+    "districtname": "Mahasamund",
+    "district_code": "558"
+  },
+  {
+    "district_id": 559,
+    "districtname": "Raipur",
+    "district_code": "559"
+  },
+  {
+    "district_id": 652,
+    "districtname": "Bijapur",
+    "district_code": "652"
+  },
+  {
+    "district_id": 653,
+    "districtname": "Narayanpur",
+    "district_code": "653"
+  },
+  {
+    "district_id": 703,
+    "districtname": "Balod",
+    "district_code": "703"
+  },
+  {
+    "district_id": 704,
+    "districtname": "Baloda Bazar",
+    "district_code": "704"
+  },
+  {
+    "district_id": 705,
+    "districtname": "Balrampur",
+    "district_code": "705"
+  },
+  {
+    "district_id": 706,
+    "districtname": "Bemetara",
+    "district_code": "706"
+  },
+  {
+    "district_id": 707,
+    "districtname": "Gariyaband",
+    "district_code": "707"
+  },
+  {
+    "district_id": 708,
+    "districtname": "Kondagaon",
+    "district_code": "708"
+  },
+  {
+    "district_id": 709,
+    "districtname": "Mungeli",
+    "district_code": "709"
+  },
+  {
+    "district_id": 710,
+    "districtname": "Sukma",
+    "district_code": "710"
+  },
+  {
+    "district_id": 711,
+    "districtname": "Surajpur",
+    "district_code": "711"
+  },
+  {
+    "district_id": 796,
+    "districtname": "Gaurela Pendra Marwahi",
+    "district_code": "796"
+  },
+  {
+    "district_id": 824,
+    "districtname": "KHAIRAGARH-CHUIKHADAN-GANDAI",
+    "district_code": "824"
+  },
+  {
+    "district_id": 825,
+    "districtname": "MOHLA-MANPUR-AMBAGARH CHOWKI",
+    "district_code": "825"
+  },
+  {
+    "district_id": 826,
+    "districtname": "SARANGARH-BILAIGARH",
+    "district_code": "826"
+  },
+  {
+    "district_id": 827,
+    "districtname": "SAKTI",
+    "district_code": "827"
+  },
+  {
+    "district_id": 828,
+    "districtname": "MANENDRAGARH-CHIRMIRI-BHARATPUR",
+    "district_code": "828"
+  }
+]

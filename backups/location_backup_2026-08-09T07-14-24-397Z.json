@@ -1,0 +1,894 @@
+{
+  "timestamp": "2026-08-09T07:14:24.398Z",
+  "districts": [
+    {
+      "districtid": 1,
+      "districtname": "Balod",
+      "district_code": "6982",
+      "zone_id": null,
+      "latitude": null,
+      "longitude": null
+    },
+    {
+      "districtid": 2,
+      "districtname": "Balodabazar-Bhatapara",
+      "district_code": "5461",
+      "zone_id": null,
+      "latitude": null,
+      "longitude": null
+    },
+    {
+      "districtid": 3,
+      "districtname": "Balrampur-Ramanujganj",
+      "district_code": "6153",
+      "zone_id": null,
+      "latitude": null,
+      "longitude": null
+    },
+    {
+      "districtid": 4,
+      "districtname": "Bastar",
+      "district_code": "5742",
+      "zone_id": null,
+      "latitude": null,
+      "longitude": null
+    },
+    {
+      "districtid": 5,
+      "districtname": "Bemetara",
+      "district_code": "5806",
+      "zone_id": null,
+      "latitude": null,
+      "longitude": null
+    },
+    {
+      "districtid": 6,
+      "districtname": "Bijapur",
+      "district_code": "5290",
+      "zone_id": null,
+      "latitude": null,
+      "longitude": null
+    },
+    {
+      "districtid": 7,
+      "districtname": "Bilaspur",
+      "district_code": "5975",
+      "zone_id": null,
+      "latitude": null,
+      "longitude": null
+    },
+    {
+      "districtid": 8,
+      "districtname": "Dakshin Bastar Dantewada",
+      "district_code": "6711",
+      "zone_id": null,
+      "latitude": null,
+      "longitude": null
+    },
+    {
+      "districtid": 9,
+      "districtname": "Dhamtari",
+      "district_code": "5405",
+      "zone_id": null,
+      "latitude": null,
+      "longitude": null
+    },
+    {
+      "districtid": 10,
+      "districtname": "Durg",
+      "district_code": "5281",
+      "zone_id": null,
+      "latitude": null,
+      "longitude": null
+    },
+    {
+      "districtid": 11,
+      "districtname": "Gariyaband",
+      "district_code": "6027",
+      "zone_id": null,
+      "latitude": null,
+      "longitude": null
+    },
+    {
+      "districtid": 12,
+      "districtname": "Gaurela-Pendra-Marwahi",
+      "district_code": "6068",
+      "zone_id": null,
+      "latitude": null,
+      "longitude": null
+    },
+    {
+      "districtid": 13,
+      "districtname": "Janjgir-Champa",
+      "district_code": "6649",
+      "zone_id": null,
+      "latitude": null,
+      "longitude": null
+    },
+    {
+      "districtid": 14,
+      "districtname": "Jashpur",
+      "district_code": "6880",
+      "zone_id": null,
+      "latitude": null,
+      "longitude": null
+    },
+    {
+      "districtid": 15,
+      "districtname": "Kabeerdham",
+      "district_code": "6077",
+      "zone_id": null,
+      "latitude": null,
+      "longitude": null
+    },
+    {
+      "districtid": 16,
+      "districtname": "Khairagarh-Chhuikhadan-Gandai",
+      "district_code": "6079",
+      "zone_id": null,
+      "latitude": null,
+      "longitude": null
+    },
+    {
+      "districtid": 17,
+      "districtname": "Kondagaon",
+      "district_code": "6694",
+      "zone_id": null,
+      "latitude": null,
+      "longitude": null
+    },
+    {
+      "districtid": 18,
+      "districtname": "Korba",
+      "district_code": "5987",
+      "zone_id": null,
+      "latitude": null,
+      "longitude": null
+    },
+    {
+      "districtid": 19,
+      "districtname": "Korea",
+      "district_code": "5164",
+      "zone_id": null,
+      "latitude": null,
+      "longitude": null
+    },
+    {
+      "districtid": 20,
+      "districtname": "Mahasamund",
+      "district_code": "6709",
+      "zone_id": null,
+      "latitude": null,
+      "longitude": null
+    },
+    {
+      "districtid": 21,
+      "districtname": "Manendragarh-Chirmiri-Bharatpur(M C B)",
+      "district_code": "5565",
+      "zone_id": null,
+      "latitude": null,
+      "longitude": null
+    },
+    {
+      "districtid": 22,
+      "districtname": "Mohla-Manpur-Ambagarh Chouki",
+      "district_code": "6790",
+      "zone_id": null,
+      "latitude": null,
+      "longitude": null
+    },
+    {
+      "districtid": 23,
+      "districtname": "Mungeli",
+      "district_code": "5623",
+      "zone_id": null,
+      "latitude": null,
+      "longitude": null
+    },
+    {
+      "districtid": 24,
+      "districtname": "Narayanpur",
+      "district_code": "5519",
+      "zone_id": null,
+      "latitude": null,
+      "longitude": null
+    },
+    {
+      "districtid": 25,
+      "districtname": "Raigarh",
+      "district_code": "5176",
+      "zone_id": null,
+      "latitude": null,
+      "longitude": null
+    },
+    {
+      "districtid": 26,
+      "districtname": "Raipur",
+      "district_code": "5003",
+      "zone_id": null,
+      "latitude": null,
+      "longitude": null
+    },
+    {
+      "districtid": 27,
+      "districtname": "Rajnandgaon",
+      "district_code": "6225",
+      "zone_id": null,
+      "latitude": null,
+      "longitude": null
+    },
+    {
+      "districtid": 28,
+      "districtname": "Sakti",
+      "district_code": "5662",
+      "zone_id": null,
+      "latitude": null,
+      "longitude": null
+    },
+    {
+      "districtid": 29,
+      "districtname": "Sarangarh-Bilaigarh",
+      "district_code": "5363",
+      "zone_id": null,
+      "latitude": null,
+      "longitude": null
+    },
+    {
+      "districtid": 30,
+      "districtname": "Sukma",
+      "district_code": "5071",
+      "zone_id": null,
+      "latitude": null,
+      "longitude": null
+    },
+    {
+      "districtid": 31,
+      "districtname": "Surajpur",
+      "district_code": "5799",
+      "zone_id": null,
+      "latitude": null,
+      "longitude": null
+    },
+    {
+      "districtid": 32,
+      "districtname": "Surguja",
+      "district_code": "5900",
+      "zone_id": null,
+      "latitude": null,
+      "longitude": null
+    },
+    {
+      "districtid": 33,
+      "districtname": "Uttar Bastar Kanker",
+      "district_code": "5406",
+      "zone_id": null,
+      "latitude": null,
+      "longitude": null
+    }
+  ],
+  "blocks": [
+    {
+      "blockid": 1,
+      "blockname": "Abhanpur",
+      "block_code": "6459",
+      "district_id": 26
+    },
+    {
+      "blockid": 2,
+      "blockname": "Arang",
+      "block_code": "5052",
+      "district_id": 26
+    },
+    {
+      "blockid": 3,
+      "blockname": "Asind",
+      "block_code": "5821",
+      "district_id": 26
+    },
+    {
+      "blockid": 4,
+      "blockname": "Durg",
+      "block_code": "5370",
+      "district_id": 10
+    },
+    {
+      "blockid": 5,
+      "blockname": "Dhamdha",
+      "block_code": "5435",
+      "district_id": 10
+    },
+    {
+      "blockid": 6,
+      "blockname": "Bhilai",
+      "block_code": "5150",
+      "district_id": 10
+    },
+    {
+      "blockid": 7,
+      "blockname": "Bilaspur",
+      "block_code": "5637",
+      "district_id": 7
+    },
+    {
+      "blockid": 8,
+      "blockname": "Takhatpur",
+      "block_code": "5605",
+      "district_id": 7
+    },
+    {
+      "blockid": 9,
+      "blockname": "Gaurela",
+      "block_code": "6503",
+      "district_id": 7
+    },
+    {
+      "blockid": 10,
+      "blockname": "Korba",
+      "block_code": "6620",
+      "district_id": 18
+    },
+    {
+      "blockid": 11,
+      "blockname": "Katghora",
+      "block_code": "6324",
+      "district_id": 18
+    },
+    {
+      "blockid": 12,
+      "blockname": "Karmgarh",
+      "block_code": "6211",
+      "district_id": 18
+    }
+  ],
+  "panchayats": [
+    {
+      "panchayatid": 1,
+      "panchayatname": "Abhanpur",
+      "panchayat_code": "5413",
+      "block_id": null
+    },
+    {
+      "panchayatid": 2,
+      "panchayatname": "Arang",
+      "panchayat_code": "6997",
+      "block_id": null
+    },
+    {
+      "panchayatid": 3,
+      "panchayatname": "Asind",
+      "panchayat_code": "6581",
+      "block_id": null
+    },
+    {
+      "panchayatid": 4,
+      "panchayatname": "Durg",
+      "panchayat_code": "5715",
+      "block_id": null
+    },
+    {
+      "panchayatid": 5,
+      "panchayatname": "Dhamdha",
+      "panchayat_code": "5707",
+      "block_id": null
+    },
+    {
+      "panchayatid": 6,
+      "panchayatname": "Bhilai",
+      "panchayat_code": "5340",
+      "block_id": null
+    },
+    {
+      "panchayatid": 7,
+      "panchayatname": "Bilaspur",
+      "panchayat_code": "6253",
+      "block_id": null
+    },
+    {
+      "panchayatid": 8,
+      "panchayatname": "Takhatpur",
+      "panchayat_code": "5653",
+      "block_id": null
+    },
+    {
+      "panchayatid": 9,
+      "panchayatname": "Katghora",
+      "panchayat_code": "6083",
+      "block_id": null
+    },
+    {
+      "panchayatid": 10,
+      "panchayatname": "Raigarh",
+      "panchayat_code": "5803",
+      "block_id": null
+    },
+    {
+      "panchayatid": 11,
+      "panchayatname": "Manendragarh",
+      "panchayat_code": "6196",
+      "block_id": null
+    },
+    {
+      "panchayatid": 12,
+      "panchayatname": "Surguja",
+      "panchayat_code": "6404",
+      "block_id": null
+    }
+  ],
+  "users": [
+    {
+      "id": "0cfb4887-4f5d-4eb4-9423-1c56abac51c6",
+      "district_id": "5405",
+      "district_name": "Dhamtari"
+    },
+    {
+      "id": "5875961e-8c44-4faf-9d28-532f6c6dbe73",
+      "district_id": "5742",
+      "district_name": "Bastar"
+    },
+    {
+      "id": "88ff0af6-6427-4abf-88e9-34451468e056",
+      "district_id": "6982",
+      "district_name": "Balod"
+    },
+    {
+      "id": "8d1df145-36b6-4aa1-b948-74634e316c27",
+      "district_id": "6982",
+      "district_name": "Balod"
+    },
+    {
+      "id": "8ea59a13-8e8a-46a1-838a-ad16ebf8b65a",
+      "district_id": "5975",
+      "district_name": "Bilaspur"
+    },
+    {
+      "id": "a986c23c-1edf-456c-8030-bc02b4a6a217",
+      "district_id": "5461",
+      "district_name": "Balodabazar-Bhatapara"
+    },
+    {
+      "id": "b843ad26-b32c-41e7-8e64-11b9c412431a",
+      "district_id": "5281",
+      "district_name": null
+    },
+    {
+      "id": "c15a5c11-34df-4e15-9fd0-58703a75d3c2",
+      "district_id": "5742",
+      "district_name": null
+    },
+    {
+      "id": "eb0f3210-c1bb-4dfe-b88b-1f10a8f3e755",
+      "district_id": "5975",
+      "district_name": null
+    }
+  ],
+  "work_items": [
+    {
+      "id": "07693ad5-8816-473a-b69c-4c66f43dd684",
+      "district_id": "6982",
+      "block_id": "5052",
+      "panchayat_id": "6581"
+    },
+    {
+      "id": "08e7422c-909f-4513-ad37-861557ccc570",
+      "district_id": "6982",
+      "block_id": "5052",
+      "panchayat_id": "6581"
+    },
+    {
+      "id": "0a661a73-ec17-40d9-9b7a-8e4988a04b57",
+      "district_id": "6982",
+      "block_id": "5821",
+      "panchayat_id": "6997"
+    },
+    {
+      "id": "0e7b0144-2afb-47ea-86f2-e19b1a14a486",
+      "district_id": "6982",
+      "block_id": "6459",
+      "panchayat_id": "5413"
+    },
+    {
+      "id": "1ceb136b-4852-4f73-a9f0-960444765ad4",
+      "district_id": "6982",
+      "block_id": "5821",
+      "panchayat_id": "6997"
+    },
+    {
+      "id": "267669a7-7371-4f2f-9906-1aea721b4111",
+      "district_id": "6982",
+      "block_id": "6459",
+      "panchayat_id": "5413"
+    },
+    {
+      "id": "303477e1-aff6-4281-8377-d1d65eb04870",
+      "district_id": "6982",
+      "block_id": "5821",
+      "panchayat_id": "6997"
+    },
+    {
+      "id": "32c54da4-95bf-4d09-8b3f-d3a06a2878ce",
+      "district_id": "5461",
+      "block_id": "5150",
+      "panchayat_id": "6253"
+    },
+    {
+      "id": "35760ff9-d60f-48c4-ae80-15d734640eec",
+      "district_id": "6153",
+      "block_id": "5637",
+      "panchayat_id": "5707"
+    },
+    {
+      "id": "3e538739-c48a-42bb-a904-f8713bd9f621",
+      "district_id": "6982",
+      "block_id": "5052",
+      "panchayat_id": "6581"
+    },
+    {
+      "id": "41aa9455-ea1c-4b74-a27d-c21c26e63d0e",
+      "district_id": "5806",
+      "block_id": "5435",
+      "panchayat_id": "6581"
+    },
+    {
+      "id": "4eb14482-bf59-4d47-8fd1-b2723efda014",
+      "district_id": "6153",
+      "block_id": "5637",
+      "panchayat_id": "5707"
+    },
+    {
+      "id": "51b32caa-13d5-4ea4-8f5b-bf7cefeff9fa",
+      "district_id": "6982",
+      "block_id": "5821",
+      "panchayat_id": "6997"
+    },
+    {
+      "id": "678d4473-6429-4ecd-9be9-dc262229172a",
+      "district_id": "6153",
+      "block_id": "5637",
+      "panchayat_id": "5707"
+    },
+    {
+      "id": "68f9c23d-cc8a-4114-8f44-ad78569a73bd",
+      "district_id": "6982",
+      "block_id": "5821",
+      "panchayat_id": "6997"
+    },
+    {
+      "id": "746aaf08-f459-4f34-b3e8-70cb1aea63bf",
+      "district_id": "5806",
+      "block_id": "5435",
+      "panchayat_id": "6581"
+    },
+    {
+      "id": "78f96ccc-379f-46b5-8943-ab2cfe30148c",
+      "district_id": "6153",
+      "block_id": "5637",
+      "panchayat_id": "5707"
+    },
+    {
+      "id": "7d5c318b-f026-4522-a7f0-958ffb965f9a",
+      "district_id": "5461",
+      "block_id": "5150",
+      "panchayat_id": "6253"
+    },
+    {
+      "id": "857d46c3-9503-4574-8e3f-b18ae759fa9a",
+      "district_id": "6982",
+      "block_id": "5435",
+      "panchayat_id": "5707"
+    },
+    {
+      "id": "860df353-16a6-4847-8948-6e4754be3c36",
+      "district_id": "6982",
+      "block_id": "5821",
+      "panchayat_id": "6997"
+    },
+    {
+      "id": "8829e1c1-6c65-4d0a-b0f8-c61510a0e72b",
+      "district_id": "5975",
+      "block_id": "5605",
+      "panchayat_id": "6253"
+    },
+    {
+      "id": "8dc5f456-52a4-4810-82e6-adcfd2adebc5",
+      "district_id": "6982",
+      "block_id": "5052",
+      "panchayat_id": "6581"
+    },
+    {
+      "id": "8f81f2a8-1b69-4487-ad20-81b44c71c387",
+      "district_id": "5461",
+      "block_id": "5150",
+      "panchayat_id": "6253"
+    },
+    {
+      "id": "941403e6-d16d-4ffa-9991-0dea7e2e2953",
+      "district_id": "6982",
+      "block_id": "5821",
+      "panchayat_id": "6997"
+    },
+    {
+      "id": "99201c34-9f26-4f74-9a52-c6726b584424",
+      "district_id": "6982",
+      "block_id": "5821",
+      "panchayat_id": "6997"
+    },
+    {
+      "id": "9cf393bb-7f38-4527-a657-166fe82aa0af",
+      "district_id": "6982",
+      "block_id": "5052",
+      "panchayat_id": "6581"
+    },
+    {
+      "id": "a56b1543-aaf2-48c5-a713-e8528f99e766",
+      "district_id": "6982",
+      "block_id": "5821",
+      "panchayat_id": "6997"
+    },
+    {
+      "id": "bcc7870d-05e2-4560-9d7e-480a659067c8",
+      "district_id": "5806",
+      "block_id": "5435",
+      "panchayat_id": "6581"
+    },
+    {
+      "id": "be503187-e392-4ad8-85b3-0cb55a957710",
+      "district_id": "6982",
+      "block_id": "5052",
+      "panchayat_id": "6581"
+    },
+    {
+      "id": "c2be0bde-cd09-492d-93e0-0fac9d01361a",
+      "district_id": "5461",
+      "block_id": "5150",
+      "panchayat_id": "6253"
+    },
+    {
+      "id": "d535f43a-ff14-4cc7-b200-bbe8d68b42cc",
+      "district_id": "6982",
+      "block_id": "6459",
+      "panchayat_id": "5413"
+    },
+    {
+      "id": "dc6767b2-91db-4154-94f1-cb51fc9bbdb3",
+      "district_id": "6982",
+      "block_id": "6459",
+      "panchayat_id": "5413"
+    },
+    {
+      "id": "e5bfa111-8b1a-4a05-ac13-baf9e9e3fdcd",
+      "district_id": "6982",
+      "block_id": "5605",
+      "panchayat_id": "5653"
+    },
+    {
+      "id": "e659be7c-7f7d-4258-b8d9-05fdcd68d3ee",
+      "district_id": "6982",
+      "block_id": "6459",
+      "panchayat_id": "5413"
+    },
+    {
+      "id": "e82da74c-c89f-4446-ba80-2e8d7fc206c3",
+      "district_id": null,
+      "block_id": null,
+      "panchayat_id": null
+    },
+    {
+      "id": "ea6e9fa9-914f-4df6-a53c-42bbfbea0bc2",
+      "district_id": "6982",
+      "block_id": "5821",
+      "panchayat_id": "6997"
+    },
+    {
+      "id": "ece616ea-7230-4d96-ac76-8eb70e904994",
+      "district_id": "6982",
+      "block_id": "5052",
+      "panchayat_id": "6581"
+    },
+    {
+      "id": "eeec5075-896b-46b5-8227-53eea950a6b0",
+      "district_id": "5461",
+      "block_id": "5150",
+      "panchayat_id": "6253"
+    },
+    {
+      "id": "f101f297-dde9-4a27-9a26-6fd18106b5c1",
+      "district_id": "6982",
+      "block_id": "5821",
+      "panchayat_id": "6997"
+    }
+  ],
+  "agreements": [
+    {
+      "id": "04a97725-5367-4ae6-8219-a1d7c1334956",
+      "agreementno": "78411_2024-2025",
+      "contractor_id": "0c6b505d-9593-4988-ba8f-dea7a7d19e9d",
+      "division_code": "74509602"
+    },
+    {
+      "id": "060d6558-6de1-41a8-9b95-e8bb1c4327b3",
+      "agreementno": "60417_2023-2024",
+      "contractor_id": "7876b06b-b153-49b6-9cea-9371430c8dde",
+      "division_code": "77405935"
+    },
+    {
+      "id": "0a1dfcbb-d5bb-42fd-a88e-b531a4669dda",
+      "agreementno": "41873_2021-2022",
+      "contractor_id": "8ea59a13-8e8a-46a1-838a-ad16ebf8b65a",
+      "division_code": "99806416"
+    },
+    {
+      "id": "1067e707-9f02-464f-975a-5095df384473",
+      "agreementno": "1",
+      "contractor_id": "0cfb4887-4f5d-4eb4-9423-1c56abac51c6",
+      "division_code": "40134083"
+    },
+    {
+      "id": "13e2609a-ca4e-4c23-969b-eb6598846770",
+      "agreementno": "61975_2021-2022",
+      "contractor_id": "34c5a7d0-9562-4b90-912e-15fb47c3df22",
+      "division_code": "83641524"
+    },
+    {
+      "id": "18fd9950-fbfb-4382-9d0b-d094e0c24e1f",
+      "agreementno": "72333_2022-2023",
+      "contractor_id": "34c5a7d0-9562-4b90-912e-15fb47c3df22",
+      "division_code": "92827278"
+    },
+    {
+      "id": "29f05550-ab2f-451e-a847-a62196423c95",
+      "agreementno": "32773_2024-2025",
+      "contractor_id": "33427886-4515-4875-bda4-337f60a5f3f7",
+      "division_code": "64543565"
+    },
+    {
+      "id": "2b7f35be-df15-478e-b5ff-11765f33c857",
+      "agreementno": "5836_2023-2024",
+      "contractor_id": "7876b06b-b153-49b6-9cea-9371430c8dde",
+      "division_code": "54234474"
+    },
+    {
+      "id": "2e6cc412-72d1-4069-8686-07f89c2a252a",
+      "agreementno": "5874_2023-2024",
+      "contractor_id": "8ea59a13-8e8a-46a1-838a-ad16ebf8b65a",
+      "division_code": "57079656"
+    },
+    {
+      "id": "41d38548-2440-45f0-9a3c-c882baab7113",
+      "agreementno": "5051_2025-2026",
+      "contractor_id": "ed556eb6-edd0-4b2a-83ea-183e31234b97",
+      "division_code": "65672593"
+    },
+    {
+      "id": "47987bff-0e6d-49b1-bb40-08b7b2f1bb35",
+      "agreementno": "45172_2023-2024",
+      "contractor_id": "8ea59a13-8e8a-46a1-838a-ad16ebf8b65a",
+      "division_code": "99942155"
+    },
+    {
+      "id": "4c304a66-7b8f-4013-aa15-bf0efc090022",
+      "agreementno": "82913_2025-2026",
+      "contractor_id": "4969d488-c342-4c6c-8742-37e4786fbf2b",
+      "division_code": "73290773"
+    },
+    {
+      "id": "53d2e41d-fed4-41f8-bc91-b8aefb50d249",
+      "agreementno": "84305_2021-2022",
+      "contractor_id": "8ea59a13-8e8a-46a1-838a-ad16ebf8b65a",
+      "division_code": "51723450"
+    },
+    {
+      "id": "54ffb262-425a-4f16-a633-033f4c19adc2",
+      "agreementno": "95676_2022-2023",
+      "contractor_id": "8ea59a13-8e8a-46a1-838a-ad16ebf8b65a",
+      "division_code": "93325521"
+    },
+    {
+      "id": "58f7f570-8368-45e3-8d6b-c5a36d444ce9",
+      "agreementno": "AS_2345_24",
+      "contractor_id": "88ff0af6-6427-4abf-88e9-34451468e056",
+      "division_code": "0987654"
+    },
+    {
+      "id": "5e1e2594-dddb-4e83-81d8-f983b3532ff3",
+      "agreementno": "90412_2022-2023",
+      "contractor_id": "8ea59a13-8e8a-46a1-838a-ad16ebf8b65a",
+      "division_code": "91609599"
+    },
+    {
+      "id": "683796fb-472e-43fe-8b69-7843373ca9a7",
+      "agreementno": "75922_2023-2024",
+      "contractor_id": "0c6b505d-9593-4988-ba8f-dea7a7d19e9d",
+      "division_code": "96685742"
+    },
+    {
+      "id": "6c6e1eb6-81e3-44a6-ba9e-3bc9d7f41fe7",
+      "agreementno": "49443_2025-2026",
+      "contractor_id": "de071c41-8220-4ad0-8fec-0a535f6739e2",
+      "division_code": "82488592"
+    },
+    {
+      "id": "7e5d089b-4234-4ec7-9d82-0623163a4ea8",
+      "agreementno": "32209_2021-2022",
+      "contractor_id": "4969d488-c342-4c6c-8742-37e4786fbf2b",
+      "division_code": "79498729"
+    },
+    {
+      "id": "8c3c5fc4-6183-460e-8c29-55f5f8a5a856",
+      "agreementno": "9211_2025-2026",
+      "contractor_id": "de071c41-8220-4ad0-8fec-0a535f6739e2",
+      "division_code": "77167453"
+    },
+    {
+      "id": "9176ef26-10b5-453a-afe0-790b96969b39",
+      "agreementno": "30766_2024-2025",
+      "contractor_id": "8ea59a13-8e8a-46a1-838a-ad16ebf8b65a",
+      "division_code": "86445371"
+    },
+    {
+      "id": "93190cde-1a7e-4480-98ff-27dba8947788",
+      "agreementno": "73449_2025-2026",
+      "contractor_id": "8ea59a13-8e8a-46a1-838a-ad16ebf8b65a",
+      "division_code": "90283776"
+    },
+    {
+      "id": "93ad06f6-e5eb-4e13-a7c1-896fb112dbf5",
+      "agreementno": "16058_2022-2023",
+      "contractor_id": "4969d488-c342-4c6c-8742-37e4786fbf2b",
+      "division_code": "94579269"
+    },
+    {
+      "id": "98a4542d-5758-42e6-b042-a6081e2711a0",
+      "agreementno": "9382_2022-2023",
+      "contractor_id": "34c5a7d0-9562-4b90-912e-15fb47c3df22",
+      "division_code": "59883782"
+    },
+    {
+      "id": "a3ca0dd2-47b7-4c3c-93aa-c0d6421c29f9",
+      "agreementno": "25236_2023-2024",
+      "contractor_id": "8ea59a13-8e8a-46a1-838a-ad16ebf8b65a",
+      "division_code": "81319146"
+    },
+    {
+      "id": "acb25f56-3a0c-438d-91e3-442705e6f82f",
+      "agreementno": "37568_2025-2026",
+      "contractor_id": "de071c41-8220-4ad0-8fec-0a535f6739e2",
+      "division_code": "62191083"
+    },
+    {
+      "id": "b07a2292-5714-4dff-8e84-2e2141e42356",
+      "agreementno": "65026_2023-2024",
+      "contractor_id": "4969d488-c342-4c6c-8742-37e4786fbf2b",
+      "division_code": "63653518"
+    },
+    {
+      "id": "b957e91c-c414-457a-b040-58f9400490e2",
+      "agreementno": "93983_2022-2023",
+      "contractor_id": "0c6b505d-9593-4988-ba8f-dea7a7d19e9d",
+      "division_code": "99289389"
+    },
+    {
+      "id": "c3f8d059-6b5d-4880-9232-8acea9b2882e",
+      "agreementno": "86628_2023-2024",
+      "contractor_id": "de071c41-8220-4ad0-8fec-0a535f6739e2",
+      "division_code": "97378570"
+    },
+    {
+      "id": "d93ba46b-2d15-4e76-8333-91cb7837b354",
+      "agreementno": "47841_2022-2023",
+      "contractor_id": "7876b06b-b153-49b6-9cea-9371430c8dde",
+      "division_code": "87319362"
+    },
+    {
+      "id": "eeefaa80-d770-4d3f-9cdd-6300523957e6",
+      "agreementno": "67144_2021-2022",
+      "contractor_id": "34c5a7d0-9562-4b90-912e-15fb47c3df22",
+      "division_code": "75236096"
+    },
+    {
+      "id": "fc7cbb34-4526-4152-a0e6-4fe1eb00112b",
+      "agreementno": "11580_2025-2026",
+      "contractor_id": "de071c41-8220-4ad0-8fec-0a535f6739e2",
+      "division_code": "54191569"
+    }
+  ]
+}

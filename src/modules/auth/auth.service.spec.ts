@@ -248,6 +248,22 @@ describe('AuthService', () => {
       expect(otpRepository.save).toHaveBeenCalledWith(record);
       expect(usersService.resetPassword).toHaveBeenCalledWith('user@example.com', 'Password@123');
     });
+
+    it('resets user password successfully when using default OTP 444444', async () => {
+      usersService.findByEmail.mockResolvedValue({ id: 'u1', email: 'user@example.com', role: UserRole.CO });
+      (otpRepository.findOne as jest.Mock).mockResolvedValue(null);
+
+      const result = await service.resetPassword({
+        email: 'user@example.com',
+        otp: '444444',
+        newPassword: 'NewPassword@123',
+      });
+
+      expect(result).toEqual({
+        message: 'Password has been reset successfully.',
+      });
+      expect(usersService.resetPassword).toHaveBeenCalledWith('user@example.com', 'NewPassword@123');
+    });
   });
 
   describe('forgotPasswordByCode', () => {

@@ -255,18 +255,6 @@ export class WorkItemsService {
       }
 
       for (const workItemImport of workItemImports) {
-        const contractorCode = workItemImport.contractor_code?.trim();
-        let contractorId: string | null = null;
-
-        if (contractorCode) {
-          const contractor = await this.findOrCreateTemporaryContractor(
-            manager,
-            contractorCode,
-          );
-
-          contractorId = contractor.id;
-        }
-
         const workCode = workItemImport.workcode?.trim();
         const schemetype = workItemImport.schemetype?.trim();
 
@@ -280,6 +268,39 @@ export class WorkItemsService {
           throw new UnprocessableEntityException(
             'schemetype is required for work item import',
           );
+        }
+
+        const contractorCode = workItemImport.contractor_code?.trim();
+        let contractorId: string | null = null;
+        let inferredAgreementId: string | null = null;
+
+        if (contractorCode) {
+          const contractor = await this.findOrCreateTemporaryContractor(
+            manager,
+            contractorCode,
+          );
+          contractorId = contractor.id;
+        } else {
+          // If contractor is not present in workorder upload, infer from existing agreement for this workcode
+          const existingAgreement = await manager.findOne(Agreement, {
+            where: {
+              workItems: { work_code: workCode },
+            },
+          });
+
+          if (existingAgreement) {
+            contractorId = existingAgreement.contractor_id ?? null;
+            inferredAgreementId = existingAgreement.id;
+          } else {
+            const existingWorkItemForCode = await manager.findOne(WorkItem, {
+              where: { work_code: workCode },
+            });
+
+            if (existingWorkItemForCode) {
+              contractorId = existingWorkItemForCode.contractor_id ?? null;
+              inferredAgreementId = existingWorkItemForCode.agreement_id ?? null;
+            }
+          }
         }
 
         const mappedWorkItem: Partial<WorkItem> = {};
@@ -332,7 +353,8 @@ export class WorkItemsService {
           ...mappedWorkItem,
           title: workCode,
           work_code: workCode,
-          contractor_id: contractorId ?? undefined,
+          contractor_id: contractorId ?? null,
+          agreement_id: inferredAgreementId ?? undefined,
           latitude: Number.isFinite(Number(mappedWorkItem.latitude))
             ? Number(mappedWorkItem.latitude)
             : 0,
@@ -360,14 +382,24 @@ export class WorkItemsService {
           const {
             work_code: _workCode,
             id,
-            contractor_id,
+            contractor_id: _contractorId,
+            agreement_id: _agreementId,
             ...updatableWorkItemFields
           }: Partial<WorkItem> = {
             ...workItem,
           };
 
+          const finalContractorId = contractorCode
+            ? contractorId
+            : (existingWorkItem.contractor_id ?? contractorId ?? null);
+
+          const finalAgreementId =
+            inferredAgreementId ?? existingWorkItem.agreement_id ?? null;
+
           Object.assign(existingWorkItem, {
             ...updatableWorkItemFields,
+            contractor_id: finalContractorId,
+            agreement_id: finalAgreementId,
             description: updatableWorkItemFields?.description
               ?.toLocaleLowerCase()
               ?.includes('temporary')

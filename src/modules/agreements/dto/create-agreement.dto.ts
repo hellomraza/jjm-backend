@@ -85,6 +85,30 @@ export class CreateAgreementDto {
   unitag?: string;
 
   @ApiPropertyOptional({
+    description: 'Dispatch number',
+    example: '1493',
+  })
+  @IsString()
+  @IsOptional()
+  dispatch_no?: string;
+
+  @ApiPropertyOptional({
+    description: 'Dispatch date',
+    example: '07:36.1',
+  })
+  @IsString()
+  @IsOptional()
+  dispatch_date?: string;
+
+  @ApiPropertyOptional({
+    description: 'Already sent status',
+    example: 'NULL',
+  })
+  @IsString()
+  @IsOptional()
+  already_sent?: string;
+
+  @ApiPropertyOptional({
     description: 'Excel file reference name',
     example: 'sheet1.xlsx',
   })

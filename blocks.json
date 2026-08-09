@@ -1,0 +1,878 @@
+[
+  {
+    "blockid": 5916,
+    "blockname": "MARWAHI",
+    "block_code": "5916",
+    "district_id": 796
+  },
+  {
+    "blockid": 5917,
+    "blockname": "GAURELLA-1",
+    "block_code": "5917",
+    "district_id": 796
+  },
+  {
+    "blockid": 5918,
+    "blockname": "GAURELLA-2",
+    "block_code": "5918",
+    "district_id": 796
+  },
+  {
+    "blockid": 5919,
+    "blockname": "Lormi",
+    "block_code": "5919",
+    "district_id": 709
+  },
+  {
+    "blockid": 5920,
+    "blockname": "Kota",
+    "block_code": "5920",
+    "district_id": 544
+  },
+  {
+    "blockid": 5921,
+    "blockname": "Mungeli",
+    "block_code": "5921",
+    "district_id": 709
+  },
+  {
+    "blockid": 5922,
+    "blockname": "Pathariya",
+    "block_code": "5922",
+    "district_id": 709
+  },
+  {
+    "blockid": 5923,
+    "blockname": "Takhatpur",
+    "block_code": "5923",
+    "district_id": 544
+  },
+  {
+    "blockid": 5924,
+    "blockname": "BILHA",
+    "block_code": "5924",
+    "district_id": 544
+  },
+  {
+    "blockid": 5925,
+    "blockname": "MASTURI",
+    "block_code": "5925",
+    "district_id": 544
+  },
+  {
+    "blockid": 5926,
+    "blockname": "Kawardha",
+    "block_code": "5926",
+    "district_id": 545
+  },
+  {
+    "blockid": 5927,
+    "blockname": "Bodla",
+    "block_code": "5927",
+    "district_id": 545
+  },
+  {
+    "blockid": 5928,
+    "blockname": "S.lohara",
+    "block_code": "5928",
+    "district_id": 545
+  },
+  {
+    "blockid": 5929,
+    "blockname": "Pandariya",
+    "block_code": "5929",
+    "district_id": 545
+  },
+  {
+    "blockid": 5931,
+    "blockname": "Nawagarh",
+    "block_code": "5931",
+    "district_id": 706
+  },
+  {
+    "blockid": 5932,
+    "blockname": "Bemetara",
+    "block_code": "5932",
+    "district_id": 706
+  },
+  {
+    "blockid": 5933,
+    "blockname": "Saja",
+    "block_code": "5933",
+    "district_id": 706
+  },
+  {
+    "blockid": 5934,
+    "blockname": "Berla",
+    "block_code": "5934",
+    "district_id": 706
+  },
+  {
+    "blockid": 5935,
+    "blockname": "Dhamdha",
+    "block_code": "5935",
+    "district_id": 546
+  },
+  {
+    "blockid": 5936,
+    "blockname": "Durg",
+    "block_code": "5936",
+    "district_id": 546
+  },
+  {
+    "blockid": 5937,
+    "blockname": "Patan",
+    "block_code": "5937",
+    "district_id": 546
+  },
+  {
+    "blockid": 5938,
+    "blockname": "Gunderdehi",
+    "block_code": "5938",
+    "district_id": 703
+  },
+  {
+    "blockid": 5939,
+    "blockname": "Dondilohara",
+    "block_code": "5939",
+    "district_id": 703
+  },
+  {
+    "blockid": 5940,
+    "blockname": "Balod",
+    "block_code": "5940",
+    "district_id": 703
+  },
+  {
+    "blockid": 5941,
+    "blockname": "Dondi",
+    "block_code": "5941",
+    "district_id": 703
+  },
+  {
+    "blockid": 5942,
+    "blockname": "Gurur",
+    "block_code": "5942",
+    "district_id": 703
+  },
+  {
+    "blockid": 5944,
+    "blockname": "KHAIRAGARH",
+    "block_code": "5944",
+    "district_id": 824
+  },
+  {
+    "blockid": 5945,
+    "blockname": "DONGARGARH",
+    "block_code": "5945",
+    "district_id": 547
+  },
+  {
+    "blockid": 5946,
+    "blockname": "CHHUIKHADAN",
+    "block_code": "5946",
+    "district_id": 824
+  },
+  {
+    "blockid": 5947,
+    "blockname": "Rajnandgaon",
+    "block_code": "5947",
+    "district_id": 547
+  },
+  {
+    "blockid": 5948,
+    "blockname": "CHHURIYA",
+    "block_code": "5948",
+    "district_id": 547
+  },
+  {
+    "blockid": 5949,
+    "blockname": "Dongergaon",
+    "block_code": "5949",
+    "district_id": 547
+  },
+  {
+    "blockid": 5950,
+    "blockname": "MOHALA                    (TD)",
+    "block_code": "5950",
+    "district_id": 825
+  },
+  {
+    "blockid": 5951,
+    "blockname": "MANPUR                    (TD)",
+    "block_code": "5951",
+    "district_id": 825
+  },
+  {
+    "blockid": 5952,
+    "blockname": "CHOWKI                 (TD)",
+    "block_code": "5952",
+    "district_id": 825
+  },
+  {
+    "blockid": 5953,
+    "blockname": "Ambikapur",
+    "block_code": "5953",
+    "district_id": 548
+  },
+  {
+    "blockid": 5954,
+    "blockname": "Lakhanpur",
+    "block_code": "5954",
+    "district_id": 548
+  },
+  {
+    "blockid": 5955,
+    "blockname": "Udaipur",
+    "block_code": "5955",
+    "district_id": 548
+  },
+  {
+    "blockid": 5956,
+    "blockname": "Sitapur",
+    "block_code": "5956",
+    "district_id": 548
+  },
+  {
+    "blockid": 5957,
+    "blockname": "Batauli",
+    "block_code": "5957",
+    "district_id": 548
+  },
+  {
+    "blockid": 5958,
+    "blockname": "Mainpat",
+    "block_code": "5958",
+    "district_id": 548
+  },
+  {
+    "blockid": 5959,
+    "blockname": "Lundra",
+    "block_code": "5959",
+    "district_id": 548
+  },
+  {
+    "blockid": 5960,
+    "blockname": "Rajpur",
+    "block_code": "5960",
+    "district_id": 705
+  },
+  {
+    "blockid": 5961,
+    "blockname": "Ramchandrapur",
+    "block_code": "5961",
+    "district_id": 705
+  },
+  {
+    "blockid": 5962,
+    "blockname": "Balrampur",
+    "block_code": "5962",
+    "district_id": 705
+  },
+  {
+    "blockid": 5963,
+    "blockname": "Kusmi",
+    "block_code": "5963",
+    "district_id": 705
+  },
+  {
+    "blockid": 5964,
+    "blockname": "Shankargarh",
+    "block_code": "5964",
+    "district_id": 705
+  },
+  {
+    "blockid": 5965,
+    "blockname": "Wadrafnagar",
+    "block_code": "5965",
+    "district_id": 705
+  },
+  {
+    "blockid": 5966,
+    "blockname": "Pratappur",
+    "block_code": "5966",
+    "district_id": 711
+  },
+  {
+    "blockid": 5967,
+    "blockname": "Bhaiyathan",
+    "block_code": "5967",
+    "district_id": 711
+  },
+  {
+    "blockid": 5968,
+    "blockname": "Surajpur",
+    "block_code": "5968",
+    "district_id": 711
+  },
+  {
+    "blockid": 5969,
+    "blockname": "Ramanujnagar",
+    "block_code": "5969",
+    "district_id": 711
+  },
+  {
+    "blockid": 5970,
+    "blockname": "Premnagar",
+    "block_code": "5970",
+    "district_id": 711
+  },
+  {
+    "blockid": 5971,
+    "blockname": "Odgi",
+    "block_code": "5971",
+    "district_id": 711
+  },
+  {
+    "blockid": 5972,
+    "blockname": "Baikunthpur",
+    "block_code": "5972",
+    "district_id": 549
+  },
+  {
+    "blockid": 5973,
+    "blockname": "Sonhat",
+    "block_code": "5973",
+    "district_id": 549
+  },
+  {
+    "blockid": 5974,
+    "blockname": "KHADGAWANA",
+    "block_code": "5974",
+    "district_id": 828
+  },
+  {
+    "blockid": 5975,
+    "blockname": "MANENDRAGARH",
+    "block_code": "5975",
+    "district_id": 828
+  },
+  {
+    "blockid": 5976,
+    "blockname": "BHARATPUR",
+    "block_code": "5976",
+    "district_id": 828
+  },
+  {
+    "blockid": 5977,
+    "blockname": "Bagicha",
+    "block_code": "5977",
+    "district_id": 550
+  },
+  {
+    "blockid": 5978,
+    "blockname": "Kansabel",
+    "block_code": "5978",
+    "district_id": 550
+  },
+  {
+    "blockid": 5979,
+    "blockname": "Kunkuri",
+    "block_code": "5979",
+    "district_id": 550
+  },
+  {
+    "blockid": 5980,
+    "blockname": "Jashpur",
+    "block_code": "5980",
+    "district_id": 550
+  },
+  {
+    "blockid": 5981,
+    "blockname": "Duldula",
+    "block_code": "5981",
+    "district_id": 550
+  },
+  {
+    "blockid": 5982,
+    "blockname": "Pharsabahar",
+    "block_code": "5982",
+    "district_id": 550
+  },
+  {
+    "blockid": 5983,
+    "blockname": "Patthalgaon",
+    "block_code": "5983",
+    "district_id": 550
+  },
+  {
+    "blockid": 5984,
+    "blockname": "Manora",
+    "block_code": "5984",
+    "district_id": 550
+  },
+  {
+    "blockid": 5985,
+    "blockname": "Korba",
+    "block_code": "5985",
+    "district_id": 551
+  },
+  {
+    "blockid": 5986,
+    "blockname": "Kartala",
+    "block_code": "5986",
+    "district_id": 551
+  },
+  {
+    "blockid": 5987,
+    "blockname": "Katghora",
+    "block_code": "5987",
+    "district_id": 551
+  },
+  {
+    "blockid": 5988,
+    "blockname": "Pali",
+    "block_code": "5988",
+    "district_id": 551
+  },
+  {
+    "blockid": 5989,
+    "blockname": "Podi Uparoda",
+    "block_code": "5989",
+    "district_id": 551
+  },
+  {
+    "blockid": 5990,
+    "blockname": "Nagari",
+    "block_code": "5990",
+    "district_id": 552
+  },
+  {
+    "blockid": 5991,
+    "blockname": "Dhamtari",
+    "block_code": "5991",
+    "district_id": 552
+  },
+  {
+    "blockid": 5992,
+    "blockname": "Kurud",
+    "block_code": "5992",
+    "district_id": 552
+  },
+  {
+    "blockid": 5993,
+    "blockname": "Magarlod",
+    "block_code": "5993",
+    "district_id": 552
+  },
+  {
+    "blockid": 5994,
+    "blockname": "Durgukondal",
+    "block_code": "5994",
+    "district_id": 553
+  },
+  {
+    "blockid": 5995,
+    "blockname": "Koilebeda",
+    "block_code": "5995",
+    "district_id": 553
+  },
+  {
+    "blockid": 5996,
+    "blockname": "Antagarh",
+    "block_code": "5996",
+    "district_id": 553
+  },
+  {
+    "blockid": 5997,
+    "blockname": "Charama",
+    "block_code": "5997",
+    "district_id": 553
+  },
+  {
+    "blockid": 5998,
+    "blockname": "Bhanupratappur",
+    "block_code": "5998",
+    "district_id": 553
+  },
+  {
+    "blockid": 5999,
+    "blockname": "Narharpur",
+    "block_code": "5999",
+    "district_id": 553
+  },
+  {
+    "blockid": 6000,
+    "blockname": "Kanker",
+    "block_code": "6000",
+    "district_id": 553
+  },
+  {
+    "blockid": 6001,
+    "blockname": "Keshkal",
+    "block_code": "6001",
+    "district_id": 708
+  },
+  {
+    "blockid": 6002,
+    "blockname": "Baderajpur",
+    "block_code": "6002",
+    "district_id": 708
+  },
+  {
+    "blockid": 6003,
+    "blockname": "Orchha(abhujmad)",
+    "block_code": "6003",
+    "district_id": 653
+  },
+  {
+    "blockid": 6004,
+    "blockname": "Narayanpur",
+    "block_code": "6004",
+    "district_id": 653
+  },
+  {
+    "blockid": 6005,
+    "blockname": "Makdi",
+    "block_code": "6005",
+    "district_id": 708
+  },
+  {
+    "blockid": 6006,
+    "blockname": "Pharasgaon",
+    "block_code": "6006",
+    "district_id": 708
+  },
+  {
+    "blockid": 6007,
+    "blockname": "Kondagaon",
+    "block_code": "6007",
+    "district_id": 708
+  },
+  {
+    "blockid": 6008,
+    "blockname": "Lohandiguda",
+    "block_code": "6008",
+    "district_id": 554
+  },
+  {
+    "blockid": 6009,
+    "blockname": "Bastanar",
+    "block_code": "6009",
+    "district_id": 554
+  },
+  {
+    "blockid": 6010,
+    "blockname": "Bastar",
+    "block_code": "6010",
+    "district_id": 554
+  },
+  {
+    "blockid": 6011,
+    "blockname": "Bakawand",
+    "block_code": "6011",
+    "district_id": 554
+  },
+  {
+    "blockid": 6012,
+    "blockname": "Jagdalpur",
+    "block_code": "6012",
+    "district_id": 554
+  },
+  {
+    "blockid": 6013,
+    "blockname": "Tokapal",
+    "block_code": "6013",
+    "district_id": 554
+  },
+  {
+    "blockid": 6014,
+    "blockname": "Darbha",
+    "block_code": "6014",
+    "district_id": 554
+  },
+  {
+    "blockid": 6015,
+    "blockname": "Bhopal Patnam",
+    "block_code": "6015",
+    "district_id": 652
+  },
+  {
+    "blockid": 6016,
+    "blockname": "Usoor",
+    "block_code": "6016",
+    "district_id": 652
+  },
+  {
+    "blockid": 6017,
+    "blockname": "Bhairamgarh",
+    "block_code": "6017",
+    "district_id": 652
+  },
+  {
+    "blockid": 6018,
+    "blockname": "Bijapur",
+    "block_code": "6018",
+    "district_id": 652
+  },
+  {
+    "blockid": 6019,
+    "blockname": "Geedam",
+    "block_code": "6019",
+    "district_id": 555
+  },
+  {
+    "blockid": 6020,
+    "blockname": "Dantewada",
+    "block_code": "6020",
+    "district_id": 555
+  },
+  {
+    "blockid": 6021,
+    "blockname": "Katekalyan",
+    "block_code": "6021",
+    "district_id": 555
+  },
+  {
+    "blockid": 6022,
+    "blockname": "Kuwakonda",
+    "block_code": "6022",
+    "district_id": 555
+  },
+  {
+    "blockid": 6023,
+    "blockname": "Chhindgarh",
+    "block_code": "6023",
+    "district_id": 710
+  },
+  {
+    "blockid": 6024,
+    "blockname": "Sukma",
+    "block_code": "6024",
+    "district_id": 710
+  },
+  {
+    "blockid": 6025,
+    "blockname": "Konta",
+    "block_code": "6025",
+    "district_id": 710
+  },
+  {
+    "blockid": 6026,
+    "blockname": "Dharamjaigarh",
+    "block_code": "6026",
+    "district_id": 556
+  },
+  {
+    "blockid": 6027,
+    "blockname": "Lailunga",
+    "block_code": "6027",
+    "district_id": 556
+  },
+  {
+    "blockid": 6028,
+    "blockname": "GHARGHODA",
+    "block_code": "6028",
+    "district_id": 556
+  },
+  {
+    "blockid": 6029,
+    "blockname": "Tamnar",
+    "block_code": "6029",
+    "district_id": 556
+  },
+  {
+    "blockid": 6030,
+    "blockname": "Raigarh",
+    "block_code": "6030",
+    "district_id": 556
+  },
+  {
+    "blockid": 6031,
+    "blockname": "Pusore",
+    "block_code": "6031",
+    "district_id": 556
+  },
+  {
+    "blockid": 6032,
+    "blockname": "Kharsia",
+    "block_code": "6032",
+    "district_id": 556
+  },
+  {
+    "blockid": 6033,
+    "blockname": "SARANGARH",
+    "block_code": "6033",
+    "district_id": 826
+  },
+  {
+    "blockid": 6034,
+    "blockname": "BARAMKELA",
+    "block_code": "6034",
+    "district_id": 826
+  },
+  {
+    "blockid": 6035,
+    "blockname": "NAWAGARH",
+    "block_code": "6035",
+    "district_id": 557
+  },
+  {
+    "blockid": 6036,
+    "blockname": "Bahmindih",
+    "block_code": "6036",
+    "district_id": 557
+  },
+  {
+    "blockid": 6037,
+    "blockname": "SAKTI",
+    "block_code": "6037",
+    "district_id": 827
+  },
+  {
+    "blockid": 6038,
+    "blockname": "JAIJAIPUR",
+    "block_code": "6038",
+    "district_id": 827
+  },
+  {
+    "blockid": 6039,
+    "blockname": "Akaltara",
+    "block_code": "6039",
+    "district_id": 557
+  },
+  {
+    "blockid": 6040,
+    "blockname": "Balauda",
+    "block_code": "6040",
+    "district_id": 557
+  },
+  {
+    "blockid": 6041,
+    "blockname": "Pamgarh",
+    "block_code": "6041",
+    "district_id": 557
+  },
+  {
+    "blockid": 6042,
+    "blockname": "MALKHARAUDA",
+    "block_code": "6042",
+    "district_id": 827
+  },
+  {
+    "blockid": 6043,
+    "blockname": "DABHARA",
+    "block_code": "6043",
+    "district_id": 827
+  },
+  {
+    "blockid": 6044,
+    "blockname": "Mahasamund",
+    "block_code": "6044",
+    "district_id": 558
+  },
+  {
+    "blockid": 6045,
+    "blockname": "Bagbahara",
+    "block_code": "6045",
+    "district_id": 558
+  },
+  {
+    "blockid": 6046,
+    "blockname": "Saraipali",
+    "block_code": "6046",
+    "district_id": 558
+  },
+  {
+    "blockid": 6047,
+    "blockname": "Basna",
+    "block_code": "6047",
+    "district_id": 558
+  },
+  {
+    "blockid": 6048,
+    "blockname": "Pithora",
+    "block_code": "6048",
+    "district_id": 558
+  },
+  {
+    "blockid": 6049,
+    "blockname": "Simga",
+    "block_code": "6049",
+    "district_id": 704
+  },
+  {
+    "blockid": 6050,
+    "blockname": "Bhatapara",
+    "block_code": "6050",
+    "district_id": 704
+  },
+  {
+    "blockid": 6051,
+    "blockname": "Balodabazar",
+    "block_code": "6051",
+    "district_id": 704
+  },
+  {
+    "blockid": 6052,
+    "blockname": "Palari",
+    "block_code": "6052",
+    "district_id": 704
+  },
+  {
+    "blockid": 6053,
+    "blockname": "Kasdol",
+    "block_code": "6053",
+    "district_id": 704
+  },
+  {
+    "blockid": 6054,
+    "blockname": "BILAIGARH",
+    "block_code": "6054",
+    "district_id": 826
+  },
+  {
+    "blockid": 6055,
+    "blockname": "Tilda",
+    "block_code": "6055",
+    "district_id": 559
+  },
+  {
+    "blockid": 6056,
+    "blockname": "Abhanpur",
+    "block_code": "6056",
+    "district_id": 559
+  },
+  {
+    "blockid": 6057,
+    "blockname": "Gariyaband",
+    "block_code": "6057",
+    "district_id": 707
+  },
+  {
+    "blockid": 6058,
+    "blockname": "Mainpur",
+    "block_code": "6058",
+    "district_id": 707
+  },
+  {
+    "blockid": 6059,
+    "blockname": "Devbhog",
+    "block_code": "6059",
+    "district_id": 707
+  },
+  {
+    "blockid": 6060,
+    "blockname": "Dharsiwa",
+    "block_code": "6060",
+    "district_id": 559
+  },
+  {
+    "blockid": 6061,
+    "blockname": "Fingeshwar",
+    "block_code": "6061",
+    "district_id": 707
+  },
+  {
+    "blockid": 6062,
+    "blockname": "Chhurra",
+    "block_code": "6062",
+    "district_id": 707
+  },
+  {
+    "blockid": 6063,
+    "blockname": "ARANG",
+    "block_code": "6063",
+    "district_id": 559
+  }
+]

@@ -8,6 +8,7 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import * as bcrypt from 'bcryptjs';
+import * as crypto from 'crypto';
 import { DeepPartial, Repository } from 'typeorm';
 import { importContractorMapping } from '../import/import.service';
 import { WorkItemEmployeeAssignment } from '../work-items/entities/work-item-employee-assignment.entity';
@@ -358,15 +359,11 @@ export class UsersService {
 
         // Password: must hash
         const rawPassword =
-          typeof userPayload.password === 'string'
-            ? userPayload.password
-            : typeof userPayload.contractorpass === 'string'
-              ? userPayload.contractorpass
-              : null;
-
-        if (!rawPassword) {
-          throw new Error('missing password');
-        }
+          typeof userPayload.password === 'string' && userPayload.password.trim()
+            ? userPayload.password.trim()
+            : typeof item.contractorpass === 'string' && item.contractorpass.trim()
+              ? item.contractorpass.trim()
+              : `Temp@${crypto.randomBytes(4).toString('hex')}`;
 
         const hashed = await bcrypt.hash(String(rawPassword), 10);
         userPayload.password = hashed;
