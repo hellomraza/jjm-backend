@@ -355,6 +355,148 @@ describe('AgreementsService', () => {
     );
   });
 
+  it('bulkCreateFromImport updates existing matching agreement when agreementno, agreementyear, and contractor match', async () => {
+    const existingContractor = {
+      id: 'contractor-uuid-1',
+      code: 'CONT001',
+      email: 'cont001@import.local',
+      role: UserRole.CO,
+    } as User;
+
+    const existingAgreement = {
+      id: 'existing-agreement-id',
+      agreementno: 'AGR-DUP-1',
+      agreementyear: '2024-2025',
+      contractor_id: 'contractor-uuid-1',
+      workorderno: 'OLD-WO-001',
+    } as Agreement;
+
+    const manager = {
+      findOne: jest.fn(),
+      create: jest.fn((_entity, payload) => payload),
+      save: jest.fn((_entity, payload) => payload),
+    };
+
+    (agreementsRepository as any).manager = {
+      transaction: jest.fn((callback) => callback(manager)),
+    };
+
+    manager.findOne.mockImplementation((entity, options) => {
+      if (entity === User) {
+        return existingContractor;
+      }
+      if (entity === WorkItem) {
+        return null;
+      }
+      if (entity === Agreement) {
+        if (options?.where && options.where.id === 'existing-agreement-id') {
+          return { ...existingAgreement, workItems: [] };
+        }
+        if (
+          options?.where &&
+          options.where.agreementno === 'AGR-DUP-1' &&
+          options.where.agreementyear === '2024-2025' &&
+          options.where.contractor_id === 'contractor-uuid-1'
+        ) {
+          return existingAgreement;
+        }
+        return null;
+      }
+      return null;
+    });
+
+    const result = await service.bulkCreateFromImport([
+      {
+        agrid: null,
+        agreementno: 'AGR-DUP-1',
+        agreementyear: '2024-2025',
+        contractor_code: 'CONT001',
+        workcode: 'WORK-NEW-1',
+        workorderno: 'UPDATED-WO-001',
+        workorderdate: null,
+        dispatch_no: null,
+        dispatch_date: null,
+        already_sent: null,
+        systemdate: null,
+        unitag: null,
+        excel: null,
+        sr: null,
+        division_code: null,
+      },
+    ]);
+
+    expect(result.inserted).toHaveLength(1);
+    expect(result.errors).toHaveLength(0);
+    expect(existingAgreement.workorderno).toBe('UPDATED-WO-001');
+  });
+
+  it('bulkCreateFromImport creates a new agreement when agreementno matches but agreementyear is different', async () => {
+    const existingContractor = {
+      id: 'contractor-uuid-1',
+      code: 'CONT001',
+      email: 'cont001@import.local',
+      role: UserRole.CO,
+    } as User;
+
+    const manager = {
+      findOne: jest.fn(),
+      create: jest.fn((_entity, payload) => payload),
+      save: jest.fn((_entity, payload) => ({ ...payload, id: payload.id || 'new-agreement-id' })),
+    };
+
+    (agreementsRepository as any).manager = {
+      transaction: jest.fn((callback) => callback(manager)),
+    };
+
+    manager.findOne.mockImplementation((entity, options) => {
+      if (entity === User) {
+        return existingContractor;
+      }
+      if (entity === WorkItem) {
+        return null;
+      }
+      if (entity === Agreement) {
+        if (options?.where && options.where.id) {
+          return { id: options.where.id, agreementno: 'AGR-DUP-1', agreementyear: '2025-2026', contractor_id: 'contractor-uuid-1' };
+        }
+        // Duplicate query looking for 2025-2026 returns null (different year!)
+        return null;
+      }
+      return null;
+    });
+
+    const result = await service.bulkCreateFromImport([
+      {
+        agrid: null,
+        agreementno: 'AGR-DUP-1',
+        agreementyear: '2025-2026',
+        contractor_code: 'CONT001',
+        workcode: 'WORK-NEW-2',
+        workorderno: 'NEW-WO-2025',
+        workorderdate: null,
+        dispatch_no: null,
+        dispatch_date: null,
+        already_sent: null,
+        systemdate: null,
+        unitag: null,
+        excel: null,
+        sr: null,
+        division_code: null,
+      },
+    ]);
+
+    expect(result.inserted).toHaveLength(1);
+    expect(result.errors).toHaveLength(0);
+    expect(manager.create).toHaveBeenCalledWith(
+      Agreement,
+      expect.objectContaining({
+        agreementno: 'AGR-DUP-1',
+        agreementyear: '2025-2026',
+        contractor_id: 'contractor-uuid-1',
+      }),
+    );
+  });
+
   it('attachFileToAgreement attaches a pdf file to an agreement', async () => {
     const agreement = {
       id: 'agreement-id',

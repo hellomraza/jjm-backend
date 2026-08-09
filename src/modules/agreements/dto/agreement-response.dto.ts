@@ -315,8 +315,9 @@ export class AgreementResponseDto {
   @ApiProperty({
     description: 'Division code',
     example: 'division-123',
+    nullable: true,
   })
-  division_code: string;
+  division_code?: string | null;
 
   @ApiProperty({
     description: 'SR number',
@@ -361,6 +362,27 @@ export class AgreementResponseDto {
   excel?: string | null;
 
   @ApiProperty({
+    description: 'Dispatch number',
+    example: 'DISP-001',
+    nullable: true,
+  })
+  dispatch_no?: string | null;
+
+  @ApiProperty({
+    description: 'Dispatch date',
+    example: '2026-03-08',
+    nullable: true,
+  })
+  dispatch_date?: string | null;
+
+  @ApiProperty({
+    description: 'Already sent status',
+    example: 'Yes',
+    nullable: true,
+  })
+  already_sent?: string | null;
+
+  @ApiProperty({
     description: 'Contractor user details',
     type: AgreementContractorResponseDto,
     nullable: true,
@@ -399,13 +421,16 @@ export class AgreementResponseDto {
       agreementno: agreement.agreementno,
       agreementyear: agreement.agreementyear,
       contractor_id: agreement.contractor_id,
-      division_code: agreement.division_code,
+      division_code: agreement.division_code ?? null,
       sr: agreement.sr,
       workorderno: agreement.workorderno,
       workorderdate: agreement.workorderdate,
       unitag: agreement.unitag,
       agrid: agreement.agrid,
       excel: agreement.excel,
+      dispatch_no: agreement.dispatch_no ?? null,
+      dispatch_date: agreement.dispatch_date ?? null,
+      already_sent: agreement.already_sent ?? null,
       contractor: agreement.contractor
         ? {
             id: agreement.contractor.id,

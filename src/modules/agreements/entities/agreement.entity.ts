@@ -14,6 +14,7 @@ import { WorkItem } from '../../work-items/entities/work-item.entity';
 import { AgreementFileMap } from './agreement-file-map.entity';
 
 @Entity('agreements')
+@Index(['agreementno', 'agreementyear', 'contractor_id'])
 export class Agreement {
   @PrimaryGeneratedColumn('uuid')
   id!: string;
@@ -34,25 +35,25 @@ export class Agreement {
   // workorderno. workorderdate, sr, excel, unitag, agrid
 
   @Column({ type: 'varchar', length: 20, nullable: true })
-  workorderno!: string; // workorderno
+  workorderno?: string | null; // workorderno
 
   @Column({ type: 'date', nullable: true })
-  workorderdate!: string | null; // workorderdate
+  workorderdate?: string | null; // workorderdate
 
   @Column({ type: 'varchar', length: 20, nullable: true })
-  sr!: string; // sr
+  sr?: string | null; // sr
 
   @Column({ type: 'varchar', length: 255, nullable: true })
-  excel!: string; // excel
+  excel?: string | null; // excel
 
   @Column({ type: 'varchar', length: 255, nullable: true })
-  unitag!: string; // unitag
+  unitag?: string | null; // unitag
 
   @Column({ type: 'varchar', length: 36, nullable: true })
-  agrid!: string; // agrid
+  agrid?: string | null; // agrid
 
   @Column({ type: 'varchar', length: 100, nullable: true })
-  division_code!: string; //division_code
+  division_code?: string | null; //division_code
 
   @Column({ type: 'varchar', length: 100, nullable: true })
   dispatch_no?: string | null;

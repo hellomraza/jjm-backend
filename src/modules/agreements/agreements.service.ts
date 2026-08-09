@@ -498,6 +498,12 @@ export class AgreementsService {
                   ? null
                   : String(agreementNoValue).trim() || null;
 
+              const agreementYearValue = mappedAgreement.agreementyear;
+              const normalizedAgreementYear =
+                agreementYearValue === null || agreementYearValue === undefined
+                  ? null
+                  : String(agreementYearValue).trim() || null;
+
               if (!contractorCode) {
                 throw new UnprocessableEntityException(
                   'contractor_code is required for agreement import',
@@ -516,6 +522,12 @@ export class AgreementsService {
                 );
               }
 
+              if (!normalizedAgreementYear) {
+                throw new UnprocessableEntityException(
+                  'agreementyear is required for agreement import',
+                );
+              }
+
               const contractor = await this.findOrCreateTemporaryContractor(
                 manager,
                 contractorCode,
@@ -527,17 +539,88 @@ export class AgreementsService {
                 contractor.id,
               );
 
-              const agreementNoKey = normalizedAgreementNo.toLowerCase();
+              const compositeBatchKey = `${normalizedAgreementNo.toLowerCase()}|${normalizedAgreementYear.toLowerCase()}|${contractor.id}`;
               let agreement: Agreement | null | undefined =
-                batchAgreementsMap.get(agreementNoKey);
+                batchAgreementsMap.get(compositeBatchKey);
 
               if (!agreement) {
                 agreement = await manager.findOne(Agreement, {
-                  where: { agreementno: normalizedAgreementNo },
+                  where: {
+                    agreementno: normalizedAgreementNo,
+                    agreementyear: normalizedAgreementYear,
+                    contractor_id: contractor.id,
+                  },
                 });
               }
 
               if (agreement) {
+                const updateData: Partial<Agreement> = {};
+                const workOrderValue = mappedAgreement.workorderno;
+
+                if (workOrderValue !== undefined && workOrderValue !== null) {
+                  updateData.workorderno =
+                    String(workOrderValue).trim() || null;
+                }
+                if (
+                  mappedAgreement.workorderdate !== undefined &&
+                  mappedAgreement.workorderdate !== null
+                ) {
+                  updateData.workorderdate = mappedAgreement.workorderdate;
+                }
+                if (
+                  mappedAgreement.dispatch_no !== undefined &&
+                  mappedAgreement.dispatch_no !== null
+                ) {
+                  updateData.dispatch_no = mappedAgreement.dispatch_no;
+                }
+                if (
+                  mappedAgreement.dispatch_date !== undefined &&
+                  mappedAgreement.dispatch_date !== null
+                ) {
+                  updateData.dispatch_date = mappedAgreement.dispatch_date;
+                }
+                if (
+                  mappedAgreement.already_sent !== undefined &&
+                  mappedAgreement.already_sent !== null
+                ) {
+                  updateData.already_sent = mappedAgreement.already_sent;
+                }
+                if (
+                  mappedAgreement.sr !== undefined &&
+                  mappedAgreement.sr !== null
+                ) {
+                  updateData.sr = mappedAgreement.sr;
+                }
+                if (
+                  mappedAgreement.excel !== undefined &&
+                  mappedAgreement.excel !== null
+                ) {
+                  updateData.excel = mappedAgreement.excel;
+                }
+                if (
+                  mappedAgreement.unitag !== undefined &&
+                  mappedAgreement.unitag !== null
+                ) {
+                  updateData.unitag = mappedAgreement.unitag;
+                }
+                if (
+                  mappedAgreement.agrid !== undefined &&
+                  mappedAgreement.agrid !== null
+                ) {
+                  updateData.agrid = String(mappedAgreement.agrid);
+                }
+                if (
+                  mappedAgreement.division_code !== undefined &&
+                  mappedAgreement.division_code !== null
+                ) {
+                  updateData.division_code = mappedAgreement.division_code;
+                }
+
+                if (Object.keys(updateData).length > 0) {
+                  Object.assign(agreement, updateData);
+                  await manager.save(Agreement, agreement);
+                }
+
                 workItem.agreement_id = agreement.id;
                 workItem.contractor_id = agreement.contractor_id ?? null;
                 await manager.save(WorkItem, workItem);
@@ -550,7 +633,7 @@ export class AgreementsService {
 
                 const newAgreement = manager.create(Agreement, {
                   agreementno: normalizedAgreementNo,
-                  agreementyear: mappedAgreement.agreementyear as string,
+                  agreementyear: normalizedAgreementYear,
                   contractor_id: contractor.id,
                   workorderno: normalizedWorkOrder,
                   workorderdate: mappedAgreement.workorderdate ?? null,
@@ -586,7 +669,7 @@ export class AgreementsService {
                 );
               }
 
-              batchAgreementsMap.set(agreementNoKey, reloadedAgreement);
+              batchAgreementsMap.set(compositeBatchKey, reloadedAgreement);
               return reloadedAgreement;
             },
           );
