@@ -10,6 +10,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import * as bcrypt from 'bcryptjs';
 import * as crypto from 'crypto';
 import { DeepPartial, Repository } from 'typeorm';
+import { PaginatedResponse } from '../../common/types/response.type';
 import { importContractorMapping } from '../import/import.service';
 import { WorkItemEmployeeAssignment } from '../work-items/entities/work-item-employee-assignment.entity';
 import { CreateContractorDto } from './dto/create-contractor.dto';
@@ -388,11 +389,17 @@ export class UsersService {
               this.normalizeImportString(userPayload.pan_number),
               existingContractor.id,
             );
-            await this.ensureUniqueFieldAvailable(
-              'auid',
-              this.normalizeImportString(userPayload.auid),
-              existingContractor.id,
-            );
+
+            const normalizedAuid = this.normalizeImportString(userPayload.auid);
+            if (normalizedAuid) {
+              const existingAuidUser = await this.userRepository.findOne({
+                where: { auid: normalizedAuid },
+                select: ['id'],
+              });
+              if (existingAuidUser && existingAuidUser.id !== existingContractor.id) {
+                delete userPayload.auid;
+              }
+            }
 
             Object.assign(existingContractor, userPayload);
             const saved = await this.userRepository.save(existingContractor);
@@ -419,10 +426,17 @@ export class UsersService {
           'pan_number',
           this.normalizeImportString(userPayload.pan_number),
         );
-        await this.ensureUniqueFieldAvailable(
-          'auid',
-          this.normalizeImportString(userPayload.auid),
-        );
+
+        const normalizedAuidNew = this.normalizeImportString(userPayload.auid);
+        if (normalizedAuidNew) {
+          const existingAuidUser = await this.userRepository.findOne({
+            where: { auid: normalizedAuidNew },
+            select: ['id'],
+          });
+          if (existingAuidUser) {
+            delete userPayload.auid;
+          }
+        }
 
         // Create and save
         const userEntity = this.userRepository.create(
@@ -722,7 +736,10 @@ export class UsersService {
   async getAllContractors(
     requesterUserId: string,
     requesterRole: UserRole,
-  ): Promise<Omit<User, 'password'>[]> {
+    page: number = 1,
+    limit: number = 20,
+    search?: string,
+  ): Promise<PaginatedResponse<Omit<User, 'password'>>> {
     const query = this.userRepository
       .createQueryBuilder('user')
       .where('user.role = :role', { role: UserRole.CO })
@@ -744,7 +761,13 @@ export class UsersService {
       });
 
       if (!requester?.district_id) {
-        return [];
+        return {
+          data: [],
+          total: 0,
+          page,
+          limit,
+          totalPages: 0,
+        };
       }
 
       query.andWhere(
@@ -761,12 +784,31 @@ export class UsersService {
       );
     }
 
-    const contractors = await query
-      .orderBy('user.created_at', 'DESC')
-      .getMany();
+    if (search && search.trim()) {
+      const s = search.trim();
+      query.andWhere(
+        '(user.name LIKE :search OR user.email LIKE :search OR user.code LIKE :search OR user.mobile LIKE :search OR user.pan_number LIKE :search)',
+        { search: `%${s}%` },
+      );
+    }
 
-    // Remove password from all contractors
-    return contractors.map((contractor) => this.stripPassword(contractor));
+    const skip = (page - 1) * limit;
+    const [contractors, total] = await query
+      .orderBy('user.created_at', 'DESC')
+      .skip(skip)
+      .take(limit)
+      .getManyAndCount();
+
+    const data = contractors.map((contractor) => this.stripPassword(contractor));
+    const totalPages = Math.ceil(total / limit) || 1;
+
+    return {
+      data,
+      total,
+      limit,
+      page,
+      totalPages,
+    };
   }
 
   async getAllDOs(): Promise<Omit<User, 'password'>[]> {

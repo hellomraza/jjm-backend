@@ -48,14 +48,19 @@ describe('UsersService', () => {
       andWhere: jest.fn().mockReturnThis(),
       addOrderBy: jest.fn().mockReturnThis(),
       orderBy: jest.fn().mockReturnThis(),
-      getMany: jest.fn().mockResolvedValue([
-        {
-          id: 'co1',
-          email: 'contractor@example.com',
-          name: 'Real Contractor',
-          role: UserRole.CO,
-          password: 'secret',
-        },
+      skip: jest.fn().mockReturnThis(),
+      take: jest.fn().mockReturnThis(),
+      getManyAndCount: jest.fn().mockResolvedValue([
+        [
+          {
+            id: 'co1',
+            email: 'contractor@example.com',
+            name: 'Real Contractor',
+            role: UserRole.CO,
+            password: 'secret',
+          },
+        ],
+        1,
       ]),
     };
 
@@ -88,7 +93,7 @@ describe('UsersService', () => {
       { requesterDistrictId: 'D-001' },
     );
     expect(queryBuilder.orderBy).toHaveBeenCalledWith('user.created_at', 'DESC');
-    expect(result).toEqual([
+    expect(result.data).toEqual([
       {
         id: 'co1',
         email: 'contractor@example.com',
@@ -96,6 +101,10 @@ describe('UsersService', () => {
         role: UserRole.CO,
       },
     ]);
+    expect(result.total).toBe(1);
+    expect(result.page).toBe(1);
+    expect(result.limit).toBe(20);
+    expect(result.totalPages).toBe(1);
   });
 
   describe('createContractor', () => {

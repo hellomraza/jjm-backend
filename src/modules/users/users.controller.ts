@@ -277,16 +277,32 @@ export class UsersController {
   @Get('contractors')
   @Roles(UserRole.HO, UserRole.DO)
   @ApiOperation({
-    summary: 'Get all contractors',
+    summary: 'Get contractors with pagination and search',
     description:
-      'Returns a list of all contractors (users with CO role) without password field',
+      'Returns a paginated list of contractors (users with CO role) without password field',
   })
-  @ApiOkResponse({
-    description: 'Contractors retrieved successfully',
-    type: [UserResponseDto],
+  @ApiQuery({ name: 'page', required: false, type: Number, example: 1 })
+  @ApiQuery({ name: 'limit', required: false, type: Number, example: 20 })
+  @ApiQuery({
+    name: 'search',
+    required: false,
+    type: String,
+    description: 'Search by contractor name, email, code, mobile, or PAN',
   })
-  getAllContractors(@Request() req: AuthenticatedRequest) {
-    return this.usersService.getAllContractors(req.user.userId, req.user.role);
+  @ApiPaginatedResponse(UserResponseDto)
+  getAllContractors(
+    @Request() req: AuthenticatedRequest,
+    @Query('page') page: number = 1,
+    @Query('limit') limit: number = 20,
+    @Query('search') search?: string,
+  ) {
+    return this.usersService.getAllContractors(
+      req.user.userId,
+      req.user.role,
+      page,
+      limit,
+      search,
+    );
   }
 
   @Get('dos')
