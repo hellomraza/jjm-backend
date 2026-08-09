@@ -79,6 +79,9 @@ export class User {
   @Column({ type: 'text', nullable: true })
   address?: string;
 
+  @Column({ name: 'is_active', type: 'boolean', default: false })
+  is_active!: boolean;
+
   @CreateDateColumn()
   created_at!: Date;
 

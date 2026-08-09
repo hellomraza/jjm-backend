@@ -169,6 +169,7 @@ export const importContractorMapping: Record<
   updated_at: 'systemdate',
   created_at: 'systemdate',
   district_name: 'systemdate',
+  is_active: 'contractorclass',
 };
 
 @Injectable()

@@ -43,6 +43,12 @@ export class AuthService {
       return null;
     }
 
+    if (user.role === UserRole.CO && user.is_active === false) {
+      throw new UnauthorizedException(
+        'Your contractor account has been deactivated. Please contact your administrator.',
+      );
+    }
+
     const isPasswordValid = await this.usersService.comparePasswords(
       password,
       user.password,
@@ -63,6 +69,12 @@ export class AuthService {
     const user = await this.usersService.findByCode(code);
     if (!user) {
       return null;
+    }
+
+    if (user.role === UserRole.CO && user.is_active === false) {
+      throw new UnauthorizedException(
+        'Your contractor account has been deactivated. Please contact your administrator.',
+      );
     }
 
     const isPasswordValid = await this.usersService.comparePasswords(

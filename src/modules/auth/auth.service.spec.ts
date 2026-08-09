@@ -59,6 +59,20 @@ describe('AuthService', () => {
     });
   });
 
+  it('validateUser throws UnauthorizedException when contractor account is inactive', async () => {
+    usersService.findByEmail.mockResolvedValue({
+      id: 'c1',
+      email: 'co@jjm.local',
+      password: 'hashed',
+      role: UserRole.CO,
+      is_active: false,
+    });
+
+    await expect(
+      service.validateUser('co@jjm.local', 'Plain@123'),
+    ).rejects.toThrow(UnauthorizedException);
+  });
+
   it('login throws for invalid user', () => {
     expect(() => service.login(null as unknown as never)).toThrow(
       UnauthorizedException,

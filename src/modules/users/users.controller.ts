@@ -33,6 +33,7 @@ import { CreateDODto } from './dto/create-do.dto';
 import { CreateEmployeeDto } from './dto/create-employee.dto';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateContractorDto } from './dto/update-contractor.dto';
+import { UpdateContractorStatusDto } from './dto/update-contractor-status.dto';
 import { UpdateDODto } from './dto/update-do.dto';
 import { UpdateEmployeeDto } from './dto/update-employee.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
@@ -158,6 +159,32 @@ export class UsersController {
     @Body() updateContractorDto: UpdateContractorDto,
   ) {
     return this.usersService.update(id, updateContractorDto);
+  }
+
+  @Patch('contractor/:id/status')
+  @Roles(UserRole.DO, UserRole.HO)
+  @ApiOperation({
+    summary: 'Update contractor active status',
+    description: 'Activates or deactivates a contractor account (DO and HO)',
+  })
+  @ApiParam({ name: 'id', type: String, description: 'Contractor ID' })
+  @ApiOkResponse({
+    description: 'Contractor status updated successfully',
+    type: UserResponseDto,
+  })
+  @ApiBadRequestResponse({ description: 'Invalid request body' })
+  @ApiNotFoundResponse({ description: 'Contractor not found' })
+  updateContractorStatus(
+    @Param('id') id: string,
+    @Body() updateStatusDto: UpdateContractorStatusDto,
+    @Request() req: AuthenticatedRequest,
+  ) {
+    return this.usersService.updateContractorStatus(
+      id,
+      updateStatusDto.is_active,
+      req.user.userId,
+      req.user.role,
+    );
   }
 
   @Post('do')

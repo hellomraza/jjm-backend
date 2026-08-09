@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   ConflictException,
+  ForbiddenException,
   Injectable,
   InternalServerErrorException,
   NotFoundException,
@@ -244,6 +245,7 @@ export class UsersService {
       password: hashedPassword,
       name,
       role: UserRole.CO,
+      is_active: false,
       address: createContractorDto.address,
       district_name: createContractorDto.district_name,
       district_id: createContractorDto.district_id,
@@ -318,8 +320,11 @@ export class UsersService {
           }
         }
 
-        // Ensure role is contractor
+        // Ensure role is contractor and default to inactive
         userPayload.role = UserRole.CO;
+        if (userPayload.is_active === undefined) {
+          userPayload.is_active = false;
+        }
 
         // Ensure code exists; generate if missing
         if (!userPayload.code) {
@@ -792,5 +797,59 @@ export class UsersService {
 
     const employees = assignments.map((assignment) => assignment.employee);
     return employees.map((employee) => this.stripPassword(employee));
+  }
+
+  async updateContractorStatus(
+    id: string,
+    is_active: boolean,
+    requesterUserId: string,
+    requesterRole: UserRole,
+  ): Promise<Omit<User, 'password'>> {
+    const contractor = await this.userRepository.findOne({ where: { id } });
+    if (!contractor || contractor.role !== UserRole.CO) {
+      throw new NotFoundException(`Contractor #${id} not found`);
+    }
+
+    if (requesterRole === UserRole.DO) {
+      const requester = await this.userRepository.findOne({
+        where: { id: requesterUserId, role: UserRole.DO },
+        select: ['id', 'district_id'],
+      });
+
+      if (!requester?.district_id) {
+        throw new ForbiddenException(
+          'District Officers without an assigned district cannot modify contractor status',
+        );
+      }
+
+      const isBelongingToDistrict =
+        contractor.district_id === requester.district_id;
+
+      if (!isBelongingToDistrict) {
+        const hasAssignedWorkItem = await this.userRepository
+          .createQueryBuilder('user')
+          .where('user.id = :contractorId', { contractorId: id })
+          .andWhere(
+            `EXISTS (
+              SELECT 1 FROM work_items wi
+              LEFT JOIN agreements ag ON wi.agreement_id = ag.id
+              WHERE (wi.contractor_id = user.id OR ag.contractor_id = user.id)
+                AND wi.district_id = :requesterDistrictId
+            )`,
+            { requesterDistrictId: requester.district_id },
+          )
+          .getExists();
+
+        if (!hasAssignedWorkItem) {
+          throw new ForbiddenException(
+            'You can only modify status for contractors in your district or assigned to work items in your district',
+          );
+        }
+      }
+    }
+
+    contractor.is_active = is_active;
+    const updated = await this.userRepository.save(contractor);
+    return this.stripPassword(updated);
   }
 }
