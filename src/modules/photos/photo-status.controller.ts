@@ -80,10 +80,10 @@ export class PhotoStatusController {
   }
 
   /**
-   * CO/DO: Get all photos for a component with pagination
+   * CO/DO/HO/EM/TPI: Get all photos for a component with pagination
    */
   @Get('component/:componentId')
-  @Roles(UserRole.CO, UserRole.DO, UserRole.HO, UserRole.EM)
+  @Roles(UserRole.CO, UserRole.DO, UserRole.HO, UserRole.EM, UserRole.TPI)
   async getPhotosByComponent(
     @Param('componentId') componentId: string,
     @Query('page') page: number = 1,
@@ -97,10 +97,10 @@ export class PhotoStatusController {
   }
 
   /**
-   * CO/DO: Get all selected photos for a work item
+   * CO/DO/TPI: Get all selected photos for a work item
    */
   @Get('work-item/:workItemId/selected')
-  @Roles(UserRole.CO, UserRole.DO)
+  @Roles(UserRole.CO, UserRole.DO, UserRole.TPI)
   async getSelectedPhotosByWorkItem(
     @Param('workItemId') workItemId: string,
     @Query('page') page: number = 1,
@@ -114,10 +114,10 @@ export class PhotoStatusController {
   }
 
   /**
-   * DO/HO: Get all approved photos for a work item
+   * DO/HO/TPI: Get all approved photos for a work item
    */
   @Get('work-item/:workItemId/approved')
-  @Roles(UserRole.DO, UserRole.HO)
+  @Roles(UserRole.DO, UserRole.HO, UserRole.TPI)
   async getApprovedPhotosByWorkItem(
     @Param('workItemId') workItemId: string,
     @Query('page') page: number = 1,
@@ -166,7 +166,7 @@ export class PhotoStatusController {
    * Get a single photo status record
    */
   @Get(':photoStatusId')
-  @Roles(UserRole.CO, UserRole.DO, UserRole.HO)
+  @Roles(UserRole.CO, UserRole.DO, UserRole.HO, UserRole.EM, UserRole.TPI)
   async findOne(
     @Param('photoStatusId') photoStatusId: string,
   ): Promise<PhotoStatus> {

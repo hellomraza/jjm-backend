@@ -31,6 +31,7 @@ import { AttachAgreementFileDto } from './dto/attach-agreement-file.dto';
 import { CreateAgreementDto } from './dto/create-agreement.dto';
 import { UpdateAgreementDto } from './dto/update-agreement.dto';
 import { WorkItemEmployeeAssignment } from '../work-items/entities/work-item-employee-assignment.entity';
+import { WorkOrderTpiAssignment } from '../work-order-tpi/entities/work-order-tpi-assignment.entity';
 import { AgreementFile } from './entities/agreement-file.entity';
 import { AgreementFileMap } from './entities/agreement-file-map.entity';
 import { Agreement } from './entities/agreement.entity';
@@ -43,6 +44,33 @@ type AgreementFileAttachmentResult = {
 
 @Injectable()
 export class AgreementsService {
+  private readonly agreementRelations = {
+    contractor: true,
+    workItems: {
+      district: true,
+      block: true,
+      panchayat: true,
+      village: true,
+      subdivision: true,
+      circle: true,
+      zone: true,
+      contractor: true,
+    },
+    workOrderTpis: {
+      district: true,
+      block: true,
+      panchayat: true,
+      village: true,
+      subdivision: true,
+      circle: true,
+      zone: true,
+      contractor: true,
+    },
+    agreementFileMaps: {
+      agreementFile: true,
+    },
+  };
+
   constructor(
     @InjectRepository(Agreement)
     private readonly agreementsRepository: Repository<Agreement>,
@@ -50,16 +78,11 @@ export class AgreementsService {
     private readonly usersRepository: Repository<User>,
     @InjectRepository(WorkItem)
     private readonly workItemsRepository: Repository<WorkItem>,
+    @InjectRepository(AgreementFile)
+    private readonly agreementFilesRepository: Repository<AgreementFile>,
+    @InjectRepository(AgreementFileMap)
+    private readonly agreementFileMapsRepository: Repository<AgreementFileMap>,
   ) {}
-
-  private readonly agreementRelations = {
-    contractor: true,
-    workItems: true,
-    workOrderTpis: true,
-    agreementFileMaps: {
-      agreementFile: true,
-    },
-  } as const;
 
   private resolvePdfMimeType(fileUrl: string, mimeType?: string): string {
     const normalizedMimeType = mimeType?.trim();
@@ -754,6 +777,22 @@ export class AgreementsService {
       }
 
       return { workItems: { id: In(workItemIds) } };
+    }
+
+    if (role === UserRole.TPI) {
+      const assignments = await this.agreementsRepository.manager.find(
+        WorkOrderTpiAssignment,
+        {
+          where: { tpi_id: userId },
+          select: ['work_order_tpi_id'],
+        },
+      );
+      const tpiWorkOrderIds = assignments.map((a) => a.work_order_tpi_id);
+      if (tpiWorkOrderIds.length === 0) {
+        return { id: '__no_access__' };
+      }
+
+      return { workOrderTpis: { id: In(tpiWorkOrderIds) } };
     }
 
     return { id: '__no_access__' };

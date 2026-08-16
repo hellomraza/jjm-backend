@@ -54,7 +54,7 @@ export class WorkItemsController {
   constructor(private readonly workItemsService: WorkItemsService) {}
 
   @Get('my-work-items')
-  @Roles(UserRole.HO, UserRole.DO, UserRole.CO, UserRole.EM)
+  @Roles(UserRole.HO, UserRole.DO, UserRole.CO, UserRole.EM, UserRole.TPI)
   @ApiOperation({
     summary: 'List my work items',
     description:
@@ -85,7 +85,7 @@ export class WorkItemsController {
   }
 
   @Get('without-agreement')
-  @Roles(UserRole.HO, UserRole.DO, UserRole.CO, UserRole.EM)
+  @Roles(UserRole.HO, UserRole.DO, UserRole.CO, UserRole.EM, UserRole.TPI)
   @ApiOperation({
     summary: 'List work items without agreement',
     description: 'Returns paginated work items that are not associated with any agreement',
@@ -116,7 +116,7 @@ export class WorkItemsController {
   }
 
   @Get(':id/employees')
-  @Roles(UserRole.HO, UserRole.DO, UserRole.CO, UserRole.EM)
+  @Roles(UserRole.HO, UserRole.DO, UserRole.CO, UserRole.EM, UserRole.TPI)
   @ApiOperation({
     summary: 'Get employees assigned to work item',
     description: 'Returns list of employees assigned to a specific work item',
@@ -162,7 +162,7 @@ export class WorkItemsController {
   }
 
   @Get()
-  @Roles(UserRole.HO, UserRole.DO, UserRole.CO, UserRole.EM)
+  @Roles(UserRole.HO, UserRole.DO, UserRole.CO, UserRole.EM, UserRole.TPI)
   @ApiOperation({
     summary: 'List work items',
     description: 'Returns paginated work items list',
@@ -185,7 +185,7 @@ export class WorkItemsController {
   }
 
   @Get(':id')
-  @Roles(UserRole.HO, UserRole.DO, UserRole.CO, UserRole.EM)
+  @Roles(UserRole.HO, UserRole.DO, UserRole.CO, UserRole.EM, UserRole.TPI)
   @ApiOperation({
     summary: 'Get work item by ID',
     description: 'Returns work item details by ID',

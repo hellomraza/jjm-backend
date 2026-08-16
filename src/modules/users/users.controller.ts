@@ -407,7 +407,7 @@ export class UsersController {
   }
 
   @Get()
-  @Roles(UserRole.HO, UserRole.DO, UserRole.CO, UserRole.EM)
+  @Roles(UserRole.HO, UserRole.DO, UserRole.CO, UserRole.EM, UserRole.TPI)
   @ApiOperation({
     summary: 'List users',
     description: 'Returns paginated user list without password field',
@@ -420,7 +420,7 @@ export class UsersController {
   }
 
   @Get(':id')
-  @Roles(UserRole.HO, UserRole.DO, UserRole.CO, UserRole.EM)
+  @Roles(UserRole.HO, UserRole.DO, UserRole.CO, UserRole.EM, UserRole.TPI)
   @ApiOperation({
     summary: 'Get user by ID',
     description: 'Returns a single user details by user ID',

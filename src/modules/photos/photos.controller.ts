@@ -54,7 +54,7 @@ export class PhotosController {
   constructor(private readonly photosService: PhotosService) {}
 
   @Post('upload')
-  @Roles(UserRole.EM)
+  @Roles(UserRole.EM, UserRole.TPI)
   @UseInterceptors(FileInterceptor('file'))
   @ApiOperation({
     summary: 'Upload photo',
@@ -117,7 +117,7 @@ export class PhotosController {
   }
 
   @Post('upload-url')
-  @Roles(UserRole.EM)
+  @Roles(UserRole.EM, UserRole.TPI)
   @ApiOperation({
     summary: 'Upload photo metadata with Cloudinary URL',
     description:
@@ -140,7 +140,7 @@ export class PhotosController {
   }
 
   @Get()
-  @Roles(UserRole.HO, UserRole.DO, UserRole.CO, UserRole.EM)
+  @Roles(UserRole.HO, UserRole.DO, UserRole.CO, UserRole.EM, UserRole.TPI)
   @ApiOperation({
     summary: 'List photos',
     description: 'Returns paginated photo metadata list',
@@ -153,7 +153,7 @@ export class PhotosController {
   }
 
   @Get('component/:componentId/review')
-  @Roles(UserRole.CO, UserRole.HO, UserRole.DO)
+  @Roles(UserRole.CO, UserRole.HO, UserRole.DO, UserRole.TPI)
   @ApiOperation({
     summary: 'Review component photos',
     description: 'Contractor reviews paginated photos for a specific component',
@@ -213,7 +213,7 @@ export class PhotosController {
   }
 
   @Get(':id')
-  @Roles(UserRole.HO, UserRole.DO, UserRole.CO, UserRole.EM)
+  @Roles(UserRole.HO, UserRole.DO, UserRole.CO, UserRole.EM, UserRole.TPI)
   @ApiOperation({
     summary: 'Get photo by ID',
     description: 'Returns single photo metadata and relations by ID',

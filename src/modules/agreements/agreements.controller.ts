@@ -71,10 +71,11 @@ export class AgreementsController {
   }
 
   @Get()
-  @Roles(UserRole.HO, UserRole.DO, UserRole.CO, UserRole.EM)
+  @Roles(UserRole.HO, UserRole.DO, UserRole.CO, UserRole.EM, UserRole.TPI)
   @ApiOperation({
     summary: 'List agreements',
-    description: 'Returns paginated agreements list with search and filter support',
+    description:
+      'Returns paginated agreements filtered by role. HO gets all agreements.',
   })
   @ApiQuery({ name: 'page', required: false, type: Number, example: 1 })
   @ApiQuery({ name: 'limit', required: false, type: Number, example: 20 })
@@ -88,13 +89,7 @@ export class AgreementsController {
     name: 'agreementyear',
     required: false,
     type: String,
-    description: 'Filter by agreement year',
-  })
-  @ApiQuery({
-    name: 'mode',
-    required: false,
-    enum: ['svs', 'tpi'],
-    description: 'Filter by portal mode (svs or tpi)',
+    description: 'Filter by agreement financial year (e.g. 2025-2026)',
   })
   @ApiPaginatedResponse(AgreementResponseDto)
   async findAll(
@@ -124,7 +119,7 @@ export class AgreementsController {
   }
 
   @Get(':id')
-  @Roles(UserRole.HO, UserRole.DO, UserRole.CO, UserRole.EM)
+  @Roles(UserRole.HO, UserRole.DO, UserRole.CO, UserRole.EM, UserRole.TPI)
   @ApiOperation({
     summary: 'Get agreement by ID',
     description: 'Returns agreement details by agreement ID',
@@ -146,7 +141,7 @@ export class AgreementsController {
   }
 
   @Get(':id/work-items')
-  @Roles(UserRole.HO, UserRole.DO, UserRole.CO, UserRole.EM)
+  @Roles(UserRole.HO, UserRole.DO, UserRole.CO, UserRole.EM, UserRole.TPI)
   @ApiOperation({
     summary: 'Get work items of a particular agreement',
     description:

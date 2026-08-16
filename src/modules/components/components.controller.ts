@@ -62,7 +62,7 @@ export class ComponentsController {
   constructor(private readonly componentsService: ComponentsService) {}
 
   @Get('master')
-  @Roles(UserRole.HO, UserRole.DO, UserRole.CO, UserRole.EM)
+  @Roles(UserRole.HO, UserRole.DO, UserRole.CO, UserRole.EM, UserRole.TPI)
   @ApiOperation({
     summary: 'List master components',
     description: 'Returns predefined static master components in display order',
@@ -77,7 +77,7 @@ export class ComponentsController {
   }
 
   @Post(':componentId/photos')
-  @Roles(UserRole.EM)
+  @Roles(UserRole.EM, UserRole.TPI)
   @UseInterceptors(FileInterceptor('file'))
   @ApiOperation({
     summary: 'Upload photo for a component',
@@ -140,7 +140,7 @@ export class ComponentsController {
   }
 
   @Post(':componentId/photos-url')
-  @Roles(UserRole.EM)
+  @Roles(UserRole.EM, UserRole.TPI)
   @ApiOperation({
     summary: 'Upload photo URL for a component',
     description:
@@ -170,7 +170,7 @@ export class ComponentsController {
   }
 
   @Get(':componentId/photos')
-  @Roles(UserRole.CO, UserRole.EM)
+  @Roles(UserRole.CO, UserRole.EM, UserRole.TPI)
   @ApiOperation({
     summary: 'Get photos uploaded for a component',
     description: 'Contractor views all photos uploaded for a component',
@@ -316,7 +316,7 @@ export class ComponentsController {
   }
 
   @Get('work-item/:workItemId')
-  @Roles(UserRole.HO, UserRole.DO, UserRole.CO, UserRole.EM)
+  @Roles(UserRole.HO, UserRole.DO, UserRole.CO, UserRole.EM, UserRole.TPI)
   @ApiOperation({
     summary: 'List work item component mappings',
     description:
@@ -333,7 +333,7 @@ export class ComponentsController {
   }
 
   @Get(':id')
-  @Roles(UserRole.HO, UserRole.DO, UserRole.CO, UserRole.EM)
+  @Roles(UserRole.HO, UserRole.DO, UserRole.CO, UserRole.EM, UserRole.TPI)
   @ApiOperation({
     summary: 'Get work item component mapping by ID',
     description: 'Returns mapping details by work item component mapping ID',

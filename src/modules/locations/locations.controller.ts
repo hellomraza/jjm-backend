@@ -68,7 +68,7 @@ export class LocationsController {
   }
 
   @Get(':type')
-  @Roles(UserRole.HO, UserRole.DO, UserRole.CO, UserRole.EM)
+  @Roles(UserRole.HO, UserRole.DO, UserRole.CO, UserRole.EM, UserRole.TPI)
   @ApiOperation({
     summary: 'List location master records',
     description: 'Returns paginated location records by type',
@@ -90,7 +90,7 @@ export class LocationsController {
   }
 
   @Get(':type/:id')
-  @Roles(UserRole.HO, UserRole.DO, UserRole.CO, UserRole.EM)
+  @Roles(UserRole.HO, UserRole.DO, UserRole.CO, UserRole.EM, UserRole.TPI)
   @ApiOperation({
     summary: 'Get location master record by ID',
     description: 'Returns one location record by type and numeric ID',
