@@ -5,6 +5,9 @@ import { AgreementsModule } from '../agreements/agreements.module';
 import { Component } from '../components/entities/component.entity';
 import { WorkItemComponent } from '../components/entities/work-item-component.entity';
 import { User } from '../users/entities/user.entity';
+import { WorkOrderTpiComponent } from '../work-order-tpi/entities/work-order-tpi-component.entity';
+import { WorkOrderTpiEmployeeAssignment } from '../work-order-tpi/entities/work-order-tpi-employee-assignment.entity';
+import { WorkOrderTpi } from '../work-order-tpi/entities/work-order-tpi.entity';
 import { WorkItemEmployeeAssignment } from './entities/work-item-employee-assignment.entity';
 import { WorkItem } from './entities/work-item.entity';
 import { WorkItemsController } from './work-items.controller';
@@ -19,6 +22,9 @@ import { WorkItemsService } from './work-items.service';
       WorkItemComponent,
       WorkItemEmployeeAssignment,
       User,
+      WorkOrderTpi,
+      WorkOrderTpiComponent,
+      WorkOrderTpiEmployeeAssignment,
     ]),
   ],
   controllers: [WorkItemsController],

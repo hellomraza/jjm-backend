@@ -718,7 +718,7 @@ describe('WorkItemsService', () => {
 
     expect(workItemsRepository.findAndCount).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: expect.objectContaining({ contractor_id: 'co1', id: expect.anything() }),
+        where: expect.objectContaining({ id: expect.anything() }),
       }),
     );
   });

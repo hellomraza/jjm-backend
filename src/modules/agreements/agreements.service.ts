@@ -19,23 +19,32 @@ import {
   Repository,
 } from 'typeorm';
 import {
+  Component,
+  ComponentType,
+} from '../components/entities/component.entity';
+import {
   importAgreementMapping,
   type AgreementImport,
 } from '../import/import.service';
 import { User, UserRole } from '../users/entities/user.entity';
+import { WorkItemEmployeeAssignment } from '../work-items/entities/work-item-employee-assignment.entity';
 import {
   WorkItem,
   WorkItemStatus,
 } from '../work-items/entities/work-item.entity';
+import { WorkOrderTpiAssignment } from '../work-order-tpi/entities/work-order-tpi-assignment.entity';
+import {
+  WorkItemComponentStatus,
+  WorkOrderTpiComponent,
+} from '../work-order-tpi/entities/work-order-tpi-component.entity';
+import { WorkOrderTpiEmployeeAssignment } from '../work-order-tpi/entities/work-order-tpi-employee-assignment.entity';
+import { WorkOrderTpi } from '../work-order-tpi/entities/work-order-tpi.entity';
+import { STATIC_TPI_COMPONENTS } from '../work-order-tpi/work-order-tpi.constants';
 import { AttachAgreementFileDto } from './dto/attach-agreement-file.dto';
 import { CreateAgreementDto } from './dto/create-agreement.dto';
 import { UpdateAgreementDto } from './dto/update-agreement.dto';
-import { WorkItemEmployeeAssignment } from '../work-items/entities/work-item-employee-assignment.entity';
-import { WorkOrderTpi } from '../work-order-tpi/entities/work-order-tpi.entity';
-import { WorkOrderTpiAssignment } from '../work-order-tpi/entities/work-order-tpi-assignment.entity';
-import { WorkOrderTpiEmployeeAssignment } from '../work-order-tpi/entities/work-order-tpi-employee-assignment.entity';
-import { AgreementFile } from './entities/agreement-file.entity';
 import { AgreementFileMap } from './entities/agreement-file-map.entity';
+import { AgreementFile } from './entities/agreement-file.entity';
 import { Agreement } from './entities/agreement.entity';
 
 type AgreementFileAttachmentResult = {
@@ -260,27 +269,28 @@ export class AgreementsService {
   async getWorkItemIdsForContractor(contractorId: string): Promise<string[]> {
     const agreements = await this.agreementsRepository.find({
       where: { contractor_id: contractorId },
-      relations: ['workItems'],
+      relations: ['workItems', 'workOrderTpis'],
     });
 
-    const agreementWorkItemIds = agreements.flatMap(
-      (a) => a.workItems?.map((w) => w.id) || [],
-    );
+    const agreementWorkItemIds = agreements.flatMap((a) => [
+      ...(a.workItems?.map((w) => w.id) || []),
+      ...(a.workOrderTpis?.map((w) => w.id) || []),
+    ]);
 
-    const directWorkItems = await this.workItemsRepository.find({
-      where: { contractor_id: contractorId },
-      select: ['id'],
-    });
-
-    return Array.from(
-      new Set([...agreementWorkItemIds, ...directWorkItems.map((w) => w.id)]),
-    );
+    return Array.from(new Set(agreementWorkItemIds));
   }
 
   private isTemporaryWorkItem(workItem: WorkItem): boolean {
     return (
       workItem.schemetype === 'TEMP' ||
       workItem.title.startsWith('Temporary Work Item ')
+    );
+  }
+
+  private isTemporaryWorkOrderTpi(workOrderTpi: WorkOrderTpi): boolean {
+    return (
+      workOrderTpi.schemetype === 'TEMP' ||
+      workOrderTpi.title.startsWith('Temporary Work Order ')
     );
   }
 
@@ -329,17 +339,87 @@ export class AgreementsService {
     return manager.save(WorkItem, temporaryWorkItem);
   }
 
+  private async findOrCreateTemporaryWorkOrderTpi(
+    manager: EntityManager,
+    workCode: string,
+    contractorId: string,
+  ): Promise<WorkOrderTpi> {
+    const workOrder = await manager.findOne(WorkOrderTpi, {
+      where: { work_code: workCode },
+    });
+
+    if (workOrder) {
+      if (this.isTemporaryWorkOrderTpi(workOrder)) {
+        Object.assign(workOrder, {
+          title: `Temporary Work Order ${workCode}`,
+          description: 'Temporary work order created during agreement import',
+          district_id: null,
+          schemetype: 'TEMP',
+          contractor_id: contractorId,
+          latitude: 0,
+          longitude: 0,
+          progress_percentage: 0,
+          status: WorkItemStatus.PENDING,
+        });
+
+        return manager.save(WorkOrderTpi, workOrder);
+      }
+
+      return workOrder;
+    }
+
+    const temporaryWorkOrder = manager.create(WorkOrderTpi, {
+      work_code: workCode,
+      title: `Temporary Work Order ${workCode}`,
+      description: 'Temporary work order created during agreement import',
+      district_id: null,
+      schemetype: 'TEMP',
+      contractor_id: contractorId,
+      latitude: 0,
+      longitude: 0,
+      progress_percentage: 0,
+      status: WorkItemStatus.PENDING,
+    });
+
+    const savedWorkOrder = await manager.save(WorkOrderTpi, temporaryWorkOrder);
+
+    // Initialize 8 milestone components
+    const masterComponents = await manager.find(Component, {
+      where: { type: ComponentType.TPI },
+      order: { order_number: 'ASC' },
+    });
+
+    const componentsToCreate = (
+      masterComponents.length > 0 ? masterComponents : STATIC_TPI_COMPONENTS
+    ).map((tpl: any) =>
+      manager.create(WorkOrderTpiComponent, {
+        work_order_tpi_id: savedWorkOrder.id,
+        component_id: tpl.id || undefined,
+        name: tpl.name,
+        unit: tpl.unit,
+        order_number: tpl.order_number,
+        status: WorkItemComponentStatus.PENDING,
+        progress: 0,
+      }),
+    );
+    await manager.save(WorkOrderTpiComponent, componentsToCreate);
+
+    return savedWorkOrder;
+  }
+
   async create(createAgreementDto: CreateAgreementDto): Promise<Agreement> {
-    const { work_ids, ...agreementData } = createAgreementDto;
+    const { work_ids, is_tpi, ...agreementData } = createAgreementDto as any;
     await this.validateForeignKeys(
       createAgreementDto.contractor_id,
       work_ids || [],
     );
 
-    const agreement = this.agreementsRepository.create({
-      ...agreementData,
-    });
-    const savedAgreement = await this.agreementsRepository.save(agreement);
+    const agreement = this.agreementsRepository.create(
+      agreementData as Partial<Agreement>,
+    ) as unknown as Agreement;
+    const savedAgreement = (await this.agreementsRepository.save(
+      agreement,
+    )) as unknown as Agreement;
 
     if (work_ids && work_ids.length > 0) {
       await this.workItemsRepository.update(
@@ -349,6 +429,31 @@ export class AgreementsService {
           contractor_id: savedAgreement.contractor_id ?? null,
         },
       );
+      if (this.agreementsRepository.manager?.update) {
+        await this.agreementsRepository.manager.update(
+          WorkOrderTpi,
+          { id: In(work_ids) },
+          {
+            agreement_id: savedAgreement.id,
+            contractor_id: savedAgreement.contractor_id ?? null,
+          },
+        );
+      }
+    } else if (is_tpi || (agreementData as any).schemetype === 'TPI') {
+      const workCode =
+        savedAgreement.workorderno ||
+        `TPI-${savedAgreement.agreementno}` ||
+        `TPI-${savedAgreement.id.slice(0, 8)}`;
+      if (savedAgreement.contractor_id) {
+        const tempTpi = await this.findOrCreateTemporaryWorkOrderTpi(
+          this.agreementsRepository.manager,
+          workCode,
+          savedAgreement.contractor_id,
+        );
+        tempTpi.agreement_id = savedAgreement.id;
+        tempTpi.contractor_id = savedAgreement.contractor_id;
+        await this.agreementsRepository.manager.save(WorkOrderTpi, tempTpi);
+      }
     }
 
     return this.findOne(savedAgreement.id);
@@ -505,7 +610,10 @@ export class AgreementsService {
     return reloadedAgreement;
   }
 
-  async bulkCreateFromImport(agreementImports: AgreementImport[]): Promise<{
+  async bulkCreateFromImport(
+    agreementImports: AgreementImport[],
+    isTpi: boolean = false,
+  ): Promise<{
     inserted: Agreement[];
     errors: { index: number; reason: string; item: AgreementImport }[];
   }> {
@@ -570,11 +678,22 @@ export class AgreementsService {
                 contractorCode,
               );
 
-              const workItem = await this.findOrCreateTemporaryWorkItem(
-                manager,
-                workCode,
-                contractor.id,
-              );
+              let workItem: WorkItem | null = null;
+              let workOrderTpi: WorkOrderTpi | null = null;
+
+              if (isTpi) {
+                workOrderTpi = await this.findOrCreateTemporaryWorkOrderTpi(
+                  manager,
+                  workCode,
+                  contractor.id,
+                );
+              } else {
+                workItem = await this.findOrCreateTemporaryWorkItem(
+                  manager,
+                  workCode,
+                  contractor.id,
+                );
+              }
 
               const compositeBatchKey = `${normalizedAgreementNo.toLowerCase()}|${normalizedAgreementYear.toLowerCase()}|${contractor.id}`;
               let agreement: Agreement | null | undefined =
@@ -658,9 +777,16 @@ export class AgreementsService {
                   await manager.save(Agreement, agreement);
                 }
 
-                workItem.agreement_id = agreement.id;
-                workItem.contractor_id = agreement.contractor_id ?? null;
-                await manager.save(WorkItem, workItem);
+                if (workItem) {
+                  workItem.agreement_id = agreement.id;
+                  workItem.contractor_id = agreement.contractor_id ?? null;
+                  await manager.save(WorkItem, workItem);
+                }
+                if (workOrderTpi) {
+                  workOrderTpi.agreement_id = agreement.id;
+                  workOrderTpi.contractor_id = agreement.contractor_id ?? null;
+                  await manager.save(WorkOrderTpi, workOrderTpi);
+                }
               } else {
                 const workOrderValue = mappedAgreement.workorderno;
                 const normalizedWorkOrder =
@@ -690,9 +816,16 @@ export class AgreementsService {
 
                 agreement = await manager.save(Agreement, newAgreement);
 
-                workItem.agreement_id = agreement.id;
-                workItem.contractor_id = agreement.contractor_id ?? null;
-                await manager.save(WorkItem, workItem);
+                if (workItem) {
+                  workItem.agreement_id = agreement.id;
+                  workItem.contractor_id = agreement.contractor_id ?? null;
+                  await manager.save(WorkItem, workItem);
+                }
+                if (workOrderTpi) {
+                  workOrderTpi.agreement_id = agreement.id;
+                  workOrderTpi.contractor_id = agreement.contractor_id ?? null;
+                  await manager.save(WorkOrderTpi, workOrderTpi);
+                }
               }
 
               const reloadedAgreement = await manager.findOne(Agreement, {
@@ -785,11 +918,39 @@ export class AgreementsService {
         },
       );
       const workItemIds = assignments.map((a) => a.work_item_id);
-      if (workItemIds.length === 0) {
+
+      let tpiWorkOrderIds: string[] = [];
+      if (this.agreementsRepository.manager?.find) {
+        try {
+          const tpiAssignments = await this.agreementsRepository.manager.find(
+            WorkOrderTpiEmployeeAssignment,
+            {
+              where: { employee_id: userId },
+              select: ['work_order_tpi_id'],
+            },
+          );
+          tpiWorkOrderIds = tpiAssignments.map((a) => a.work_order_tpi_id);
+        } catch {
+          tpiWorkOrderIds = [];
+        }
+      }
+
+      if (workItemIds.length === 0 && tpiWorkOrderIds.length === 0) {
         return { id: '__no_access__' };
       }
 
-      return { workItems: { id: In(workItemIds) } };
+      if (workItemIds.length > 0 && tpiWorkOrderIds.length === 0) {
+        return { workItems: { id: In(workItemIds) } };
+      }
+
+      if (tpiWorkOrderIds.length > 0 && workItemIds.length === 0) {
+        return { workOrderTpis: { id: In(tpiWorkOrderIds) } };
+      }
+
+      return {
+        workItems: { id: In(workItemIds) },
+        workOrderTpis: { id: In(tpiWorkOrderIds) },
+      } as any;
     }
 
     if (role === UserRole.TPI) {
@@ -857,10 +1018,10 @@ export class AgreementsService {
         } else {
           where.id = '__no_access__';
         }
-      } else {
+      } else if (role !== UserRole.CO) {
         where.workOrderTpis = { id: Not(IsNull()) };
       }
-    } else if (isSvsMode && role !== UserRole.DO && role !== UserRole.EM) {
+    } else if (isSvsMode && role !== UserRole.DO && role !== UserRole.EM && role !== UserRole.CO) {
       where.workItems = { id: Not(IsNull()) };
     }
 
@@ -978,7 +1139,9 @@ export class AgreementsService {
       };
     }
 
-    let tpiWhere: FindOptionsWhere<WorkOrderTpi> = { agreement_id: agreementId };
+    let tpiWhere: FindOptionsWhere<WorkOrderTpi> = {
+      agreement_id: agreementId,
+    };
     if (role === UserRole.EM && tpiWorkOrderIds) {
       tpiWhere = {
         agreement_id: agreementId,
@@ -986,14 +1149,29 @@ export class AgreementsService {
       };
     }
 
-    const [tpiOrders, totalTpi] =
-      await this.agreementsRepository.manager.findAndCount(WorkOrderTpi, {
-        where: tpiWhere,
-        skip: (safePage - 1) * safeLimit,
-        take: safeLimit,
-        order: { created_at: 'DESC' },
-        relations: ['contractor', 'district', 'block', 'panchayat', 'village'],
-      });
+    let tpiOrders: any[] = [];
+    let totalTpi = 0;
+    if (this.agreementsRepository.manager?.findAndCount) {
+      try {
+        [tpiOrders, totalTpi] =
+          await this.agreementsRepository.manager.findAndCount(WorkOrderTpi, {
+            where: tpiWhere,
+            skip: (safePage - 1) * safeLimit,
+            take: safeLimit,
+            order: { created_at: 'DESC' },
+            relations: [
+              'contractor',
+              'district',
+              'block',
+              'panchayat',
+              'village',
+            ],
+          });
+      } catch {
+        tpiOrders = [];
+        totalTpi = 0;
+      }
+    }
 
     return {
       data: tpiOrders as unknown as WorkItem[],
@@ -1025,13 +1203,17 @@ export class AgreementsService {
 
     let isContractorChanged = false;
     if (updateAgreementDto.hasOwnProperty('contractor_id')) {
-      const newContractorId = updateAgreementDto.contractor_id ? updateAgreementDto.contractor_id : null;
+      const newContractorId = updateAgreementDto.contractor_id
+        ? updateAgreementDto.contractor_id
+        : null;
       if (newContractorId !== agreement.contractor_id) {
         if (newContractorId) {
           await this.validateForeignKeys(newContractorId, []);
         }
         agreement.contractor_id = newContractorId;
-        agreement.contractor = newContractorId ? { id: newContractorId } as User : null;
+        agreement.contractor = newContractorId
+          ? ({ id: newContractorId } as User)
+          : null;
         isContractorChanged = true;
       }
     }
@@ -1039,22 +1221,30 @@ export class AgreementsService {
     const { work_ids, ...updateData } = updateAgreementDto;
 
     if (work_ids) {
-      const currentWorkItemIds = agreement.workItems?.map((item) => item.id) || [];
+      const currentWorkItemIds =
+        agreement.workItems?.map((item) => item.id) || [];
 
       // 1. Identify removed work items
-      const removedIds = currentWorkItemIds.filter((id) => !work_ids.includes(id));
+      const removedIds = currentWorkItemIds.filter(
+        (id) => !work_ids.includes(id),
+      );
       if (removedIds.length > 0) {
         // Set agreement_id and contractor_id to null for removed work items
         await this.workItemsRepository.update(
           { id: In(removedIds) },
-          { agreement_id: null, contractor_id: null }
+          { agreement_id: null, contractor_id: null },
         );
         // Sync in-memory relation array to remove these work items
-        agreement.workItems = agreement.workItems?.filter((item) => !removedIds.includes(item.id)) || [];
+        agreement.workItems =
+          agreement.workItems?.filter(
+            (item) => !removedIds.includes(item.id),
+          ) || [];
       }
 
       // 2. Newly added work orders must not have any agreement ID assigned already
-      const addedWorkIds = work_ids.filter((id) => !currentWorkItemIds.includes(id));
+      const addedWorkIds = work_ids.filter(
+        (id) => !currentWorkItemIds.includes(id),
+      );
       if (addedWorkIds.length > 0) {
         await this.validateForeignKeys(agreement.contractor_id, addedWorkIds);
 
@@ -1108,7 +1298,7 @@ export class AgreementsService {
     // Before removing, nullify agreement_id and contractor_id on all of its work items
     await this.workItemsRepository.update(
       { agreement_id: agreement.id },
-      { agreement_id: null, contractor_id: null }
+      { agreement_id: null, contractor_id: null },
     );
     await this.agreementsRepository.remove(agreement);
   }

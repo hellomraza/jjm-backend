@@ -159,7 +159,7 @@ export class WorkOrderTpiService {
       }
     } else if (role === UserRole.CO) {
       qb.andWhere(
-        '(wo.contractor_id = :contractorId OR agreement.contractor_id = :contractorId)',
+        'agreement.contractor_id = :contractorId',
         { contractorId: userId },
       );
       if (agreementId) {
@@ -281,8 +281,6 @@ export class WorkOrderTpiService {
         throw new ForbiddenException('You are not assigned to this work order');
       }
     }
-
-    console.log(workOrder);
 
     return workOrder;
   }
@@ -543,7 +541,7 @@ export class WorkOrderTpiService {
   ): Promise<WorkOrderTpiPhoto> {
     const photo = await this.photoRepository.findOne({
       where: { id: photoId },
-      relations: ['workOrderTpi'],
+      relations: ['workOrderTpi', 'workOrderTpi.agreement'],
     });
     if (!photo) {
       throw new NotFoundException(`Photo #${photoId} not found`);
@@ -555,7 +553,10 @@ export class WorkOrderTpiService {
       );
     }
 
-    if (photo.workOrderTpi.contractor_id !== contractorUserId) {
+    const isContractorMatch =
+      photo.workOrderTpi.contractor_id === contractorUserId ||
+      photo.workOrderTpi.agreement?.contractor_id === contractorUserId;
+    if (!isContractorMatch) {
       throw new ForbiddenException(
         'You can only select photos for your assigned work orders',
       );

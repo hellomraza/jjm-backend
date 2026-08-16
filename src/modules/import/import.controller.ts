@@ -132,8 +132,11 @@ export class ImportController {
   })
   async bulkInsertAgreements(
     @Body('agreements') agreements: AgreementImport[],
+    @Query('is_tpi') isTpiQuery?: string,
+    @Body('is_tpi') isTpiBody?: boolean,
   ) {
-    return this.agreementsService.bulkCreateFromImport(agreements);
+    const isTpi = isTpiBody === true || isTpiQuery === 'true';
+    return this.agreementsService.bulkCreateFromImport(agreements, isTpi);
   }
 
   @Post('work-items/bulk')

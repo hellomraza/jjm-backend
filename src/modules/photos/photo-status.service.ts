@@ -429,6 +429,53 @@ export class PhotoStatusService {
     limit: number;
     totalPages: number;
   }> {
+    // Check TPI photos first
+    const [tpiPhotos, tpiTotal] = await this.workOrderTpiPhotoRepository.findAndCount({
+      where: { component_id: componentId },
+      relations: ['uploader', 'selectedByUser'],
+      skip: (page - 1) * limit,
+      take: limit,
+      order: { created_at: 'DESC' },
+    });
+
+    if (tpiTotal > 0) {
+      const mappedItems: any[] = tpiPhotos.map((p) => ({
+        id: p.id,
+        photo_id: p.id,
+        work_item_id: p.work_order_tpi_id,
+        component_id: p.component_id,
+        status: p.is_selected
+          ? PhotoStatusEnum.SELECTED
+          : (p.uploader_role === UserRole.TPI ? PhotoStatusEnum.SELECTED : PhotoStatusEnum.UPLOADED),
+        uploader_role: p.uploader_role,
+        is_tpi: p.uploader_role === UserRole.TPI,
+        photo: {
+          id: p.id,
+          image_url: p.image_url,
+          latitude: p.latitude,
+          longitude: p.longitude,
+          timestamp: p.timestamp,
+          employee: {
+            id: p.uploader?.id,
+            name: p.uploader?.name,
+            code: p.uploader?.code,
+            role: p.uploader_role,
+          },
+        },
+        selectedByUser: p.selectedByUser,
+        selected_at: p.selected_at,
+        created_at: p.created_at,
+      }));
+
+      return {
+        data: mappedItems,
+        total: tpiTotal,
+        page,
+        limit,
+        totalPages: Math.ceil(tpiTotal / limit),
+      };
+    }
+
     const [items, total] = await this.photoStatusRepository.findAndCount({
       where: { component_id: componentId },
       relations: {
@@ -448,59 +495,12 @@ export class PhotoStatusService {
       order: { created_at: 'DESC' },
     });
 
-    if (total > 0) {
-      return {
-        data: items,
-        total,
-        page,
-        limit,
-        totalPages: Math.ceil(total / limit),
-      };
-    }
-
-    // Check TPI photos
-    const [tpiPhotos, tpiTotal] = await this.workOrderTpiPhotoRepository.findAndCount({
-      where: { component_id: componentId },
-      relations: ['uploader', 'selectedByUser'],
-      skip: (page - 1) * limit,
-      take: limit,
-      order: { created_at: 'DESC' },
-    });
-
-    const mappedItems: any[] = tpiPhotos.map((p) => ({
-      id: p.id,
-      photo_id: p.id,
-      work_item_id: p.work_order_tpi_id,
-      component_id: p.component_id,
-      status: p.is_selected
-        ? PhotoStatusEnum.SELECTED
-        : (p.uploader_role === UserRole.TPI ? PhotoStatusEnum.SELECTED : PhotoStatusEnum.UPLOADED),
-      uploader_role: p.uploader_role,
-      is_tpi: p.uploader_role === UserRole.TPI,
-      photo: {
-        id: p.id,
-        image_url: p.image_url,
-        latitude: p.latitude,
-        longitude: p.longitude,
-        timestamp: p.timestamp,
-        employee: {
-          id: p.uploader?.id,
-          name: p.uploader?.name,
-          code: p.uploader?.code,
-          role: p.uploader_role,
-        },
-      },
-      selectedByUser: p.selectedByUser,
-      selected_at: p.selected_at,
-      created_at: p.created_at,
-    }));
-
     return {
-      data: mappedItems,
-      total: tpiTotal,
+      data: items,
+      total,
       page,
       limit,
-      totalPages: Math.ceil(tpiTotal / limit),
+      totalPages: Math.ceil(total / limit),
     };
   }
 

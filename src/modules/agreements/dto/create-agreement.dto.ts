@@ -115,4 +115,11 @@ export class CreateAgreementDto {
   @IsString()
   @IsOptional()
   excel?: string;
+
+  @ApiPropertyOptional({
+    description: 'Whether the agreement is created in TPI mode',
+    example: true,
+  })
+  @IsOptional()
+  is_tpi?: boolean;
 }

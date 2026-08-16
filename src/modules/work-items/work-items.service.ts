@@ -21,7 +21,10 @@ import {
 } from 'typeorm';
 import { AgreementsService } from '../agreements/agreements.service';
 import { Agreement } from '../agreements/entities/agreement.entity';
-import { Component, ComponentType } from '../components/entities/component.entity';
+import {
+  Component,
+  ComponentType,
+} from '../components/entities/component.entity';
 import {
   WorkItemComponent,
   WorkItemComponentStatus,
@@ -31,13 +34,13 @@ import {
   type WorkItemImport,
 } from '../import/import.service';
 import { User, UserRole } from '../users/entities/user.entity';
+import { WorkOrderTpiEmployeeAssignment } from '../work-order-tpi/entities/work-order-tpi-employee-assignment.entity';
+import { WorkOrderTpi } from '../work-order-tpi/entities/work-order-tpi.entity';
 import { AssignMultipleEmployeesResponseDto } from './dto/assign-work-item-employee.dto';
 import { CreateWorkItemDto } from './dto/create-work-item.dto';
 import { UpdateWorkItemDto } from './dto/update-work-item.dto';
 import { WorkItemEmployeeAssignment } from './entities/work-item-employee-assignment.entity';
 import { WorkItem, WorkItemStatus } from './entities/work-item.entity';
-import { WorkOrderTpi } from '../work-order-tpi/entities/work-order-tpi.entity';
-import { WorkOrderTpiEmployeeAssignment } from '../work-order-tpi/entities/work-order-tpi-employee-assignment.entity';
 
 @Injectable()
 export class WorkItemsService {
@@ -302,7 +305,8 @@ export class WorkItemsService {
 
             if (existingWorkItemForCode) {
               contractorId = existingWorkItemForCode.contractor_id ?? null;
-              inferredAgreementId = existingWorkItemForCode.agreement_id ?? null;
+              inferredAgreementId =
+                existingWorkItemForCode.agreement_id ?? null;
             }
           }
         }
@@ -504,7 +508,8 @@ export class WorkItemsService {
     const safePage = Number.isNaN(Number(page)) ? 1 : Number(page);
     const safeLimit = Number.isNaN(Number(limit)) ? 20 : Number(limit);
 
-    let where: FindOptionsWhere<WorkItem> = {};
+    let whereWorkItem: FindOptionsWhere<WorkItem> | null = null;
+    let whereTpi: FindOptionsWhere<WorkOrderTpi> | null = null;
 
     if (role === UserRole.CO) {
       const agreementWorkItemIds =
@@ -520,13 +525,15 @@ export class WorkItemsService {
         };
       }
 
-      where = {
-        contractor_id: userId,
+      whereWorkItem = {
         id: In(agreementWorkItemIds),
+        schemetype: Not('TEMP'),
       };
-    }
-
-    if (role === UserRole.DO) {
+      whereTpi = {
+        id: In(agreementWorkItemIds),
+        schemetype: Not('TEMP'),
+      };
+    } else if (role === UserRole.DO) {
       const user = await this.usersRepository.findOne({
         where: { id: userId },
       });
@@ -547,10 +554,9 @@ export class WorkItemsService {
         );
       }
 
-      where = { district_id: districtCode };
-    }
-
-    if (role === UserRole.EM) {
+      whereWorkItem = { district_id: districtCode, schemetype: Not('TEMP') };
+      whereTpi = { district_id: districtCode, schemetype: Not('TEMP') };
+    } else if (role === UserRole.EM) {
       const assignedRows =
         await this.workItemEmployeeAssignmentsRepository.find({
           where: { employee_id: userId },
@@ -561,7 +567,24 @@ export class WorkItemsService {
         ...new Set(assignedRows.map((row) => row.work_item_id)),
       ];
 
-      if (assignedWorkItemIds.length === 0) {
+      let assignedTpiIds: string[] = [];
+      if (this.dataSource.getRepository) {
+        try {
+          const tpiAssignedRows = await this.dataSource
+            .getRepository(WorkOrderTpiEmployeeAssignment)
+            .find({
+              where: { employee_id: userId },
+              select: ['work_order_tpi_id'],
+            });
+          assignedTpiIds = [
+            ...new Set(tpiAssignedRows.map((row) => row.work_order_tpi_id)),
+          ];
+        } catch {
+          assignedTpiIds = [];
+        }
+      }
+
+      if (assignedWorkItemIds.length === 0 && assignedTpiIds.length === 0) {
         return {
           data: [],
           total: 0,
@@ -571,27 +594,77 @@ export class WorkItemsService {
         };
       }
 
-      where = { id: In(assignedWorkItemIds) };
+      if (assignedWorkItemIds.length > 0) {
+        whereWorkItem = {
+          id: In(assignedWorkItemIds),
+          schemetype: Not('TEMP'),
+        };
+      }
+      if (assignedTpiIds.length > 0) {
+        whereTpi = {
+          id: In(assignedTpiIds),
+          schemetype: Not('TEMP'),
+        };
+      }
+    } else {
+      whereWorkItem = { schemetype: Not('TEMP') };
+      whereTpi = { schemetype: Not('TEMP') };
     }
-
-    // Exclude temporary work items for all roles
-    where.schemetype = Not('TEMP');
 
     if (search) {
-      where.work_code = ILike(`%${search}%`);
+      if (whereWorkItem) {
+        whereWorkItem.work_code = ILike(`%${search}%`);
+      }
+      if (whereTpi) {
+        whereTpi.work_code = ILike(`%${search}%`);
+      }
     }
 
-    const [items, total] = await this.workItemsRepository.findAndCount({
-      where,
-      skip: (safePage - 1) * safeLimit,
-      take: safeLimit,
-      order: { created_at: 'DESC' },
-      relations: this.locationRelations,
-    });
+    let workItemsList: WorkItem[] = [];
+    let totalWorkItems = 0;
+    if (whereWorkItem) {
+      const [items, count] = await this.workItemsRepository.findAndCount({
+        where: whereWorkItem,
+        order: { created_at: 'DESC' },
+        relations: this.locationRelations,
+      });
+      workItemsList = items;
+      totalWorkItems = count;
+    }
 
-    // Fetch components for each work item and calculate progress_percentage
+    let tpiWorkItemsList: any[] = [];
+    let totalTpi = 0;
+    if (whereTpi && this.dataSource.getRepository) {
+      try {
+        const [tpiItems, tpiCount] = await this.dataSource
+          .getRepository(WorkOrderTpi)
+          .findAndCount({
+            where: whereTpi,
+            order: { created_at: 'DESC' },
+            relations: [
+              'district',
+              'block',
+              'panchayat',
+              'village',
+              'subdivision',
+              'circle',
+              'zone',
+              'contractor',
+              'agreement',
+              'components',
+            ],
+          });
+        tpiWorkItemsList = tpiItems;
+        totalTpi = tpiCount;
+      } catch {
+        tpiWorkItemsList = [];
+        totalTpi = 0;
+      }
+    }
+
+    // Calculate progress for work items
     const itemsWithCalculatedProgress = await Promise.all(
-      items.map(async (item) => {
+      workItemsList.map(async (item) => {
         const components = await this.dataSource
           .getRepository(WorkItemComponent)
           .find({
@@ -611,8 +684,36 @@ export class WorkItemsService {
       }),
     );
 
+    // Calculate progress for TPI work items
+    const tpiItemsWithProgress = tpiWorkItemsList.map((tpiItem: any) => {
+      if (tpiItem.components && tpiItem.components.length > 0) {
+        const approvedCount = tpiItem.components.filter(
+          (comp: any) => comp.status === WorkItemComponentStatus.APPROVED,
+        ).length;
+        tpiItem.progress_percentage = Math.round(
+          (approvedCount / tpiItem.components.length) * 100,
+        );
+      }
+      return tpiItem as unknown as WorkItem;
+    });
+
+    const combinedAll = [
+      ...itemsWithCalculatedProgress,
+      ...tpiItemsWithProgress,
+    ];
+
+    combinedAll.sort((a, b) => {
+      const timeA = new Date(a.created_at).getTime();
+      const timeB = new Date(b.created_at).getTime();
+      return timeB - timeA;
+    });
+
+    const total = totalWorkItems + totalTpi;
+    const startIndex = (safePage - 1) * safeLimit;
+    const paginatedItems = combinedAll.slice(startIndex, startIndex + safeLimit);
+
     return {
-      data: itemsWithCalculatedProgress,
+      data: paginatedItems,
       total,
       page: safePage,
       limit: safeLimit,
@@ -698,13 +799,18 @@ export class WorkItemsService {
   ): Promise<WorkItemEmployeeAssignment> {
     const workItem = await this.workItemsRepository.findOne({
       where: { id: workItemId },
+      relations: ['agreement'],
     });
 
     if (!workItem) {
       throw new NotFoundException(`Work item #${workItemId} not found`);
     }
 
-    if (workItem.contractor_id !== contractorId) {
+    const isContractorMatch =
+      workItem.contractor_id === contractorId ||
+      workItem.agreement?.contractor_id === contractorId;
+
+    if (!isContractorMatch) {
       throw new ForbiddenException(
         'You can only assign employees to your own work items',
       );
@@ -1013,12 +1119,42 @@ export class WorkItemsService {
       relations: this.locationRelations,
     });
 
+    let tpiItems: any[] = [];
+    let tpiTotal = 0;
+    if (this.workItemsRepository.manager?.findAndCount) {
+      try {
+        [tpiItems, tpiTotal] =
+          await this.workItemsRepository.manager.findAndCount(WorkOrderTpi, {
+            where: { agreement_id: IsNull() },
+            skip: (safePage - 1) * safeLimit,
+            take: safeLimit,
+            order: { created_at: 'DESC' },
+            relations: [
+              'district',
+              'block',
+              'panchayat',
+              'village',
+              'subdivision',
+              'circle',
+              'zone',
+              'contractor',
+            ],
+          });
+      } catch {
+        tpiItems = [];
+        tpiTotal = 0;
+      }
+    }
+
+    const combined = [...items, ...(tpiItems as unknown as WorkItem[])];
+    const combinedTotal = total + tpiTotal;
+
     return {
-      data: items,
-      total,
+      data: combined,
+      total: combinedTotal,
       page: safePage,
       limit: safeLimit,
-      totalPages: Math.ceil(total / safeLimit),
+      totalPages: Math.ceil(combinedTotal / safeLimit),
     };
   }
 
