@@ -270,7 +270,7 @@ export class WorkItemsService {
           );
         }
 
-        const contractorCode = workItemImport.contractor_code?.trim();
+        const contractorCode = (workItemImport as any).contractor_code?.trim();
         let contractorId: string | null = null;
         let inferredAgreementId: string | null = null;
 
@@ -318,7 +318,6 @@ export class WorkItemsService {
             case 'district_id':
             case 'block_id':
             case 'panchayat_id':
-            case 'workcodeid':
               mappedWorkItem[entityKey] = String(rawValue);
               break;
             case 'serial_no':
@@ -336,13 +335,7 @@ export class WorkItemsService {
             case 'nofhtc':
               mappedWorkItem[entityKey] = String(rawValue);
               break;
-            case 'created_at':
-              mappedWorkItem[entityKey] =
-                rawValue instanceof Date ? rawValue : new Date(rawValue);
-              break;
             case 'work_code':
-            case 'excel':
-            case 'schemecategory':
             case 'schemetype':
               mappedWorkItem[entityKey] = String(rawValue);
               break;

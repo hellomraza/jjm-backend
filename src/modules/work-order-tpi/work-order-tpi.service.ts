@@ -684,7 +684,77 @@ export class WorkOrderTpiService {
       const schemetype = item.schemetype?.trim() || 'TPI';
       if (!workCode) continue;
 
-      const existing = await this.workOrderTpiRepository.findOne({
+      const districtId =
+        item.district_code !== undefined && item.district_code !== null
+          ? String(item.district_code)
+          : item.district_id !== undefined && item.district_id !== null
+          ? String(item.district_id)
+          : undefined;
+
+      const blockId =
+        item.block_code !== undefined && item.block_code !== null
+          ? String(item.block_code)
+          : item.block_id !== undefined && item.block_id !== null
+          ? String(item.block_id)
+          : undefined;
+
+      const panchayatId =
+        item.panchayat_code !== undefined && item.panchayat_code !== null
+          ? String(item.panchayat_code)
+          : item.panchayat_id !== undefined && item.panchayat_id !== null
+          ? String(item.panchayat_id)
+          : undefined;
+
+      const villageId =
+        item.village_code !== undefined && item.village_code !== null
+          ? String(item.village_code)
+          : item.village_id !== undefined && item.village_id !== null
+          ? String(item.village_id)
+          : undefined;
+
+      const nofhtc =
+        item.nofhtc !== null && item.nofhtc !== undefined
+          ? String(item.nofhtc)
+          : undefined;
+
+      const amountApproved =
+        item.aa_amount !== null && item.aa_amount !== undefined
+          ? Number(item.aa_amount)
+          : item.amount_approved !== null && item.amount_approved !== undefined
+          ? Number(item.amount_approved)
+          : undefined;
+
+      const paymentAmount =
+        item.payment_rs !== null && item.payment_rs !== undefined
+          ? Number(item.payment_rs)
+          : item.payment_amount !== null && item.payment_amount !== undefined
+          ? Number(item.payment_amount)
+          : undefined;
+
+      const serialNo =
+        item.sr !== null && item.sr !== undefined
+          ? Number(item.sr)
+          : item.serial_no !== null && item.serial_no !== undefined
+          ? Number(item.serial_no)
+          : undefined;
+
+      let contractorId = item.contractor_id ?? undefined;
+      let agreementId = item.agreement_id ?? undefined;
+
+      if (!agreementId || !contractorId) {
+        const agreement = await this.agreementRepository.findOne({
+          where: [
+            { workOrderTpis: { work_code: workCode } },
+            { workItems: { work_code: workCode } },
+          ],
+        });
+        if (agreement) {
+          agreementId = agreement.id;
+          contractorId = contractorId || agreement.contractor_id;
+        }
+      }
+
+      let existing = await this.workOrderTpiRepository.findOne({
         where: { work_code: workCode },
       });
 
@@ -692,14 +762,18 @@ export class WorkOrderTpiService {
         const workOrderPayload: DeepPartial<WorkOrderTpi> = {
           work_code: workCode,
           schemetype,
-          title: item.title || item.workcodeid || `TPI Work Order ${workCode}`,
+          title: item.title || `TPI Work Order ${workCode}`,
           description: item.description,
-          district_id: item.district_id,
-          block_id: item.block_id ? String(item.block_id) : undefined,
-          panchayat_id: item.panchayat_id ? String(item.panchayat_id) : undefined,
-          village_id: item.village_id ? String(item.village_id) : undefined,
-          nofhtc: item.nofhtc ? String(item.nofhtc) : undefined,
-          amount_approved: item.amount_approved ? Number(item.amount_approved) : undefined,
+          district_id: districtId,
+          block_id: blockId,
+          panchayat_id: panchayatId,
+          village_id: villageId,
+          nofhtc,
+          amount_approved: amountApproved,
+          payment_amount: paymentAmount,
+          serial_no: serialNo,
+          contractor_id: contractorId,
+          agreement_id: agreementId,
           latitude: item.latitude ? Number(item.latitude) : undefined,
           longitude: item.longitude ? Number(item.longitude) : undefined,
           progress_percentage: 0,
@@ -721,6 +795,21 @@ export class WorkOrderTpiService {
         );
         await this.componentRepository.save(components);
         created.push(saved);
+      } else {
+        existing.district_id = districtId ?? existing.district_id;
+        existing.block_id = blockId ?? existing.block_id;
+        existing.panchayat_id = panchayatId ?? existing.panchayat_id;
+        existing.village_id = villageId ?? existing.village_id;
+        existing.nofhtc = nofhtc ?? existing.nofhtc;
+        existing.amount_approved = amountApproved ?? existing.amount_approved;
+        existing.payment_amount = paymentAmount ?? existing.payment_amount;
+        existing.serial_no = serialNo ?? existing.serial_no;
+        existing.contractor_id = contractorId ?? existing.contractor_id;
+        existing.agreement_id = agreementId ?? existing.agreement_id;
+        existing.schemetype = schemetype ?? existing.schemetype;
+
+        const updated = await this.workOrderTpiRepository.save(existing);
+        created.push(updated);
       }
     }
 

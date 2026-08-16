@@ -82,20 +82,15 @@ export const importAgreementMapping: Record<
 };
 
 export type WorkItemImport = {
-  workcodeid: number | null;
   workcode: string | null;
-  excel: string | null;
   district_code: string | null;
   block_code: string | null;
   panchayat_code: string | null;
   schemetype: string | null;
-  schemecategory: string | null;
   nofhtc: number | null;
   aa_amount: number | null;
   payment_rs: number | null;
   sr: string | null;
-  systemdate: Date | null;
-  contractor_code: string | null;
 };
 
 export const importWorkItemMapping: Record<
@@ -123,23 +118,23 @@ export const importWorkItemMapping: Record<
     | 'zone_id'
     | 'subdivision_id'
     | 'agreement_id'
+    | 'contractor_id'
+    | 'schemecategory'
+    | 'workcodeid'
+    | 'created_at'
+    | 'excel'
   >,
   keyof WorkItemImport
 > = {
   amount_approved: 'aa_amount',
   block_id: 'block_code',
   district_id: 'district_code',
-  excel: 'excel',
   nofhtc: 'nofhtc',
-  contractor_id: 'contractor_code',
   panchayat_id: 'panchayat_code',
   work_code: 'workcode',
   payment_amount: 'payment_rs',
-  schemecategory: 'schemecategory',
   schemetype: 'schemetype',
   serial_no: 'sr',
-  created_at: 'systemdate',
-  workcodeid: 'workcodeid',
 };
 
 type Contractor = {
@@ -509,13 +504,6 @@ export class ImportService {
     };
 
     const idxMap = {
-      workcodeid: findIndex([
-        'workcodeid',
-        'workcode id',
-        'work_code_id',
-        'work id',
-        'workid',
-      ]),
       workcode: findExactIndex([
         'workcode',
         'work code',
@@ -523,7 +511,6 @@ export class ImportService {
         'workcodenew',
         'work_code_new',
       ]),
-      excel: findIndex(['excel']),
       district_code: findIndex([
         'districtid',
         'district_id',
@@ -551,11 +538,6 @@ export class ImportService {
         'scheme type',
         'scheme_type',
       ]),
-      schemecategory: findIndex([
-        'schemecategory',
-        'scheme category',
-        'scheme_category',
-      ]),
       nofhtc: findIndex([
         'no_fhtc',
         'no fhtc',
@@ -572,18 +554,6 @@ export class ImportService {
         'payment',
       ]),
       sr: findIndex(['s.no.', 's.no', 'sno', 'sr', 's/r', 's r']),
-      systemdate: findIndex([
-        'systemdate',
-        'system date',
-        'system_date',
-        'date',
-      ]),
-      contractor_code: findIndex([
-        'contractor_code',
-        'contractor code',
-        'cid',
-        'contractorid',
-      ]),
     };
 
     const dataRows = rows.slice(headerRowIndex + 1);
@@ -594,20 +564,15 @@ export class ImportService {
       const get = (i: number): unknown => (i >= 0 ? row[i] : undefined);
 
       const item: WorkItemImport = {
-        workcodeid: this.normalizeNumber(get(idxMap.workcodeid)),
         workcode: this.normalizeString(get(idxMap.workcode)),
-        excel: this.normalizeString(get(idxMap.excel)),
         district_code: this.normalizeString(get(idxMap.district_code)),
         block_code: this.normalizeString(get(idxMap.block_code)),
         panchayat_code: this.normalizeString(get(idxMap.panchayat_code)),
         schemetype: this.normalizeString(get(idxMap.schemetype)),
-        schemecategory: this.normalizeString(get(idxMap.schemecategory)),
         nofhtc: this.normalizeNumber(get(idxMap.nofhtc)),
         aa_amount: this.normalizeNumber(get(idxMap.aa_amount)),
         payment_rs: this.normalizeNumber(get(idxMap.payment_rs)),
         sr: this.normalizeString(get(idxMap.sr)),
-        systemdate: this.excelDateFix(get(idxMap.systemdate)),
-        contractor_code: this.normalizeString(get(idxMap.contractor_code)),
       };
 
       items.push(item);

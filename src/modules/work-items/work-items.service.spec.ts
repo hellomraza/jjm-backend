@@ -378,7 +378,6 @@ describe('WorkItemsService', () => {
         schemetype: 'PWS',
         district_id: 'CG-RPR',
         contractor_id: 'contractor-id',
-        excel: 'EX-003',
       }),
     );
   });

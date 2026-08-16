@@ -261,20 +261,15 @@ describe('ImportService', () => {
     expect(result.workItemTable).toBeDefined();
     expect(result.workItemTable).toHaveLength(1);
     expect(result.workItemTable?.[0]).toMatchObject({
-      workcodeid: 101,
       workcode: 'W-101',
-      excel: 'EX-101',
       district_code: '12',
       block_code: '21',
       panchayat_code: '31',
       schemetype: 'PWS',
-      schemecategory: 'Category A',
       nofhtc: 4,
       aa_amount: 1500,
       payment_rs: 1200,
       sr: 'SR-101',
-      systemdate: new Date('2026-01-10T00:00:00.000Z'),
-      contractor_code: 'CON-101',
     });
   });
 
