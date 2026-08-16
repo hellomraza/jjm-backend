@@ -374,6 +374,14 @@ export class WorkOrderTpiService {
     return { assigned, failed };
   }
 
+  async getAssignedEmployees(workOrderTpiId: string): Promise<User[]> {
+    const assignments = await this.employeeAssignmentRepository.find({
+      where: { work_order_tpi_id: workOrderTpiId },
+      relations: ['employee'],
+    });
+    return assignments.map((a) => a.employee).filter(Boolean);
+  }
+
   async uploadPhoto(
     workOrderTpiId: string,
     componentId: string,

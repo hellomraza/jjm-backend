@@ -164,6 +164,23 @@ export class WorkOrderTpiController {
     );
   }
 
+  @Get(':id/employees')
+  @Roles(
+    UserRole.HO,
+    UserRole.DO,
+    UserRole.CO,
+    UserRole.EM,
+    UserRole.TPI,
+  )
+  @ApiOperation({
+    summary: 'Get assigned employees for Work Order TPI',
+    description: 'Returns list of employees assigned to this TPI work order',
+  })
+  @ApiParam({ name: 'id', type: String })
+  getAssignedEmployees(@Param('id') id: string) {
+    return this.workOrderTpiService.getAssignedEmployees(id);
+  }
+
   @Post(':id/components/:componentId/photos')
   @Roles(UserRole.EM, UserRole.TPI)
   @ApiOperation({
