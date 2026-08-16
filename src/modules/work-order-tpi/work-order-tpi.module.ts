@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { Agreement } from '../agreements/entities/agreement.entity';
+import { Component } from '../components/entities/component.entity';
 import { User } from '../users/entities/user.entity';
 import { WorkOrderTpiAssignment } from './entities/work-order-tpi-assignment.entity';
 import { WorkOrderTpiComponent } from './entities/work-order-tpi-component.entity';
@@ -22,6 +23,7 @@ import { WorkOrderTpiService } from './work-order-tpi.service';
       WorkOrderTpiPhotoStatus,
       User,
       Agreement,
+      Component,
     ]),
   ],
   controllers: [WorkOrderTpiController],

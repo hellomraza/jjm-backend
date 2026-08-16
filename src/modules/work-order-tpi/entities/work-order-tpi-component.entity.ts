@@ -10,6 +10,7 @@ import {
   Unique,
   UpdateDateColumn,
 } from 'typeorm';
+import { Component } from '../../components/entities/component.entity';
 import { WorkOrderTpi } from './work-order-tpi.entity';
 import { WorkOrderTpiPhoto } from './work-order-tpi-photo.entity';
 
@@ -37,6 +38,13 @@ export class WorkOrderTpiComponent {
   })
   @JoinColumn({ name: 'work_order_tpi_id' })
   workOrderTpi!: WorkOrderTpi;
+
+  @Column({ nullable: true })
+  component_id?: string;
+
+  @ManyToOne(() => Component, { nullable: true, onDelete: 'SET NULL' })
+  @JoinColumn({ name: 'component_id' })
+  component?: Component;
 
   @Column({ type: 'varchar', length: 255 })
   name!: string;

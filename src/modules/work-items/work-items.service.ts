@@ -21,7 +21,7 @@ import {
 } from 'typeorm';
 import { AgreementsService } from '../agreements/agreements.service';
 import { Agreement } from '../agreements/entities/agreement.entity';
-import { Component } from '../components/entities/component.entity';
+import { Component, ComponentType } from '../components/entities/component.entity';
 import {
   WorkItemComponent,
   WorkItemComponentStatus,
@@ -153,6 +153,7 @@ export class WorkItemsService {
   async create(createWorkItemDto: CreateWorkItemDto): Promise<WorkItem> {
     return this.dataSource.transaction(async (manager) => {
       const masterComponents = await manager.find(Component, {
+        where: { type: ComponentType.SVS },
         order: { order_number: 'ASC' },
       });
 
@@ -245,6 +246,7 @@ export class WorkItemsService {
       const createdWorkItems: WorkItem[] = [];
 
       const masterComponents = await manager.find(Component, {
+        where: { type: ComponentType.SVS },
         order: { order_number: 'ASC' },
       });
 

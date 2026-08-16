@@ -7,6 +7,7 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DeepPartial, Repository } from 'typeorm';
+import { Component, ComponentType } from '../components/entities/component.entity';
 import { Agreement } from '../agreements/entities/agreement.entity';
 import {
   PhotoStatusEnum,
@@ -33,6 +34,8 @@ export class WorkOrderTpiService {
     private readonly workOrderTpiRepository: Repository<WorkOrderTpi>,
     @InjectRepository(WorkOrderTpiComponent)
     private readonly componentRepository: Repository<WorkOrderTpiComponent>,
+    @InjectRepository(Component)
+    private readonly masterComponentRepository: Repository<Component>,
     @InjectRepository(WorkOrderTpiAssignment)
     private readonly tpiAssignmentRepository: Repository<WorkOrderTpiAssignment>,
     @InjectRepository(WorkOrderTpiEmployeeAssignment)
@@ -77,10 +80,18 @@ export class WorkOrderTpiService {
     const created = this.workOrderTpiRepository.create(workOrderPayload);
     const saved = await this.workOrderTpiRepository.save(created);
 
-    // Auto-create 8 static components for this work order
-    const componentsToCreate = STATIC_TPI_COMPONENTS.map((tpl) =>
+    // Fetch master TPI components or fallback to constants
+    const masterComponents = await this.masterComponentRepository.find({
+      where: { type: ComponentType.TPI },
+      order: { order_number: 'ASC' },
+    });
+
+    const componentsToCreate = (
+      masterComponents.length > 0 ? masterComponents : STATIC_TPI_COMPONENTS
+    ).map((tpl: any) =>
       this.componentRepository.create({
         work_order_tpi_id: saved.id,
+        component_id: tpl.id || undefined,
         name: tpl.name,
         unit: tpl.unit,
         order_number: tpl.order_number,
@@ -783,9 +794,17 @@ export class WorkOrderTpiService {
         const newEntity = this.workOrderTpiRepository.create(workOrderPayload);
         const saved = await this.workOrderTpiRepository.save(newEntity);
 
-        const components = STATIC_TPI_COMPONENTS.map((c) =>
+        const masterComponents = await this.masterComponentRepository.find({
+          where: { type: ComponentType.TPI },
+          order: { order_number: 'ASC' },
+        });
+
+        const components = (
+          masterComponents.length > 0 ? masterComponents : STATIC_TPI_COMPONENTS
+        ).map((c: any) =>
           this.componentRepository.create({
             work_order_tpi_id: saved.id,
+            component_id: c.id || undefined,
             name: c.name,
             unit: c.unit,
             order_number: c.order_number,

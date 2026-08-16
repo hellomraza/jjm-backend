@@ -8,12 +8,24 @@ import {
   UpdateDateColumn,
 } from 'typeorm';
 
+export enum ComponentType {
+  SVS = 'SVS',
+  TPI = 'TPI',
+}
+
 @Entity('components')
-@Unique('UQ_COMPONENT_ORDER_NUMBER', ['order_number'])
-@Index('IDX_COMPONENT_ORDER_NUMBER', ['order_number'])
+@Unique('UQ_COMPONENT_TYPE_ORDER_NUMBER', ['type', 'order_number'])
+@Index('IDX_COMPONENT_TYPE_ORDER_NUMBER', ['type', 'order_number'])
 export class Component {
   @PrimaryGeneratedColumn()
   id: string;
+
+  @Column({
+    type: 'varchar',
+    length: 20,
+    default: ComponentType.SVS,
+  })
+  type: ComponentType | string;
 
   @Column()
   name: string;

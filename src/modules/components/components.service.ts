@@ -15,7 +15,7 @@ import { WorkItem } from '../work-items/entities/work-item.entity';
 import { UpdateWorkItemComponentDto } from './dto/update-work-item-component.dto';
 import { UploadComponentPhotoUrlDto } from './dto/upload-component-photo-url.dto';
 import { UploadComponentPhotoDto } from './dto/upload-component-photo.dto';
-import { Component } from './entities/component.entity';
+import { Component, ComponentType } from './entities/component.entity';
 import {
   WorkItemComponent,
   WorkItemComponentStatus,
@@ -38,8 +38,13 @@ export class ComponentsService {
     private readonly dataSource: DataSource,
   ) {}
 
-  async findMasterComponents(): Promise<Component[]> {
+  async findMasterComponents(type?: ComponentType | string): Promise<Component[]> {
+    const where: any = {};
+    if (type) {
+      where.type = type;
+    }
     return this.componentRepo.find({
+      where,
       order: { order_number: 'ASC' },
     });
   }
