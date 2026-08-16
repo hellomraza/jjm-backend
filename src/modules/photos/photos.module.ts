@@ -12,6 +12,10 @@ import { PhotoStatusService } from './photo-status.service';
 import { PhotosController } from './photos.controller';
 import { PhotosService } from './photos.service';
 
+import { WorkOrderTpiPhoto } from '../work-order-tpi/entities/work-order-tpi-photo.entity';
+import { WorkOrderTpiComponent } from '../work-order-tpi/entities/work-order-tpi-component.entity';
+import { WorkOrderTpi } from '../work-order-tpi/entities/work-order-tpi.entity';
+
 @Module({
   imports: [
     TypeOrmModule.forFeature([
@@ -20,6 +24,9 @@ import { PhotosService } from './photos.service';
       WorkItem,
       Component,
       WorkItemComponent,
+      WorkOrderTpiPhoto,
+      WorkOrderTpiComponent,
+      WorkOrderTpi,
     ]),
     UploadModule,
   ],

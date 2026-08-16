@@ -11,16 +11,11 @@ import {
   UpdateDateColumn,
 } from 'typeorm';
 import { Component } from '../../components/entities/component.entity';
+import { WorkItemComponentStatus } from '../../components/entities/work-item-component.entity';
 import { WorkOrderTpi } from './work-order-tpi.entity';
 import { WorkOrderTpiPhoto } from './work-order-tpi-photo.entity';
 
-export enum WorkItemComponentStatus {
-  PENDING = 'PENDING',
-  IN_PROGRESS = 'IN_PROGRESS',
-  COMPLETED = 'COMPLETED',
-  APPROVED = 'APPROVED',
-  REJECTED = 'REJECTED',
-}
+export { WorkItemComponentStatus };
 
 @Entity('work_order_tpi_components')
 @Unique('UQ_WORK_ORDER_TPI_COMPONENT', ['work_order_tpi_id', 'order_number'])
@@ -46,14 +41,14 @@ export class WorkOrderTpiComponent {
   @JoinColumn({ name: 'component_id' })
   component?: Component;
 
-  @Column({ type: 'varchar', length: 255 })
-  name!: string;
+  @Column({ type: 'varchar', length: 255, nullable: true })
+  name?: string;
 
-  @Column({ type: 'varchar', length: 50, default: 'No.' })
-  unit!: string;
+  @Column({ type: 'varchar', length: 50, nullable: true, default: 'No.' })
+  unit?: string;
 
-  @Column({ type: 'int' })
-  order_number!: number;
+  @Column({ type: 'int', nullable: true })
+  order_number?: number;
 
   @OneToMany(() => WorkOrderTpiPhoto, (photo) => photo.workOrderTpiComponent)
   photos?: WorkOrderTpiPhoto[];

@@ -30,6 +30,19 @@ describe('ComponentsService', () => {
     createQueryBuilder: jest.fn(),
   } as unknown as Repository<WorkItemComponent>;
 
+  const workOrderTpiComponentRepo = {
+    findOne: jest.fn(),
+    find: jest.fn(),
+    save: jest.fn(),
+  } as unknown as any;
+
+  const workOrderTpiRepo = {
+    findOne: jest.fn(),
+    find: jest.fn(),
+    save: jest.fn(),
+    update: jest.fn(),
+  } as unknown as any;
+
   const workItemRepo = {} as Repository<WorkItem>;
   const photoRepo = {
     findAndCount: jest.fn(),
@@ -52,6 +65,8 @@ describe('ComponentsService', () => {
     service = new ComponentsService(
       componentRepo,
       workItemComponentRepo,
+      workOrderTpiComponentRepo,
+      workOrderTpiRepo,
       workItemRepo,
       photoRepo,
       userRepo,

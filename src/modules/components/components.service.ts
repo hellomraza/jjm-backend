@@ -20,6 +20,8 @@ import {
   WorkItemComponent,
   WorkItemComponentStatus,
 } from './entities/work-item-component.entity';
+import { WorkOrderTpiComponent } from '../work-order-tpi/entities/work-order-tpi-component.entity';
+import { WorkOrderTpi, WorkItemStatus } from '../work-order-tpi/entities/work-order-tpi.entity';
 
 @Injectable()
 export class ComponentsService {
@@ -28,6 +30,10 @@ export class ComponentsService {
     private readonly componentRepo: Repository<Component>,
     @InjectRepository(WorkItemComponent)
     private readonly workItemComponentRepo: Repository<WorkItemComponent>,
+    @InjectRepository(WorkOrderTpiComponent)
+    private readonly workOrderTpiComponentRepo: Repository<WorkOrderTpiComponent>,
+    @InjectRepository(WorkOrderTpi)
+    private readonly workOrderTpiRepo: Repository<WorkOrderTpi>,
     @InjectRepository(WorkItem)
     private readonly workItemRepo: Repository<WorkItem>,
     @InjectRepository(Photo)
@@ -49,8 +55,8 @@ export class ComponentsService {
     });
   }
 
-  async findByWorkItem(workItemId: string): Promise<WorkItemComponent[]> {
-    return this.workItemComponentRepo.find({
+  async findByWorkItem(workItemId: string): Promise<any[]> {
+    const svsComponents = await this.workItemComponentRepo.find({
       where: { work_item_id: workItemId },
       relations: ['component'],
       order: {
@@ -59,40 +65,136 @@ export class ComponentsService {
         },
       },
     });
+
+    if (svsComponents && svsComponents.length > 0) {
+      return svsComponents;
+    }
+
+    // Check TPI work order components
+    const tpiComponents = await this.workOrderTpiComponentRepo.find({
+      where: { work_order_tpi_id: workItemId },
+      relations: ['component', 'photos'],
+      order: {
+        order_number: 'ASC',
+      },
+    });
+
+    return tpiComponents.map((c) => ({
+      id: c.id,
+      work_item_id: c.work_order_tpi_id,
+      component_id: c.component_id,
+      component: c.component
+        ? {
+            id: c.component.id,
+            name: c.component.name,
+            unit: c.component.unit,
+            order_number: c.component.order_number,
+            type: c.component.type,
+          }
+        : {
+            id: c.component_id,
+            name: c.name || 'Component',
+            unit: c.unit || 'No.',
+            order_number: c.order_number,
+            type: 'TPI',
+          },
+      quantity: c.quantity,
+      progress: c.progress,
+      status: c.status,
+      remarks: c.remarks,
+      approved_photo_id: c.approved_photo_id,
+      created_at: c.created_at,
+      updated_at: c.updated_at,
+      photos: c.photos,
+    }));
   }
 
-  async findOneMapping(id: string): Promise<WorkItemComponent> {
+  async findOneMapping(id: string): Promise<any> {
     const mapping = await this.workItemComponentRepo.findOne({
       where: { id },
       relations: ['component', 'workItem'],
     });
 
-    if (!mapping) {
-      throw new NotFoundException(
-        `Work item component mapping with ID ${id} not found`,
-      );
+    if (mapping) {
+      return mapping;
     }
 
-    return mapping;
+    const tpiMapping = await this.workOrderTpiComponentRepo.findOne({
+      where: { id },
+      relations: ['component', 'workOrderTpi', 'photos'],
+    });
+
+    if (tpiMapping) {
+      return {
+        id: tpiMapping.id,
+        work_item_id: tpiMapping.work_order_tpi_id,
+        component_id: tpiMapping.component_id,
+        component: tpiMapping.component
+          ? {
+              id: tpiMapping.component.id,
+              name: tpiMapping.component.name,
+              unit: tpiMapping.component.unit,
+              order_number: tpiMapping.component.order_number,
+              type: tpiMapping.component.type,
+            }
+          : {
+              id: tpiMapping.component_id,
+              name: tpiMapping.name || 'Component',
+              unit: tpiMapping.unit || 'No.',
+              order_number: tpiMapping.order_number,
+              type: 'TPI',
+            },
+        quantity: tpiMapping.quantity,
+        progress: tpiMapping.progress,
+        status: tpiMapping.status,
+        remarks: tpiMapping.remarks,
+        approved_photo_id: tpiMapping.approved_photo_id,
+        workItem: tpiMapping.workOrderTpi,
+        created_at: tpiMapping.created_at,
+        updated_at: tpiMapping.updated_at,
+        photos: tpiMapping.photos,
+      };
+    }
+
+    throw new NotFoundException(
+      `Work item component mapping with ID ${id} not found`,
+    );
   }
 
   async updateMapping(
     id: string,
     updateDto: UpdateWorkItemComponentDto,
-  ): Promise<WorkItemComponent> {
+  ): Promise<any> {
     if (Object.keys(updateDto).length === 0) {
       throw new BadRequestException('At least one field must be provided');
     }
 
-    const mapping = await this.findOneMapping(id);
-    Object.assign(mapping, updateDto);
-    const updated = await this.workItemComponentRepo.save(mapping);
+    const svsMapping = await this.workItemComponentRepo.findOne({
+      where: { id },
+    });
 
-    if (updateDto.status) {
-      await this.recalculateProgress(mapping.work_item_id);
+    if (svsMapping) {
+      Object.assign(svsMapping, updateDto);
+      const updated = await this.workItemComponentRepo.save(svsMapping);
+      if (updateDto.status) {
+        await this.recalculateProgress(svsMapping.work_item_id);
+      }
+      return updated;
     }
 
-    return updated;
+    const tpiMapping = await this.workOrderTpiComponentRepo.findOne({
+      where: { id },
+    });
+
+    if (tpiMapping) {
+      Object.assign(tpiMapping, updateDto);
+      const updated = await this.workOrderTpiComponentRepo.save(tpiMapping);
+      return updated;
+    }
+
+    throw new NotFoundException(
+      `Work item component mapping with ID ${id} not found`,
+    );
   }
 
   async recalculateProgress(

@@ -5,11 +5,15 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { UserRole } from '../users/entities/user.entity';
 import {
   WorkItemComponent,
   WorkItemComponentStatus,
 } from '../components/entities/work-item-component.entity';
 import { WorkItem } from '../work-items/entities/work-item.entity';
+import { WorkOrderTpiComponent } from '../work-order-tpi/entities/work-order-tpi-component.entity';
+import { WorkOrderTpiPhoto } from '../work-order-tpi/entities/work-order-tpi-photo.entity';
+import { WorkOrderTpi, WorkItemStatus } from '../work-order-tpi/entities/work-order-tpi.entity';
 import { PhotoStatus, PhotoStatusEnum } from './entities/photo-status.entity';
 import { Photo } from './entities/photo.entity';
 
@@ -24,6 +28,12 @@ export class PhotoStatusService {
     private workItemRepository: Repository<WorkItem>,
     @InjectRepository(WorkItemComponent)
     private workItemComponentRepository: Repository<WorkItemComponent>,
+    @InjectRepository(WorkOrderTpiPhoto)
+    private workOrderTpiPhotoRepository: Repository<WorkOrderTpiPhoto>,
+    @InjectRepository(WorkOrderTpiComponent)
+    private workOrderTpiComponentRepository: Repository<WorkOrderTpiComponent>,
+    @InjectRepository(WorkOrderTpi)
+    private workOrderTpiRepository: Repository<WorkOrderTpi>,
   ) {}
 
   /**
@@ -75,6 +85,38 @@ export class PhotoStatusService {
     });
 
     if (!photoStatus) {
+      const tpiPhoto = await this.workOrderTpiPhotoRepository.findOne({
+        where: { id: photoId },
+      });
+      if (tpiPhoto) {
+        tpiPhoto.is_selected = true;
+        tpiPhoto.selected_by = contractorId;
+        tpiPhoto.selected_at = new Date();
+        await this.workOrderTpiPhotoRepository.save(tpiPhoto);
+
+        const tpiComponent = await this.workOrderTpiComponentRepository.findOne({
+          where: { id: tpiPhoto.component_id },
+        });
+        if (
+          tpiComponent &&
+          tpiComponent.status !== WorkItemComponentStatus.APPROVED &&
+          tpiComponent.status !== WorkItemComponentStatus.SUBMITTED
+        ) {
+          tpiComponent.status = WorkItemComponentStatus.SUBMITTED;
+          await this.workOrderTpiComponentRepository.save(tpiComponent);
+        }
+
+        return {
+          id: tpiPhoto.id,
+          photo_id: tpiPhoto.id,
+          work_item_id: tpiPhoto.work_order_tpi_id,
+          component_id: tpiPhoto.component_id,
+          status: PhotoStatusEnum.SELECTED,
+          selected_by: contractorId,
+          selected_at: new Date(),
+        } as any;
+      }
+
       throw new NotFoundException(
         `Photo status record for photo ${photoId} not found`,
       );
@@ -128,6 +170,45 @@ export class PhotoStatusService {
     });
 
     if (!photoStatus) {
+      const tpiPhoto = await this.workOrderTpiPhotoRepository.findOne({
+        where: { id: photoId },
+      });
+      if (tpiPhoto) {
+        tpiPhoto.is_selected = false;
+        tpiPhoto.selected_by = null;
+        tpiPhoto.selected_at = null;
+        await this.workOrderTpiPhotoRepository.save(tpiPhoto);
+
+        const remainingSelected = await this.workOrderTpiPhotoRepository.count({
+          where: {
+            component_id: tpiPhoto.component_id,
+            is_selected: true,
+          },
+        });
+
+        if (remainingSelected === 0) {
+          const tpiComponent = await this.workOrderTpiComponentRepository.findOne({
+            where: { id: tpiPhoto.component_id },
+          });
+          if (
+            tpiComponent &&
+            tpiComponent.status !== WorkItemComponentStatus.APPROVED &&
+            tpiComponent.status !== WorkItemComponentStatus.REJECTED
+          ) {
+            tpiComponent.status = WorkItemComponentStatus.IN_PROGRESS;
+            await this.workOrderTpiComponentRepository.save(tpiComponent);
+          }
+        }
+
+        return {
+          id: tpiPhoto.id,
+          photo_id: tpiPhoto.id,
+          work_item_id: tpiPhoto.work_order_tpi_id,
+          component_id: tpiPhoto.component_id,
+          status: PhotoStatusEnum.UPLOADED,
+        } as any;
+      }
+
       throw new NotFoundException(
         `Photo status record for photo ${photoId} not found`,
       );
@@ -187,6 +268,57 @@ export class PhotoStatusService {
     });
 
     if (!photoStatus) {
+      const tpiPhoto = await this.workOrderTpiPhotoRepository.findOne({
+        where: { id: photoId },
+      });
+      if (tpiPhoto) {
+        tpiPhoto.is_selected = true;
+        await this.workOrderTpiPhotoRepository.save(tpiPhoto);
+
+        const tpiComponent = await this.workOrderTpiComponentRepository.findOne({
+          where: { id: tpiPhoto.component_id },
+        });
+
+        if (tpiComponent) {
+          tpiComponent.status = WorkItemComponentStatus.APPROVED;
+          tpiComponent.approved_at = new Date();
+          tpiComponent.progress = 100;
+          tpiComponent.approved_photo_id = tpiPhoto.id;
+          await this.workOrderTpiComponentRepository.save(tpiComponent);
+
+          const allComps = await this.workOrderTpiComponentRepository.find({
+            where: { work_order_tpi_id: tpiComponent.work_order_tpi_id },
+          });
+          const approvedCount = allComps.filter(
+            (c) => c.status === WorkItemComponentStatus.APPROVED,
+          ).length;
+          const progressPercentage = Math.round(
+            (approvedCount / allComps.length) * 100,
+          );
+
+          await this.workOrderTpiRepository.update(
+            { id: tpiComponent.work_order_tpi_id },
+            {
+              progress_percentage: progressPercentage,
+              status:
+                approvedCount === allComps.length
+                  ? WorkItemStatus.COMPLETED
+                  : WorkItemStatus.IN_PROGRESS,
+            },
+          );
+        }
+
+        return {
+          id: tpiPhoto.id,
+          photo_id: tpiPhoto.id,
+          work_item_id: tpiPhoto.work_order_tpi_id,
+          component_id: tpiPhoto.component_id,
+          status: PhotoStatusEnum.APPROVED,
+          approved_by: doUserId,
+          approved_at: new Date(),
+        } as any;
+      }
+
       throw new NotFoundException(
         `Photo status record for photo ${photoId} not found`,
       );
@@ -232,6 +364,33 @@ export class PhotoStatusService {
     });
 
     if (!photoStatus) {
+      const tpiPhoto = await this.workOrderTpiPhotoRepository.findOne({
+        where: { id: photoId },
+      });
+      if (tpiPhoto) {
+        tpiPhoto.is_selected = false;
+        await this.workOrderTpiPhotoRepository.save(tpiPhoto);
+
+        const tpiComponent = await this.workOrderTpiComponentRepository.findOne({
+          where: { id: tpiPhoto.component_id },
+        });
+
+        if (tpiComponent) {
+          tpiComponent.status = WorkItemComponentStatus.REJECTED;
+          await this.workOrderTpiComponentRepository.save(tpiComponent);
+        }
+
+        return {
+          id: tpiPhoto.id,
+          photo_id: tpiPhoto.id,
+          work_item_id: tpiPhoto.work_order_tpi_id,
+          component_id: tpiPhoto.component_id,
+          status: PhotoStatusEnum.REJECTED,
+          rejected_by: doUserId,
+          rejected_at: new Date(),
+        } as any;
+      }
+
       throw new NotFoundException(
         `Photo status record for photo ${photoId} not found`,
       );
@@ -289,12 +448,59 @@ export class PhotoStatusService {
       order: { created_at: 'DESC' },
     });
 
+    if (total > 0) {
+      return {
+        data: items,
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+      };
+    }
+
+    // Check TPI photos
+    const [tpiPhotos, tpiTotal] = await this.workOrderTpiPhotoRepository.findAndCount({
+      where: { component_id: componentId },
+      relations: ['uploader', 'selectedByUser'],
+      skip: (page - 1) * limit,
+      take: limit,
+      order: { created_at: 'DESC' },
+    });
+
+    const mappedItems: any[] = tpiPhotos.map((p) => ({
+      id: p.id,
+      photo_id: p.id,
+      work_item_id: p.work_order_tpi_id,
+      component_id: p.component_id,
+      status: p.is_selected
+        ? PhotoStatusEnum.SELECTED
+        : (p.uploader_role === UserRole.TPI ? PhotoStatusEnum.SELECTED : PhotoStatusEnum.UPLOADED),
+      uploader_role: p.uploader_role,
+      is_tpi: p.uploader_role === UserRole.TPI,
+      photo: {
+        id: p.id,
+        image_url: p.image_url,
+        latitude: p.latitude,
+        longitude: p.longitude,
+        timestamp: p.timestamp,
+        employee: {
+          id: p.uploader?.id,
+          name: p.uploader?.name,
+          code: p.uploader?.code,
+          role: p.uploader_role,
+        },
+      },
+      selectedByUser: p.selectedByUser,
+      selected_at: p.selected_at,
+      created_at: p.created_at,
+    }));
+
     return {
-      data: items,
-      total,
+      data: mappedItems,
+      total: tpiTotal,
       page,
       limit,
-      totalPages: Math.ceil(total / limit),
+      totalPages: Math.ceil(tpiTotal / limit),
     };
   }
 
