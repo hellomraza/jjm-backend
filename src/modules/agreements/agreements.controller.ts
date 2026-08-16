@@ -90,6 +90,12 @@ export class AgreementsController {
     type: String,
     description: 'Filter by agreement year',
   })
+  @ApiQuery({
+    name: 'mode',
+    required: false,
+    enum: ['svs', 'tpi'],
+    description: 'Filter by portal mode (svs or tpi)',
+  })
   @ApiPaginatedResponse(AgreementResponseDto)
   async findAll(
     @Request() req: { user: { userId: string; role: UserRole } },
@@ -97,6 +103,7 @@ export class AgreementsController {
     @Query('limit') limit: number = 20,
     @Query('search') search?: string,
     @Query('agreementyear') agreementyear?: string,
+    @Query('mode') mode?: string,
   ) {
     const result = await this.agreementsService.findAllForUser(
       req.user.userId,
@@ -105,6 +112,7 @@ export class AgreementsController {
       limit,
       search,
       agreementyear,
+      mode,
     );
 
     return {

@@ -11,6 +11,7 @@ import {
 } from 'typeorm';
 import { User } from '../../users/entities/user.entity';
 import { WorkItem } from '../../work-items/entities/work-item.entity';
+import type { WorkOrderTpi } from '../../work-order-tpi/entities/work-order-tpi.entity';
 import { AgreementFileMap } from './agreement-file-map.entity';
 
 @Entity('agreements')
@@ -76,6 +77,9 @@ export class Agreement {
 
   @OneToMany(() => WorkItem, (workItem) => workItem.agreement)
   workItems?: WorkItem[];
+
+  @OneToMany('WorkOrderTpi', 'agreement')
+  workOrderTpis?: WorkOrderTpi[];
 
   @OneToMany(
     () => AgreementFileMap,

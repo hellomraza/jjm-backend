@@ -397,6 +397,12 @@ export class AgreementResponseDto {
   workItems: AgreementWorkItemResponseDto[];
 
   @ApiProperty({
+    description: 'TPI Work order details',
+    default: [],
+  })
+  workOrderTpis?: any[];
+
+  @ApiProperty({
     description: 'Attached agreement files',
     type: [AgreementFileResponseDto],
     default: [],
@@ -451,6 +457,22 @@ export class AgreementResponseDto {
             description: item.description,
             district_id: item.district_id,
             schemetype: item.schemetype,
+            contractor_id: item.contractor_id,
+            latitude: Number(item.latitude),
+            longitude: Number(item.longitude),
+            progress_percentage: Number(item.progress_percentage),
+            status: item.status,
+            created_at: item.created_at,
+            updated_at: item.updated_at,
+          }))
+        : [],
+      workOrderTpis: agreement.workOrderTpis
+        ? agreement.workOrderTpis.map((item) => ({
+            id: item.id,
+            work_code: item.work_code,
+            title: item.title,
+            description: item.description,
+            district_id: item.district_id,
             contractor_id: item.contractor_id,
             latitude: Number(item.latitude),
             longitude: Number(item.longitude),

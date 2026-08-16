@@ -55,6 +55,7 @@ export class AgreementsService {
   private readonly agreementRelations = {
     contractor: true,
     workItems: true,
+    workOrderTpis: true,
     agreementFileMaps: {
       agreementFile: true,
     },
@@ -765,6 +766,7 @@ export class AgreementsService {
     limit: number = 20,
     search?: string,
     agreementyear?: string,
+    mode?: string,
   ): Promise<{
     data: Agreement[];
     total: number;
@@ -774,6 +776,9 @@ export class AgreementsService {
   }> {
     const safePage = Number.isNaN(Number(page)) ? 1 : Number(page);
     const safeLimit = Number.isNaN(Number(limit)) ? 20 : Number(limit);
+
+    const isTpiMode = mode === 'tpi' || mode === 'ee';
+    const isSvsMode = mode === 'svs' || mode === 'do';
 
     const where: FindOptionsWhere<Agreement> = {};
     const accessWhere = await this.getAccessWhereClause(userId, role);
@@ -788,6 +793,23 @@ export class AgreementsService {
 
     if (agreementyear) {
       where.agreementyear = agreementyear;
+    }
+
+    if (isTpiMode) {
+      if (role === UserRole.DO) {
+        const user = await this.usersRepository.findOne({
+          where: { id: userId },
+        });
+        if (user?.district_id) {
+          where.workOrderTpis = { district_id: user.district_id };
+        } else {
+          where.id = '__no_access__';
+        }
+      } else {
+        where.workOrderTpis = { id: Not(IsNull()) };
+      }
+    } else if (isSvsMode && role !== UserRole.DO && role !== UserRole.EM) {
+      where.workItems = { id: Not(IsNull()) };
     }
 
     const [items, total] = await this.agreementsRepository.findAndCount({

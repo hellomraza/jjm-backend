@@ -31,11 +31,13 @@ import { RolesGuard } from '../../common/guards/roles.guard';
 import { CreateContractorDto } from './dto/create-contractor.dto';
 import { CreateDODto } from './dto/create-do.dto';
 import { CreateEmployeeDto } from './dto/create-employee.dto';
+import { CreateTpiDto } from './dto/create-tpi.dto';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateContractorDto } from './dto/update-contractor.dto';
 import { UpdateContractorStatusDto } from './dto/update-contractor-status.dto';
 import { UpdateDODto } from './dto/update-do.dto';
 import { UpdateEmployeeDto } from './dto/update-employee.dto';
+import { UpdateTpiDto } from './dto/update-tpi.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { UserResponseDto } from './dto/user-response.dto';
 import { UserRole } from './entities/user.entity';
@@ -245,7 +247,7 @@ export class UsersController {
   }
 
   @Get('my-profile')
-  @Roles(UserRole.HO, UserRole.DO, UserRole.CO, UserRole.EM)
+  @Roles(UserRole.HO, UserRole.DO, UserRole.CO, UserRole.EM, UserRole.TPI)
   @ApiOperation({
     summary: 'Get my profile',
     description:
@@ -257,6 +259,70 @@ export class UsersController {
   })
   getMyProfile(@Request() req: { user: { userId: string } }) {
     return this.usersService.getMyProfile(req.user.userId);
+  }
+
+  @Patch(':id/toggle-executive-engineer')
+  @Roles(UserRole.HO)
+  @ApiOperation({
+    summary: 'Toggle executive engineer permission for DO',
+    description: 'Enables or disables executive engineer permissions on a DO account (HO only)',
+  })
+  @ApiParam({ name: 'id', type: String, description: 'District Officer user ID' })
+  @ApiOkResponse({
+    description: 'Executive engineer status toggled successfully',
+    type: UserResponseDto,
+  })
+  toggleExecutiveEngineer(
+    @Param('id') id: string,
+    @Body('is_executive_engineer') isExecutiveEngineer?: boolean,
+  ) {
+    return this.usersService.toggleExecutiveEngineer(id, isExecutiveEngineer);
+  }
+
+  @Post('tpi')
+  @Roles(UserRole.HO)
+  @ApiOperation({
+    summary: 'Create TPI officer',
+    description: 'Creates a new TPI officer account assigned to a district (HO only, strictly 1 per district)',
+  })
+  @ApiCreatedResponse({
+    description: 'TPI officer created successfully',
+    type: UserResponseDto,
+  })
+  @ApiBadRequestResponse({ description: 'Invalid request body' })
+  @ApiConflictResponse({ description: 'User with email already exists or district already has a TPI' })
+  createTpi(@Body() createTpiDto: CreateTpiDto) {
+    return this.usersService.createTPI(createTpiDto);
+  }
+
+  @Patch('tpi/:id')
+  @Roles(UserRole.HO)
+  @ApiOperation({
+    summary: 'Update TPI officer',
+    description: 'Updates an existing TPI officer account (HO only)',
+  })
+  @ApiParam({ name: 'id', type: String, description: 'TPI Officer user ID' })
+  @ApiOkResponse({
+    description: 'TPI officer updated successfully',
+    type: UserResponseDto,
+  })
+  updateTpi(@Param('id') id: string, @Body() updateTpiDto: UpdateTpiDto) {
+    return this.usersService.updateTPI(id, updateTpiDto);
+  }
+
+  @Get('tpi')
+  @Roles(UserRole.HO, UserRole.DO)
+  @ApiOperation({
+    summary: 'Get all TPI officers',
+    description: 'Returns all TPI officers, optionally filtered by district_id',
+  })
+  @ApiQuery({ name: 'district_id', required: false, type: String })
+  @ApiOkResponse({
+    description: 'List of TPI officers',
+    type: [UserResponseDto],
+  })
+  getAllTpis(@Query('district_id') districtId?: string) {
+    return this.usersService.getAllTPIs(districtId);
   }
 
   @Get('employees')

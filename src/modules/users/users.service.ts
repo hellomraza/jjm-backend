@@ -16,9 +16,11 @@ import { WorkItemEmployeeAssignment } from '../work-items/entities/work-item-emp
 import { CreateContractorDto } from './dto/create-contractor.dto';
 import { CreateDODto } from './dto/create-do.dto';
 import { CreateEmployeeDto } from './dto/create-employee.dto';
+import { CreateTpiDto } from './dto/create-tpi.dto';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateContractorDto } from './dto/update-contractor.dto';
 import { UpdateDODto } from './dto/update-do.dto';
+import { UpdateTpiDto } from './dto/update-tpi.dto';
 import { ContractorContract } from './entities/contractor-contract.entity';
 import { EmployeeContract } from './entities/employee-contract.entity';
 import { User, UserRole } from './entities/user.entity';
@@ -890,5 +892,134 @@ export class UsersService {
     contractor.is_active = is_active;
     const updated = await this.userRepository.save(contractor);
     return this.stripPassword(updated);
+  }
+
+  async toggleExecutiveEngineer(
+    id: string,
+    isExecutiveEngineer?: boolean,
+  ): Promise<Omit<User, 'password'>> {
+    const user = await this.userRepository.findOne({ where: { id } });
+    if (!user) {
+      throw new NotFoundException(`User #${id} not found`);
+    }
+
+    if (user.role !== UserRole.DO) {
+      throw new BadRequestException(
+        'Only District Officers can be assigned Executive Engineer permissions',
+      );
+    }
+
+    user.is_executive_engineer =
+      typeof isExecutiveEngineer === 'boolean'
+        ? isExecutiveEngineer
+        : !user.is_executive_engineer;
+
+    const updated = await this.userRepository.save(user);
+    return this.stripPassword(updated);
+  }
+
+  async createTPI(createTpiDto: CreateTpiDto): Promise<Omit<User, 'password'>> {
+    const { email, password, name, district_id, mobile, pan_number, district_name, address } =
+      createTpiDto;
+
+    // Check if user with email already exists
+    const existingUser = await this.userRepository.findOne({
+      where: { email },
+    });
+    if (existingUser) {
+      throw new ConflictException(`User with email ${email} already exists`);
+    }
+
+    // Strictly enforce 1 TPI per district
+    const existingTpiInDistrict = await this.userRepository.findOne({
+      where: { role: UserRole.TPI, district_id },
+    });
+    if (existingTpiInDistrict) {
+      throw new ConflictException(
+        `A TPI officer is already assigned to district ${district_id}`,
+      );
+    }
+
+    // Hash password
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    const tpiUser = this.userRepository.create({
+      code: await this.generateUniqueUserCode(UserRole.TPI),
+      email,
+      password: hashedPassword,
+      name,
+      role: UserRole.TPI,
+      district_id,
+      district_name,
+      mobile,
+      pan_number,
+      address,
+      is_active: true,
+    });
+
+    const savedTpi = await this.userRepository.save(tpiUser);
+    return this.stripPassword(savedTpi);
+  }
+
+  async updateTPI(
+    id: string,
+    updateTpiDto: UpdateTpiDto,
+  ): Promise<Omit<User, 'password'>> {
+    const user = await this.userRepository.findOne({ where: { id } });
+    if (!user || user.role !== UserRole.TPI) {
+      throw new NotFoundException(`TPI user #${id} not found`);
+    }
+
+    if (updateTpiDto.email && updateTpiDto.email !== user.email) {
+      const existing = await this.userRepository.findOne({
+        where: { email: updateTpiDto.email },
+      });
+      if (existing && existing.id !== id) {
+        throw new ConflictException(`User with email ${updateTpiDto.email} already exists`);
+      }
+      user.email = updateTpiDto.email;
+    }
+
+    if (
+      updateTpiDto.district_id &&
+      updateTpiDto.district_id !== user.district_id
+    ) {
+      const existingTpiInDistrict = await this.userRepository.findOne({
+        where: { role: UserRole.TPI, district_id: updateTpiDto.district_id },
+      });
+      if (existingTpiInDistrict && existingTpiInDistrict.id !== id) {
+        throw new ConflictException(
+          `A TPI officer is already assigned to district ${updateTpiDto.district_id}`,
+        );
+      }
+      user.district_id = updateTpiDto.district_id;
+    }
+
+    if (updateTpiDto.password) {
+      user.password = await bcrypt.hash(updateTpiDto.password, 10);
+    }
+    if (updateTpiDto.name) user.name = updateTpiDto.name;
+    if (updateTpiDto.mobile !== undefined) user.mobile = updateTpiDto.mobile;
+    if (updateTpiDto.pan_number !== undefined) user.pan_number = updateTpiDto.pan_number;
+    if (updateTpiDto.district_name !== undefined) user.district_name = updateTpiDto.district_name;
+    if (updateTpiDto.address !== undefined) user.address = updateTpiDto.address;
+
+    const saved = await this.userRepository.save(user);
+    return this.stripPassword(saved);
+  }
+
+  async getAllTPIs(districtId?: string): Promise<Omit<User, 'password'>[]> {
+    const where: any = { role: UserRole.TPI };
+    if (districtId) {
+      where.district_id = districtId;
+    }
+
+    const tpis = await this.userRepository.find({
+      where,
+      relations: ['district'],
+      order: { created_at: 'DESC' },
+    });
+
+    return tpis.map((tpi) => this.stripPassword(tpi));
   }
 }

@@ -37,9 +37,21 @@ export class UserResponseDto {
     description: 'District identifier for district-bound users',
     required: false,
     nullable: true,
-    example: 10,
+    example: 'DIST001',
   })
-  district_id?: number | null;
+  district_id?: string | null;
+
+  @ApiProperty({
+    description: 'Whether the DO has Executive Engineer permissions',
+    example: false,
+  })
+  is_executive_engineer?: boolean;
+
+  @ApiProperty({
+    description: 'Whether the user account is active',
+    example: true,
+  })
+  is_active?: boolean;
 
   @ApiProperty({
     description: 'Mobile phone number',

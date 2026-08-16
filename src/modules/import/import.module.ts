@@ -2,11 +2,12 @@ import { Module } from '@nestjs/common';
 import { AgreementsModule } from '../agreements/agreements.module';
 import { UsersModule } from '../users/users.module';
 import { WorkItemsModule } from '../work-items/work-items.module';
+import { WorkOrderTpiModule } from '../work-order-tpi/work-order-tpi.module';
 import { ImportController } from './import.controller';
 import { ImportService } from './import.service';
 
 @Module({
-  imports: [AgreementsModule, UsersModule, WorkItemsModule],
+  imports: [AgreementsModule, UsersModule, WorkItemsModule, WorkOrderTpiModule],
   controllers: [ImportController],
   providers: [ImportService],
   exports: [ImportService],

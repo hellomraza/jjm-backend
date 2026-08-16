@@ -12,6 +12,7 @@ import { LocationsModule } from './modules/locations/locations.module';
 import { PhotosModule } from './modules/photos/photos.module';
 import { UsersModule } from './modules/users/users.module';
 import { WorkItemsModule } from './modules/work-items/work-items.module';
+import { WorkOrderTpiModule } from './modules/work-order-tpi/work-order-tpi.module';
 import { MailModule } from './common/mail/mail.module';
 
 @Module({
@@ -39,6 +40,7 @@ import { MailModule } from './common/mail/mail.module';
     AuthModule,
     AgreementsModule,
     WorkItemsModule,
+    WorkOrderTpiModule,
     ComponentsModule,
     PhotosModule,
     ImportModule,

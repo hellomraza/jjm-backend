@@ -27,6 +27,7 @@ import { AgreementsService } from '../agreements/agreements.service';
 import { UserRole } from '../users/entities/user.entity';
 import { UsersService } from '../users/users.service';
 import { WorkItemsService } from '../work-items/work-items.service';
+import { WorkOrderTpiService } from '../work-order-tpi/work-order-tpi.service';
 import {
   type AgreementImport,
   ImportService,
@@ -43,6 +44,7 @@ export class ImportController {
     private readonly usersService: UsersService,
     private readonly agreementsService: AgreementsService,
     private readonly workItemsService: WorkItemsService,
+    private readonly workOrderTpiService: WorkOrderTpiService,
   ) {}
 
   @Post('upload')
@@ -148,5 +150,21 @@ export class ImportController {
   })
   async bulkInsertWorkItems(@Body('workItems') workItems: WorkItemImport[]) {
     return this.workItemsService.bulkCreateFromImport(workItems);
+  }
+
+  @Post('work-order-tpi/bulk')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.HO)
+  @ApiOperation({
+    summary: 'Bulk insert TPI work orders from imported rows (HO only)',
+  })
+  @ApiBody({
+    schema: {
+      type: 'array',
+      items: { type: 'object' },
+    },
+  })
+  async bulkInsertWorkOrderTpi(@Body('workItems') workItems: any[]) {
+    return this.workOrderTpiService.bulkCreateFromImport(workItems);
   }
 }
