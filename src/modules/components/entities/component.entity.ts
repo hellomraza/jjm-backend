@@ -14,8 +14,8 @@ export enum ComponentType {
 }
 
 @Entity('components')
-@Unique('UQ_COMPONENT_TYPE_ORDER_NUMBER', ['type', 'order_number'])
-@Index('IDX_COMPONENT_TYPE_ORDER_NUMBER', ['type', 'order_number'])
+@Index('IDX_COMPONENT_TYPE', ['type'])
+@Index('IDX_COMPONENT_ORDER_NUMBER', ['order_number'])
 export class Component {
   @PrimaryGeneratedColumn()
   id: string;

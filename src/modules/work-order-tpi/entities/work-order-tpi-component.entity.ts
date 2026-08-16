@@ -18,8 +18,8 @@ import { WorkOrderTpiPhoto } from './work-order-tpi-photo.entity';
 export { WorkItemComponentStatus };
 
 @Entity('work_order_tpi_components')
-@Unique('UQ_WORK_ORDER_TPI_COMPONENT', ['work_order_tpi_id', 'order_number'])
 @Index('IDX_WORK_ORDER_TPI_COMPONENT_WORK_ORDER_ID', ['work_order_tpi_id'])
+@Index('IDX_WORK_ORDER_TPI_COMPONENT_ORDER_NUMBER', ['order_number'])
 export class WorkOrderTpiComponent {
   @PrimaryGeneratedColumn('uuid')
   id!: string;
