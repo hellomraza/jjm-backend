@@ -31,7 +31,9 @@ import { AttachAgreementFileDto } from './dto/attach-agreement-file.dto';
 import { CreateAgreementDto } from './dto/create-agreement.dto';
 import { UpdateAgreementDto } from './dto/update-agreement.dto';
 import { WorkItemEmployeeAssignment } from '../work-items/entities/work-item-employee-assignment.entity';
+import { WorkOrderTpi } from '../work-order-tpi/entities/work-order-tpi.entity';
 import { WorkOrderTpiAssignment } from '../work-order-tpi/entities/work-order-tpi-assignment.entity';
+import { WorkOrderTpiEmployeeAssignment } from '../work-order-tpi/entities/work-order-tpi-employee-assignment.entity';
 import { AgreementFile } from './entities/agreement-file.entity';
 import { AgreementFileMap } from './entities/agreement-file-map.entity';
 import { Agreement } from './entities/agreement.entity';
@@ -256,12 +258,23 @@ export class AgreementsService {
   }
 
   async getWorkItemIdsForContractor(contractorId: string): Promise<string[]> {
-    const workItems = await this.workItemsRepository.find({
-      where: { contractor_id: contractorId, agreement_id: Not(IsNull()) },
+    const agreements = await this.agreementsRepository.find({
+      where: { contractor_id: contractorId },
+      relations: ['workItems'],
+    });
+
+    const agreementWorkItemIds = agreements.flatMap(
+      (a) => a.workItems?.map((w) => w.id) || [],
+    );
+
+    const directWorkItems = await this.workItemsRepository.find({
+      where: { contractor_id: contractorId },
       select: ['id'],
     });
 
-    return workItems.map((item) => item.id);
+    return Array.from(
+      new Set([...agreementWorkItemIds, ...directWorkItems.map((w) => w.id)]),
+    );
   }
 
   private isTemporaryWorkItem(workItem: WorkItem): boolean {
@@ -907,6 +920,7 @@ export class AgreementsService {
     await this.findOneForUser(agreementId, userId, role);
 
     let where: FindOptionsWhere<WorkItem> = { agreement_id: agreementId };
+    let tpiWorkOrderIds: string[] | null = null;
 
     // 2. Query work items based on role
     if (role === UserRole.EM) {
@@ -918,7 +932,17 @@ export class AgreementsService {
         },
       );
       const workItemIds = assignments.map((a) => a.work_item_id);
-      if (workItemIds.length === 0) {
+
+      const tpiAssignments = await this.agreementsRepository.manager.find(
+        WorkOrderTpiEmployeeAssignment,
+        {
+          where: { employee_id: userId },
+          select: ['work_order_tpi_id'],
+        },
+      );
+      tpiWorkOrderIds = tpiAssignments.map((a) => a.work_order_tpi_id);
+
+      if (workItemIds.length === 0 && tpiWorkOrderIds.length === 0) {
         return {
           data: [],
           total: 0,
@@ -930,11 +954,11 @@ export class AgreementsService {
 
       where = {
         agreement_id: agreementId,
-        id: In(workItemIds),
+        id: In(workItemIds.length > 0 ? workItemIds : ['__no_id__']),
       };
     }
 
-    const [items, total] = await this.workItemsRepository.findAndCount({
+    const [items, totalItems] = await this.workItemsRepository.findAndCount({
       where,
       skip: (safePage - 1) * safeLimit,
       take: safeLimit,
@@ -944,12 +968,39 @@ export class AgreementsService {
       },
     });
 
+    if (totalItems > 0) {
+      return {
+        data: items,
+        total: totalItems,
+        page: safePage,
+        limit: safeLimit,
+        totalPages: Math.ceil(totalItems / safeLimit),
+      };
+    }
+
+    let tpiWhere: FindOptionsWhere<WorkOrderTpi> = { agreement_id: agreementId };
+    if (role === UserRole.EM && tpiWorkOrderIds) {
+      tpiWhere = {
+        agreement_id: agreementId,
+        id: In(tpiWorkOrderIds.length > 0 ? tpiWorkOrderIds : ['__no_id__']),
+      };
+    }
+
+    const [tpiOrders, totalTpi] =
+      await this.agreementsRepository.manager.findAndCount(WorkOrderTpi, {
+        where: tpiWhere,
+        skip: (safePage - 1) * safeLimit,
+        take: safeLimit,
+        order: { created_at: 'DESC' },
+        relations: ['contractor', 'district', 'block', 'panchayat', 'village'],
+      });
+
     return {
-      data: items,
-      total,
+      data: tpiOrders as unknown as WorkItem[],
+      total: totalTpi,
       page: safePage,
       limit: safeLimit,
-      totalPages: Math.ceil(total / safeLimit),
+      totalPages: Math.ceil(totalTpi / safeLimit),
     };
   }
 

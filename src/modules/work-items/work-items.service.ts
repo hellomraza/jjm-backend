@@ -36,6 +36,8 @@ import { CreateWorkItemDto } from './dto/create-work-item.dto';
 import { UpdateWorkItemDto } from './dto/update-work-item.dto';
 import { WorkItemEmployeeAssignment } from './entities/work-item-employee-assignment.entity';
 import { WorkItem, WorkItemStatus } from './entities/work-item.entity';
+import { WorkOrderTpi } from '../work-order-tpi/entities/work-order-tpi.entity';
+import { WorkOrderTpiEmployeeAssignment } from '../work-order-tpi/entities/work-order-tpi-employee-assignment.entity';
 
 @Injectable()
 export class WorkItemsService {
@@ -624,6 +626,23 @@ export class WorkItemsService {
       relations: this.locationRelations,
     });
     if (!workItem) {
+      const tpi = await this.workItemsRepository.manager.findOne(WorkOrderTpi, {
+        where: { id },
+        relations: [
+          'district',
+          'block',
+          'panchayat',
+          'village',
+          'subdivision',
+          'circle',
+          'zone',
+          'contractor',
+          'agreement',
+        ],
+      });
+      if (tpi) {
+        return tpi as unknown as WorkItem;
+      }
       throw new NotFoundException(`Work item #${id} not found`);
     }
 
@@ -633,15 +652,23 @@ export class WorkItemsService {
   async getDistrictOfficerByWorkItem(
     workItemId: string,
   ): Promise<Omit<User, 'password'>> {
+    let districtCode: string | null = null;
     const workItem = await this.workItemsRepository.findOne({
       where: { id: workItemId },
     });
 
-    if (!workItem) {
-      throw new NotFoundException(`Work item #${workItemId} not found`);
+    if (workItem) {
+      districtCode = workItem.district_id;
+    } else {
+      const tpi = await this.workItemsRepository.manager.findOne(WorkOrderTpi, {
+        where: { id: workItemId },
+      });
+      if (tpi) {
+        districtCode = tpi.district_id ?? null;
+      } else {
+        throw new NotFoundException(`Work item #${workItemId} not found`);
+      }
     }
-
-    const districtCode = workItem.district_id;
 
     if (districtCode == null) {
       throw new NotFoundException(
@@ -732,13 +759,98 @@ export class WorkItemsService {
   ): Promise<AssignMultipleEmployeesResponseDto> {
     const workItem = await this.workItemsRepository.findOne({
       where: { id: workItemId },
+      relations: ['agreement'],
     });
 
     if (!workItem) {
-      throw new NotFoundException(`Work item #${workItemId} not found`);
+      // Check if it's a TPI work order
+      const workOrderTpi = await this.workItemsRepository.manager.findOne(
+        WorkOrderTpi,
+        {
+          where: { id: workItemId },
+          relations: ['agreement'],
+        },
+      );
+
+      if (!workOrderTpi) {
+        throw new NotFoundException(`Work item #${workItemId} not found`);
+      }
+
+      const isTpiContractor =
+        workOrderTpi.contractor_id === contractorId ||
+        workOrderTpi.agreement?.contractor_id === contractorId;
+
+      if (!isTpiContractor) {
+        throw new ForbiddenException(
+          'You can only assign employees to your own work items',
+        );
+      }
+
+      const createdTpi: any[] = [];
+      const failedTpi: Array<{ employee_id: string; error: string }> = [];
+
+      for (const employeeId of employeeIds) {
+        try {
+          const employee = await this.usersRepository.findOne({
+            where: { id: employeeId },
+          });
+
+          if (!employee || employee.role !== UserRole.EM) {
+            failedTpi.push({
+              employee_id: employeeId,
+              error: 'Employee not found or is not an employee user',
+            });
+            continue;
+          }
+
+          const existing = await this.workItemsRepository.manager.findOne(
+            WorkOrderTpiEmployeeAssignment,
+            {
+              where: { work_order_tpi_id: workItemId, employee_id: employeeId },
+            },
+          );
+
+          if (existing) {
+            createdTpi.push(existing);
+            continue;
+          }
+
+          const newAssignment = this.workItemsRepository.manager.create(
+            WorkOrderTpiEmployeeAssignment,
+            {
+              work_order_tpi_id: workItemId,
+              employee_id: employeeId,
+            },
+          );
+          const saved = await this.workItemsRepository.manager.save(
+            WorkOrderTpiEmployeeAssignment,
+            newAssignment,
+          );
+          createdTpi.push(saved);
+        } catch (err) {
+          failedTpi.push({
+            employee_id: employeeId,
+            error: err instanceof Error ? err.message : 'Unknown error',
+          });
+        }
+      }
+
+      return {
+        created: createdTpi,
+        failed: failedTpi,
+        summary: {
+          total: employeeIds.length,
+          created: createdTpi.length,
+          failed: failedTpi.length,
+        },
+      };
     }
 
-    if (workItem.contractor_id !== contractorId) {
+    const isContractorMatch =
+      workItem.contractor_id === contractorId ||
+      workItem.agreement?.contractor_id === contractorId;
+
+    if (!isContractorMatch) {
       throw new ForbiddenException(
         'You can only assign employees to your own work items',
       );

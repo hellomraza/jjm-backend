@@ -7,11 +7,12 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DeepPartial, Repository } from 'typeorm';
-import { Component, ComponentType } from '../components/entities/component.entity';
 import { Agreement } from '../agreements/entities/agreement.entity';
 import {
-  PhotoStatusEnum,
-} from '../photos/entities/photo-status.entity';
+  Component,
+  ComponentType,
+} from '../components/entities/component.entity';
+import { PhotoStatusEnum } from '../photos/entities/photo-status.entity';
 import { User, UserRole } from '../users/entities/user.entity';
 import { AssignTpiEmployeeDto } from './dto/assign-tpi-employee.dto';
 import { AssignTpiDto } from './dto/assign-tpi.dto';
@@ -157,7 +158,10 @@ export class WorkOrderTpiService {
         qb.andWhere('wo.agreement_id = :agreementId', { agreementId });
       }
     } else if (role === UserRole.CO) {
-      qb.andWhere('wo.contractor_id = :contractorId', { contractorId: userId });
+      qb.andWhere(
+        '(wo.contractor_id = :contractorId OR agreement.contractor_id = :contractorId)',
+        { contractorId: userId },
+      );
       if (agreementId) {
         qb.andWhere('wo.agreement_id = :agreementId', { agreementId });
       }
@@ -205,20 +209,23 @@ export class WorkOrderTpiService {
   ): Promise<WorkOrderTpi> {
     const workOrder = await this.workOrderTpiRepository.findOne({
       where: { id },
-      relations: [
-        'district',
-        'block',
-        'panchayat',
-        'village',
-        'subdivision',
-        'circle',
-        'zone',
-        'contractor',
-        'agreement',
-        'components',
-        'tpiAssignment',
-        'tpiAssignment.tpi',
-      ],
+      relations: {
+        district: true,
+        block: true,
+        panchayat: true,
+        village: true,
+        subdivision: true,
+        circle: true,
+        zone: true,
+        contractor: true,
+        agreement: true,
+        components: {
+          photos: true,
+        },
+        tpiAssignment: {
+          tpi: true,
+        },
+      },
       order: {
         components: {
           order_number: 'ASC',
@@ -230,6 +237,20 @@ export class WorkOrderTpiService {
       throw new NotFoundException(`WorkOrderTpi #${id} not found`);
     }
 
+    if (workOrder.components && workOrder.components.length > 0) {
+      const allPhotos = await this.photoRepository.find({
+        where: { work_order_tpi_id: id },
+        order: { created_at: 'DESC' },
+      });
+      for (const comp of workOrder.components) {
+        comp.photos = allPhotos.filter(
+          (p) =>
+            p.component_id === comp.id ||
+            (comp.component_id && p.component_id === String(comp.component_id)),
+        );
+      }
+    }
+
     if (role === UserRole.DO) {
       const doUser = await this.userRepository.findOne({
         where: { id: userId },
@@ -239,7 +260,10 @@ export class WorkOrderTpiService {
         throw new ForbiddenException('Access denied for this district');
       }
     } else if (role === UserRole.CO) {
-      if (workOrder.contractor_id !== userId) {
+      const isContractorMatch =
+        workOrder.contractor_id === userId ||
+        workOrder.agreement?.contractor_id === userId;
+      if (!isContractorMatch) {
         throw new ForbiddenException('Access denied for this work order');
       }
     } else if (role === UserRole.EM) {
@@ -258,20 +282,23 @@ export class WorkOrderTpiService {
       }
     }
 
+    console.log(workOrder);
+
     return workOrder;
   }
 
   async assignTpi(
-    workOrderTpiId: string,
+    id: string,
     dto: AssignTpiDto,
     doUserId: string,
   ): Promise<WorkOrderTpiAssignment> {
     const doUser = await this.userRepository.findOne({
-      where: { id: doUserId, role: UserRole.DO },
+      where: { id: doUserId },
     });
-    if (!doUser) {
+    if (!doUser || doUser.role !== UserRole.DO) {
       throw new ForbiddenException('Only District Officers can assign TPI');
     }
+
     if (!doUser.is_executive_engineer) {
       throw new ForbiddenException(
         'Only District Officers with Executive Engineer permission can assign TPI',
@@ -279,13 +306,13 @@ export class WorkOrderTpiService {
     }
 
     const workOrder = await this.workOrderTpiRepository.findOne({
-      where: { id: workOrderTpiId },
+      where: { id },
     });
     if (!workOrder) {
-      throw new NotFoundException(`WorkOrderTpi #${workOrderTpiId} not found`);
+      throw new NotFoundException(`WorkOrderTpi #${id} not found`);
     }
 
-    if (doUser.district_id && workOrder.district_id !== doUser.district_id) {
+    if (workOrder.district_id !== doUser.district_id) {
       throw new ForbiddenException(
         'You can only assign TPI to work orders in your district',
       );
@@ -295,7 +322,7 @@ export class WorkOrderTpiService {
       where: { id: dto.tpi_id, role: UserRole.TPI },
     });
     if (!tpiUser) {
-      throw new NotFoundException(`TPI officer #${dto.tpi_id} not found`);
+      throw new NotFoundException(`TPI user #${dto.tpi_id} not found`);
     }
 
     if (tpiUser.district_id !== workOrder.district_id) {
@@ -305,7 +332,7 @@ export class WorkOrderTpiService {
     }
 
     let assignment = await this.tpiAssignmentRepository.findOne({
-      where: { work_order_tpi_id: workOrderTpiId },
+      where: { work_order_tpi_id: id },
     });
 
     if (assignment) {
@@ -313,7 +340,7 @@ export class WorkOrderTpiService {
       assignment.assigned_by_id = doUserId;
     } else {
       assignment = this.tpiAssignmentRepository.create({
-        work_order_tpi_id: workOrderTpiId,
+        work_order_tpi_id: id,
         tpi_id: dto.tpi_id,
         assigned_by_id: doUserId,
       });
@@ -329,12 +356,16 @@ export class WorkOrderTpiService {
   ): Promise<{ assigned: string[]; failed: string[] }> {
     const workOrder = await this.workOrderTpiRepository.findOne({
       where: { id: workOrderTpiId },
+      relations: ['agreement'],
     });
     if (!workOrder) {
       throw new NotFoundException(`WorkOrderTpi #${workOrderTpiId} not found`);
     }
 
-    if (workOrder.contractor_id !== contractorUserId) {
+    const isContractorMatch =
+      workOrder.contractor_id === contractorUserId ||
+      workOrder.agreement?.contractor_id === contractorUserId;
+    if (!isContractorMatch) {
       throw new ForbiddenException(
         'Only the assigned contractor can assign employees to this work order',
       );
@@ -452,15 +483,18 @@ export class WorkOrderTpiService {
         );
       }
 
+      if (component.status === WorkItemComponentStatus.PENDING) {
+        component.status = WorkItemComponentStatus.IN_PROGRESS;
+        await this.componentRepository.save(component);
+      }
+
       return photo;
     } else if (role === UserRole.EM) {
       const empAssignment = await this.employeeAssignmentRepository.findOne({
         where: { work_order_tpi_id: workOrderTpiId, employee_id: userId },
       });
       if (!empAssignment) {
-        throw new ForbiddenException(
-          'You are not assigned to this work order',
-        );
+        throw new ForbiddenException('You are not assigned to this work order');
       }
 
       const photo = this.photoRepository.create({
@@ -493,6 +527,16 @@ export class WorkOrderTpiService {
     }
   }
 
+  async getComponentPhotos(
+    workOrderTpiId: string,
+    componentId: string,
+  ): Promise<WorkOrderTpiPhoto[]> {
+    return this.photoRepository.find({
+      where: [{ work_order_tpi_id: workOrderTpiId, component_id: componentId }],
+      order: { created_at: 'DESC' },
+    });
+  }
+
   async selectPhotoByContractor(
     photoId: string,
     contractorUserId: string,
@@ -506,7 +550,9 @@ export class WorkOrderTpiService {
     }
 
     if (photo.uploader_role !== UserRole.EM) {
-      throw new BadRequestException('Contractors can only select employee photos');
+      throw new BadRequestException(
+        'Contractors can only select employee photos',
+      );
     }
 
     if (photo.workOrderTpi.contractor_id !== contractorUserId) {
@@ -693,9 +739,7 @@ export class WorkOrderTpiService {
       .getMany();
   }
 
-  async bulkCreateFromImport(
-    workItemImports: any[],
-  ): Promise<WorkOrderTpi[]> {
+  async bulkCreateFromImport(workItemImports: any[]): Promise<WorkOrderTpi[]> {
     const created: WorkOrderTpi[] = [];
 
     for (const item of workItemImports) {
@@ -707,29 +751,29 @@ export class WorkOrderTpiService {
         item.district_code !== undefined && item.district_code !== null
           ? String(item.district_code)
           : item.district_id !== undefined && item.district_id !== null
-          ? String(item.district_id)
-          : undefined;
+            ? String(item.district_id)
+            : undefined;
 
       const blockId =
         item.block_code !== undefined && item.block_code !== null
           ? String(item.block_code)
           : item.block_id !== undefined && item.block_id !== null
-          ? String(item.block_id)
-          : undefined;
+            ? String(item.block_id)
+            : undefined;
 
       const panchayatId =
         item.panchayat_code !== undefined && item.panchayat_code !== null
           ? String(item.panchayat_code)
           : item.panchayat_id !== undefined && item.panchayat_id !== null
-          ? String(item.panchayat_id)
-          : undefined;
+            ? String(item.panchayat_id)
+            : undefined;
 
       const villageId =
         item.village_code !== undefined && item.village_code !== null
           ? String(item.village_code)
           : item.village_id !== undefined && item.village_id !== null
-          ? String(item.village_id)
-          : undefined;
+            ? String(item.village_id)
+            : undefined;
 
       const nofhtc =
         item.nofhtc !== null && item.nofhtc !== undefined
@@ -740,22 +784,22 @@ export class WorkOrderTpiService {
         item.aa_amount !== null && item.aa_amount !== undefined
           ? Number(item.aa_amount)
           : item.amount_approved !== null && item.amount_approved !== undefined
-          ? Number(item.amount_approved)
-          : undefined;
+            ? Number(item.amount_approved)
+            : undefined;
 
       const paymentAmount =
         item.payment_rs !== null && item.payment_rs !== undefined
           ? Number(item.payment_rs)
           : item.payment_amount !== null && item.payment_amount !== undefined
-          ? Number(item.payment_amount)
-          : undefined;
+            ? Number(item.payment_amount)
+            : undefined;
 
       const serialNo =
         item.sr !== null && item.sr !== undefined
           ? Number(item.sr)
           : item.serial_no !== null && item.serial_no !== undefined
-          ? Number(item.serial_no)
-          : undefined;
+            ? Number(item.serial_no)
+            : undefined;
 
       let contractorId = item.contractor_id ?? undefined;
       let agreementId = item.agreement_id ?? undefined;

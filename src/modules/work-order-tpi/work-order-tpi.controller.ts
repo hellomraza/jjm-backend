@@ -213,6 +213,27 @@ export class WorkOrderTpiController {
     );
   }
 
+  @Get(':id/components/:componentId/photos')
+  @Roles(
+    UserRole.HO,
+    UserRole.DO,
+    UserRole.CO,
+    UserRole.EM,
+    UserRole.TPI,
+  )
+  @ApiOperation({
+    summary: 'Get photos for TPI work order component',
+    description: 'Returns all photos uploaded for a component in a TPI work order',
+  })
+  @ApiParam({ name: 'id', type: String })
+  @ApiParam({ name: 'componentId', type: String })
+  getComponentPhotos(
+    @Param('id') id: string,
+    @Param('componentId') componentId: string,
+  ) {
+    return this.workOrderTpiService.getComponentPhotos(id, componentId);
+  }
+
   @Patch('photos/:photoId/select')
   @Roles(UserRole.CO)
   @ApiOperation({

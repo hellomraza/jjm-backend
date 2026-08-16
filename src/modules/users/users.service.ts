@@ -13,6 +13,7 @@ import { DeepPartial, Repository } from 'typeorm';
 import { PaginatedResponse } from '../../common/types/response.type';
 import { importContractorMapping } from '../import/import.service';
 import { WorkItemEmployeeAssignment } from '../work-items/entities/work-item-employee-assignment.entity';
+import { WorkOrderTpiEmployeeAssignment } from '../work-order-tpi/entities/work-order-tpi-employee-assignment.entity';
 import { CreateContractorDto } from './dto/create-contractor.dto';
 import { CreateDODto } from './dto/create-do.dto';
 import { CreateEmployeeDto } from './dto/create-employee.dto';
@@ -832,12 +833,22 @@ export class UsersService {
       relations: ['employee'],
     });
 
-    if (assignments.length === 0) {
-      return [];
+    if (assignments.length > 0) {
+      const employees = assignments.map((assignment) => assignment.employee);
+      return employees.filter(Boolean).map((employee) => this.stripPassword(employee));
     }
 
-    const employees = assignments.map((assignment) => assignment.employee);
-    return employees.map((employee) => this.stripPassword(employee));
+    const tpiAssignments =
+      await this.workItemEmployeeAssignmentRepository.manager.find(
+        WorkOrderTpiEmployeeAssignment,
+        {
+          where: { work_order_tpi_id: workItemId },
+          relations: ['employee'],
+        },
+      );
+
+    const employees = tpiAssignments.map((assignment) => assignment.employee);
+    return employees.filter(Boolean).map((employee) => this.stripPassword(employee));
   }
 
   async updateContractorStatus(
