@@ -6,6 +6,7 @@ import { PhotosModule } from '../photos/photos.module';
 import { User } from '../users/entities/user.entity';
 import { WorkItem } from '../work-items/entities/work-item.entity';
 import { WorkOrderTpiComponent } from '../work-order-tpi/entities/work-order-tpi-component.entity';
+import { WorkOrderTpiPhoto } from '../work-order-tpi/entities/work-order-tpi-photo.entity';
 import { WorkOrderTpi } from '../work-order-tpi/entities/work-order-tpi.entity';
 import { ComponentsController } from './components.controller';
 import { ComponentsService } from './components.service';
@@ -18,6 +19,7 @@ import { WorkItemComponent } from './entities/work-item-component.entity';
       Component,
       WorkItemComponent,
       WorkOrderTpiComponent,
+      WorkOrderTpiPhoto,
       WorkOrderTpi,
       WorkItem,
       Photo,

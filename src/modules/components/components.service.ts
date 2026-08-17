@@ -21,6 +21,7 @@ import {
   WorkItemComponentStatus,
 } from './entities/work-item-component.entity';
 import { WorkOrderTpiComponent } from '../work-order-tpi/entities/work-order-tpi-component.entity';
+import { WorkOrderTpiPhoto } from '../work-order-tpi/entities/work-order-tpi-photo.entity';
 import { WorkOrderTpi, WorkItemStatus } from '../work-order-tpi/entities/work-order-tpi.entity';
 
 @Injectable()
@@ -32,6 +33,8 @@ export class ComponentsService {
     private readonly workItemComponentRepo: Repository<WorkItemComponent>,
     @InjectRepository(WorkOrderTpiComponent)
     private readonly workOrderTpiComponentRepo: Repository<WorkOrderTpiComponent>,
+    @InjectRepository(WorkOrderTpiPhoto)
+    private readonly workOrderTpiPhotoRepo: Repository<WorkOrderTpiPhoto>,
     @InjectRepository(WorkOrderTpi)
     private readonly workOrderTpiRepo: Repository<WorkOrderTpi>,
     @InjectRepository(WorkItem)
@@ -429,55 +432,98 @@ export class ComponentsService {
     page: number,
     limit: number,
   ): Promise<{
-    data: Photo[];
+    data: any[];
     total: number;
     page: number;
     limit: number;
     totalPages: number;
   }> {
-    const componentMapping = await this.workItemComponentRepo.findOne({
-      where: { id: componentId },
-      relations: ['workItem'],
-    });
-
-    if (!componentMapping) {
-      throw new NotFoundException(
-        `Work item component mapping with ID ${componentId} not found`,
-      );
-    }
-
-    // Fetch user to check their role
     const user = await this.userRepo.findOne({ where: { id: userId } });
     if (!user) {
       throw new NotFoundException(`User with ID ${userId} not found`);
     }
 
-    // Authorization: Allow if user is contractor owning work item OR is an employee
-    const isContractorOwner =
-      user.role === UserRole.CO &&
-      componentMapping.workItem.contractor_id === userId;
-    const isEmployee = user.role === UserRole.EM;
+    const componentMapping = await this.workItemComponentRepo.findOne({
+      where: { id: componentId },
+      relations: ['workItem', 'workItem.agreement'],
+    });
 
-    if (!isContractorOwner && !isEmployee) {
-      throw new ForbiddenException(
-        'Only the contractor or employees can access component photos',
+    if (componentMapping) {
+      const isContractorOwner =
+        user.role === UserRole.CO &&
+        (componentMapping.workItem.contractor_id === userId ||
+          componentMapping.workItem.agreement?.contractor_id === userId);
+      const isEmployee = user.role === UserRole.EM;
+      const isDo = user.role === UserRole.DO;
+
+      if (!isContractorOwner && !isEmployee && !isDo) {
+        throw new ForbiddenException(
+          'Only the contractor, employees, or district officers can access component photos',
+        );
+      }
+
+      const [data, total] = await this.photoRepo.findAndCount({
+        where: { component_id: componentId },
+        relations: ['employee', 'selectedByUser'],
+        order: { created_at: 'DESC' },
+        skip: (page - 1) * limit,
+        take: limit,
+      });
+
+      return {
+        data,
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+      };
+    }
+
+    // Check TPI component
+    const tpiComponent = await this.workOrderTpiComponentRepo.findOne({
+      where: { id: componentId },
+      relations: ['workOrderTpi', 'workOrderTpi.agreement'],
+    });
+
+    if (!tpiComponent) {
+      throw new NotFoundException(
+        `Component mapping with ID ${componentId} not found`,
       );
     }
 
-    const [data, total] = await this.photoRepo.findAndCount({
-      where: { component_id: componentId },
-      relations: ['employee', 'selectedByUser'],
+    const [tpiPhotos, tpiTotal] = await this.workOrderTpiPhotoRepo.findAndCount({
+      where: [
+        { component_id: componentId },
+        { work_order_tpi_id: tpiComponent.work_order_tpi_id, component_id: componentId },
+      ],
+      relations: ['uploader', 'selectedByUser'],
       order: { created_at: 'DESC' },
       skip: (page - 1) * limit,
       take: limit,
     });
 
     return {
-      data,
-      total,
+      data: tpiPhotos.map((p) => ({
+        id: p.id,
+        image_url: p.image_url,
+        latitude: p.latitude,
+        longitude: p.longitude,
+        timestamp: p.timestamp,
+        component_id: p.component_id,
+        work_item_id: p.work_order_tpi_id,
+        employee_id: p.uploader_id,
+        uploader_role: p.uploader_role,
+        is_selected: p.is_selected,
+        selected_by: p.selected_by,
+        selected_at: p.selected_at,
+        created_at: p.created_at,
+        employee: p.uploader,
+        selectedByUser: p.selectedByUser,
+      })),
+      total: tpiTotal,
       page,
       limit,
-      totalPages: Math.ceil(total / limit),
+      totalPages: Math.ceil(tpiTotal / limit),
     };
   }
 
@@ -489,16 +535,71 @@ export class ComponentsService {
     await this.dataSource.transaction(async (manager) => {
       const componentMapping = await manager.findOne(WorkItemComponent, {
         where: { id: componentId },
-        relations: ['workItem'],
+        relations: ['workItem', 'workItem.agreement'],
       });
 
       if (!componentMapping) {
-        throw new NotFoundException(
-          `Work item component mapping with ID ${componentId} not found`,
+        const tpiComponent = await manager.findOne(WorkOrderTpiComponent, {
+          where: { id: componentId },
+          relations: ['workOrderTpi', 'workOrderTpi.agreement'],
+        });
+
+        if (!tpiComponent) {
+          throw new NotFoundException(
+            `Component mapping with ID ${componentId} not found`,
+          );
+        }
+
+        const isContractorMatch =
+          tpiComponent.workOrderTpi.contractor_id === contractorId ||
+          tpiComponent.workOrderTpi.agreement?.contractor_id === contractorId;
+
+        if (!isContractorMatch) {
+          throw new ForbiddenException('Contractor does not own this work order');
+        }
+
+        const tpiPhoto = await manager.findOne(WorkOrderTpiPhoto, {
+          where: [
+            { id: photoId, component_id: componentId },
+            { id: photoId, work_order_tpi_id: tpiComponent.work_order_tpi_id },
+            { id: photoId },
+          ],
+        });
+
+        if (!tpiPhoto) {
+          throw new NotFoundException('Photo not found for the provided component');
+        }
+
+        // Deselect other photos for this component
+        await manager.update(
+          WorkOrderTpiPhoto,
+          { component_id: componentId, work_order_tpi_id: tpiComponent.work_order_tpi_id },
+          { is_selected: false, selected_by: null, selected_at: null },
         );
+
+        // Select this photo
+        await manager.update(
+          WorkOrderTpiPhoto,
+          { id: photoId },
+          {
+            is_selected: true,
+            selected_by: contractorId,
+            selected_at: new Date(),
+          },
+        );
+
+        tpiComponent.approved_photo_id = photoId;
+        tpiComponent.status = WorkItemComponentStatus.SUBMITTED;
+        await manager.save(WorkOrderTpiComponent, tpiComponent);
+
+        return;
       }
 
-      if (componentMapping.workItem.contractor_id !== contractorId) {
+      const isContractorMatch =
+        componentMapping.workItem.contractor_id === contractorId ||
+        componentMapping.workItem.agreement?.contractor_id === contractorId;
+
+      if (!isContractorMatch) {
         throw new ForbiddenException('Contractor does not own this work item');
       }
 
@@ -507,37 +608,11 @@ export class ComponentsService {
           WorkItemComponentStatus.PENDING,
           WorkItemComponentStatus.IN_PROGRESS,
           WorkItemComponentStatus.REJECTED,
+          WorkItemComponentStatus.SUBMITTED,
         ].includes(componentMapping.status)
       ) {
         throw new BadRequestException(
           'Only pending, in-progress, or rejected components can be submitted',
-        );
-      }
-
-      if (
-        componentMapping.quantity === null ||
-        componentMapping.quantity === undefined
-      ) {
-        throw new BadRequestException(
-          'Component quantity must be set before submission',
-        );
-      }
-
-      const quantity = Number(componentMapping.quantity);
-      const progress = Number(componentMapping.progress ?? 0);
-
-      if (progress < quantity) {
-        throw new BadRequestException(
-          'Component cannot be submitted until progress equals quantity',
-        );
-      }
-
-      if (
-        componentMapping.status === WorkItemComponentStatus.REJECTED &&
-        componentMapping.approved_photo_id === photoId
-      ) {
-        throw new BadRequestException(
-          'Rejected photo cannot be reselected. Please select another photo',
         );
       }
 
@@ -552,12 +627,6 @@ export class ComponentsService {
       if (!photo) {
         throw new NotFoundException(
           'Photo not found for the provided component',
-        );
-      }
-
-      if (photo.employee.role !== UserRole.EM) {
-        throw new BadRequestException(
-          'Selected photo must be uploaded by an employee',
         );
       }
 
@@ -622,9 +691,69 @@ export class ComponentsService {
       });
 
       if (!componentMapping) {
-        throw new NotFoundException(
-          `Work item component mapping with ID ${componentId} not found`,
+        const tpiComponent = await manager.findOne(WorkOrderTpiComponent, {
+          where: { id: componentId },
+          relations: ['workOrderTpi'],
+        });
+
+        if (!tpiComponent) {
+          throw new NotFoundException(
+            `Component mapping with ID ${componentId} not found`,
+          );
+        }
+
+        if (
+          districtOfficer.district_id &&
+          tpiComponent.workOrderTpi.district_id &&
+          String(districtOfficer.district_id) !== String(tpiComponent.workOrderTpi.district_id)
+        ) {
+          throw new ForbiddenException(
+            'District officer does not belong to this work item district',
+          );
+        }
+
+        let photoId = tpiComponent.approved_photo_id;
+        if (!photoId) {
+          const latestPhoto = await manager.findOne(WorkOrderTpiPhoto, {
+            where: { component_id: componentId },
+            order: { created_at: 'DESC' },
+          });
+          if (latestPhoto) {
+            photoId = latestPhoto.id;
+            latestPhoto.is_selected = true;
+            await manager.save(WorkOrderTpiPhoto, latestPhoto);
+          }
+        }
+
+        tpiComponent.approved_photo_id = photoId;
+        tpiComponent.approved_at = new Date();
+        tpiComponent.status = WorkItemComponentStatus.APPROVED;
+        tpiComponent.progress = 100;
+        await manager.save(WorkOrderTpiComponent, tpiComponent);
+
+        const allComps = await manager.find(WorkOrderTpiComponent, {
+          where: { work_order_tpi_id: tpiComponent.work_order_tpi_id },
+        });
+        const approvedCount = allComps.filter(
+          (c) => c.status === WorkItemComponentStatus.APPROVED,
+        ).length;
+        const progressPercentage = Math.round(
+          (approvedCount / allComps.length) * 100,
         );
+
+        await manager.update(
+          WorkOrderTpi,
+          { id: tpiComponent.work_order_tpi_id },
+          {
+            progress_percentage: progressPercentage,
+            status:
+              progressPercentage === 100
+                ? WorkItemStatus.COMPLETED
+                : WorkItemStatus.IN_PROGRESS,
+          },
+        );
+
+        return;
       }
 
       if (componentMapping.status !== WorkItemComponentStatus.SUBMITTED) {
@@ -713,9 +842,39 @@ export class ComponentsService {
       });
 
       if (!componentMapping) {
-        throw new NotFoundException(
-          `Work item component mapping with ID ${componentId} not found`,
-        );
+        const tpiComponent = await manager.findOne(WorkOrderTpiComponent, {
+          where: { id: componentId },
+          relations: ['workOrderTpi'],
+        });
+
+        if (!tpiComponent) {
+          throw new NotFoundException(
+            `Component mapping with ID ${componentId} not found`,
+          );
+        }
+
+        if (
+          districtOfficer.district_id &&
+          tpiComponent.workOrderTpi.district_id &&
+          String(districtOfficer.district_id) !== String(tpiComponent.workOrderTpi.district_id)
+        ) {
+          throw new ForbiddenException(
+            'District officer does not belong to this work item district',
+          );
+        }
+
+        if (tpiComponent.approved_photo_id) {
+          await manager.update(
+            WorkOrderTpiPhoto,
+            { id: tpiComponent.approved_photo_id },
+            { is_selected: false },
+          );
+        }
+
+        tpiComponent.status = WorkItemComponentStatus.REJECTED;
+        tpiComponent.approved_at = null;
+        await manager.save(WorkOrderTpiComponent, tpiComponent);
+        return;
       }
 
       if (componentMapping.status !== WorkItemComponentStatus.SUBMITTED) {
@@ -783,7 +942,7 @@ export class ComponentsService {
     page: number,
     limit: number,
   ): Promise<{
-    data: WorkItemComponent[];
+    data: any[];
     total: number;
     page: number;
     limit: number;
@@ -811,7 +970,7 @@ export class ComponentsService {
       );
     }
 
-    const query = this.workItemComponentRepo
+    const svsQuery = this.workItemComponentRepo
       .createQueryBuilder('component')
       .leftJoinAndSelect('component.component', 'master_component')
       .leftJoinAndSelect('component.workItem', 'work_item')
@@ -821,18 +980,42 @@ export class ComponentsService {
       .andWhere('work_item.district_id = :districtId', {
         districtId: districtOfficer.district_id,
       })
-      .orderBy('component.updated_at', 'DESC')
-      .skip((page - 1) * limit)
-      .take(limit);
+      .orderBy('component.updated_at', 'DESC');
 
-    const [data, total] = await query.getManyAndCount();
+    const svsData = await svsQuery.getMany();
+
+    const tpiQuery = this.workOrderTpiComponentRepo
+      .createQueryBuilder('component')
+      .leftJoinAndSelect('component.workOrderTpi', 'work_order_tpi')
+      .where('component.status = :status', {
+        status: WorkItemComponentStatus.SUBMITTED,
+      })
+      .andWhere('work_order_tpi.district_id = :districtId', {
+        districtId: districtOfficer.district_id,
+      })
+      .orderBy('component.updated_at', 'DESC');
+
+    let tpiData: any[] = [];
+    try {
+      tpiData = await tpiQuery.getMany();
+    } catch {
+      tpiData = [];
+    }
+
+    const allData = [...svsData, ...tpiData].sort((a: any, b: any) => {
+      const timeA = new Date(a.updated_at || 0).getTime();
+      const timeB = new Date(b.updated_at || 0).getTime();
+      return timeB - timeA;
+    });
+
+    const paginatedData = allData.slice((page - 1) * limit, page * limit);
 
     return {
-      data,
-      total,
+      data: paginatedData,
+      total: allData.length,
       page,
       limit,
-      totalPages: Math.ceil(total / limit),
+      totalPages: Math.ceil(allData.length / limit),
     };
   }
 
@@ -840,13 +1023,13 @@ export class ComponentsService {
     page: number,
     limit: number,
   ): Promise<{
-    data: WorkItemComponent[];
+    data: any[];
     total: number;
     page: number;
     limit: number;
     totalPages: number;
   }> {
-    const [data, total] = await this.workItemComponentRepo.findAndCount({
+    const [svsData, svsTotal] = await this.workItemComponentRepo.findAndCount({
       where: { status: WorkItemComponentStatus.APPROVED },
       relations: ['component', 'workItem'],
       order: { updated_at: 'DESC' },
@@ -855,11 +1038,11 @@ export class ComponentsService {
     });
 
     return {
-      data,
-      total,
+      data: svsData,
+      total: svsTotal,
       page,
       limit,
-      totalPages: Math.ceil(total / limit),
+      totalPages: Math.ceil(svsTotal / limit),
     };
   }
 }

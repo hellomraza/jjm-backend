@@ -36,6 +36,13 @@ describe('ComponentsService', () => {
     save: jest.fn(),
   } as unknown as any;
 
+  const workOrderTpiPhotoRepo = {
+    findOne: jest.fn(),
+    find: jest.fn(),
+    save: jest.fn(),
+    findAndCount: jest.fn(),
+  } as unknown as any;
+
   const workOrderTpiRepo = {
     findOne: jest.fn(),
     find: jest.fn(),
@@ -49,7 +56,7 @@ describe('ComponentsService', () => {
   } as unknown as Repository<Photo>;
 
   const userRepo = {
-    findOne: jest.fn(),
+    findOne: jest.fn().mockResolvedValue({ id: 'emp-1', role: UserRole.EM }),
   } as unknown as Repository<User>;
 
   const photosService = {
@@ -66,6 +73,7 @@ describe('ComponentsService', () => {
       componentRepo,
       workItemComponentRepo,
       workOrderTpiComponentRepo,
+      workOrderTpiPhotoRepo,
       workOrderTpiRepo,
       workItemRepo,
       photoRepo,
@@ -74,6 +82,10 @@ describe('ComponentsService', () => {
       dataSource,
     );
     jest.clearAllMocks();
+    (userRepo.findOne as jest.Mock).mockResolvedValue({
+      id: 'emp-1',
+      role: UserRole.EM,
+    });
   });
 
   it('findMasterComponents delegates to repository', async () => {
