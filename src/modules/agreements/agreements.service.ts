@@ -57,7 +57,9 @@ export class AgreementsService {
 
   private readonly agreementRelations = {
     contractor: true,
-    workItems: true,
+    workItems: {
+      tpi: true,
+    },
     agreementFileMaps: {
       agreementFile: true,
     },
@@ -1006,6 +1008,7 @@ export class AgreementsService {
       order: { created_at: 'DESC' },
       relations: {
         contractor: true,
+        tpi: true,
       },
     });
 

@@ -316,6 +316,28 @@ export class WorkItemResponseDto {
   status: WorkItemStatus;
 
   @ApiProperty({
+    description: 'Work order type (SVS or BULK_VILLAGE)',
+    example: 'BULK_VILLAGE',
+    required: false,
+  })
+  work_order_type?: string;
+
+  @ApiProperty({
+    description: 'TPI Agency ID if assigned',
+    example: '550e8400-e29b-41d4-a716-446655440000',
+    required: false,
+    nullable: true,
+  })
+  tpi_id?: string | null;
+
+  @ApiProperty({
+    description: 'TPI Agency user object if assigned',
+    required: false,
+    nullable: true,
+  })
+  tpi?: any;
+
+  @ApiProperty({
     description: 'Timestamp when the work item was created',
     example: '2024-01-01T12:00:00Z',
   })

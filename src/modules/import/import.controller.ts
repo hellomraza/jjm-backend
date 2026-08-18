@@ -149,12 +149,14 @@ export class ImportController {
   })
   async bulkInsertWorkItems(
     @Body('workItems') workItems: WorkItemImport[],
-    @Query('workOrderType', new ParseEnumPipe(WorkOrderType))
-    workOrderType?: WorkOrderType,
+    @Body('workOrderType') bodyType?: WorkOrderType,
+    @Query('workOrderType', new ParseEnumPipe(WorkOrderType, { optional: true }))
+    queryType?: WorkOrderType,
   ) {
+    const resolvedType = queryType || bodyType || WorkOrderType.SVS;
     return this.workItemsService.bulkCreateFromImport(
       workItems,
-      workOrderType || WorkOrderType.SVS,
+      resolvedType,
     );
   }
 }

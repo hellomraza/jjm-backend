@@ -132,7 +132,14 @@ export class WorkItemsController {
   }
 
   @Get(':id/employees')
-  @Roles(UserRole.HO, UserRole.DO, UserRole.CO, UserRole.EM)
+  @Roles(
+    UserRole.HO,
+    UserRole.DO,
+    UserRole.CO,
+    UserRole.EM,
+    UserRole.TPI,
+    UserRole.TPI_STAFF,
+  )
   @ApiOperation({
     summary: 'Get employees assigned to work item',
     description: 'Returns list of employees assigned to a specific work item',

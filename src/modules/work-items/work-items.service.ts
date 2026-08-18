@@ -75,6 +75,7 @@ export class WorkItemsService {
     subdivision: true,
     circle: true,
     zone: true,
+    tpi: true,
   } as const;
 
   private buildNumericCodeBody(): string {
