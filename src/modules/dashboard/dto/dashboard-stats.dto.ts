@@ -251,3 +251,75 @@ export class ContractorDashboardDto {
   })
   generatedAt: Date;
 }
+
+export class TpiWorkItemDto {
+  @ApiProperty({
+    description: 'Work item unique identifier',
+    example: '550e8400-e29b-41d4-a716-446655440000',
+  })
+  id: string;
+
+  @ApiProperty({
+    description: 'Work item code',
+    example: 'WI-001',
+  })
+  work_code: string;
+
+  @ApiProperty({
+    description: 'Work item title',
+    example: 'Bulk Village Water Pipeline',
+  })
+  title: string;
+
+  @ApiProperty({
+    description: 'Current status of work item',
+    enum: ['PENDING', 'IN_PROGRESS', 'COMPLETED'],
+    example: 'IN_PROGRESS',
+  })
+  status: string;
+
+  @ApiProperty({
+    description: 'Total number of components in this work order',
+    example: 8,
+  })
+  totalComponents: number;
+
+  @ApiProperty({
+    description: 'Number of components with selected TPI reference photos',
+    example: 3,
+  })
+  selectedReferencePhotosCount: number;
+
+  @ApiProperty({
+    description: 'Number of TPI staff assigned to this work item',
+    example: 2,
+  })
+  assignedStaffCount: number;
+}
+
+export class TpiDashboardDto {
+  @ApiProperty({
+    description: 'Total number of work items assigned to TPI',
+    example: 5,
+  })
+  totalAssignedWorkItems: number;
+
+  @ApiProperty({
+    description: 'Total number of staff members under this TPI',
+    example: 4,
+  })
+  totalStaffMembers: number;
+
+  @ApiProperty({
+    description: 'List of assigned work items with reference photo and staff details',
+    type: [TpiWorkItemDto],
+  })
+  workItems: TpiWorkItemDto[];
+
+  @ApiProperty({
+    description: 'Timestamp when the statistics were generated',
+    example: '2026-03-25T10:30:00.000Z',
+  })
+  generatedAt: Date;
+}
+

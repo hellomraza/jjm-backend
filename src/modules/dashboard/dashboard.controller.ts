@@ -17,6 +17,7 @@ import {
   ContractorDashboardDto,
   DashboardStatsDto,
   DistrictDashboardDto,
+  TpiDashboardDto,
 } from './dto/dashboard-stats.dto';
 
 @ApiTags('Dashboard')
@@ -29,16 +30,17 @@ export class DashboardController {
   constructor(private readonly dashboardService: DashboardService) {}
 
   @Get('stats')
-  @Roles(UserRole.HO, UserRole.DO, UserRole.CO)
+  @Roles(UserRole.HO, UserRole.DO, UserRole.CO, UserRole.TPI)
   @ApiOperation({
     summary: 'Get dashboard statistics',
     description:
-      'Returns statistics based on user role. HO users get comprehensive application statistics. DO users get district-specific statistics with work items and progress percentages. CO users get their assigned work items with component and employee details.',
+      'Returns statistics based on user role. HO users get comprehensive application statistics. DO users get district-specific statistics with work items and progress percentages. CO users get their assigned work items with component and employee details. TPI users get Bulk Village assigned work orders, staff count, and reference evidence status.',
   })
   @ApiExtraModels(
     DistrictDashboardDto,
     DashboardStatsDto,
     ContractorDashboardDto,
+    TpiDashboardDto,
   )
   @ApiOkResponse({
     description: 'Statistics retrieved successfully',
@@ -47,13 +49,14 @@ export class DashboardController {
         { $ref: '#/components/schemas/DashboardStatsDto' },
         { $ref: '#/components/schemas/DistrictDashboardDto' },
         { $ref: '#/components/schemas/ContractorDashboardDto' },
+        { $ref: '#/components/schemas/TpiDashboardDto' },
       ],
     },
   })
   getStats(
     @Request() req: { user: { userId: string; role: UserRole } },
   ): Promise<
-    DashboardStatsDto | DistrictDashboardDto | ContractorDashboardDto
+    DashboardStatsDto | DistrictDashboardDto | ContractorDashboardDto | TpiDashboardDto
   > {
     return this.dashboardService.getStats(req.user.userId, req.user.role);
   }
