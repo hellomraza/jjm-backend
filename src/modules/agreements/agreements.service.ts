@@ -32,6 +32,8 @@ import { AttachAgreementFileDto } from './dto/attach-agreement-file.dto';
 import { CreateAgreementDto } from './dto/create-agreement.dto';
 import { UpdateAgreementDto } from './dto/update-agreement.dto';
 import { WorkItemEmployeeAssignment } from '../work-items/entities/work-item-employee-assignment.entity';
+import { WorkItemTpiStaffAssignment } from '../work-items/entities/work-item-tpi-staff-assignment.entity';
+import { TpiStaffRelationship } from '../users/entities/tpi-staff-relationship.entity';
 import { AgreementFile } from './entities/agreement-file.entity';
 import { AgreementFileMap } from './entities/agreement-file-map.entity';
 import { Agreement } from './entities/agreement.entity';
@@ -799,6 +801,39 @@ export class AgreementsService {
       return { workItems: { id: In(workItemIds) } };
     }
 
+    if (role === UserRole.TPI_STAFF) {
+      // 1. Verify parent TPI is active
+      const relationship = await this.agreementsRepository.manager.findOne(
+        TpiStaffRelationship,
+        {
+          where: { staff_id: userId },
+          relations: ['tpi'],
+        },
+      );
+      if (
+        !relationship ||
+        !relationship.tpi ||
+        relationship.tpi.is_active === false
+      ) {
+        return { id: '__no_access__' };
+      }
+
+      // 2. Query work items assigned to this staff
+      const assignments = await this.agreementsRepository.manager.find(
+        WorkItemTpiStaffAssignment,
+        {
+          where: { staff_id: userId },
+          select: ['work_item_id'],
+        },
+      );
+      const workItemIds = assignments.map((a) => a.work_item_id);
+      if (workItemIds.length === 0) {
+        return { id: '__no_access__' };
+      }
+
+      return { workItems: { id: In(workItemIds) } };
+    }
+
     return { id: '__no_access__' };
   }
 
@@ -908,6 +943,31 @@ export class AgreementsService {
         WorkItemEmployeeAssignment,
         {
           where: { employee_id: userId },
+          select: ['work_item_id'],
+        },
+      );
+      const workItemIds = assignments.map((a) => a.work_item_id);
+      if (workItemIds.length === 0) {
+        return {
+          data: [],
+          total: 0,
+          page: safePage,
+          limit: safeLimit,
+          totalPages: 0,
+        };
+      }
+
+      where = {
+        agreement_id: agreementId,
+        id: In(workItemIds),
+      };
+    }
+
+    if (role === UserRole.TPI_STAFF) {
+      const assignments = await this.agreementsRepository.manager.find(
+        WorkItemTpiStaffAssignment,
+        {
+          where: { staff_id: userId },
           select: ['work_item_id'],
         },
       );

@@ -72,7 +72,7 @@ export class AgreementsController {
   }
 
   @Get()
-  @Roles(UserRole.HO, UserRole.DO, UserRole.CO, UserRole.EM)
+  @Roles(UserRole.HO, UserRole.DO, UserRole.CO, UserRole.EM, UserRole.TPI_STAFF)
   @ApiOperation({
     summary: 'List agreements',
     description: 'Returns paginated agreements list with search and filter support',
@@ -119,7 +119,7 @@ export class AgreementsController {
   }
 
   @Get(':id')
-  @Roles(UserRole.HO, UserRole.DO, UserRole.CO, UserRole.EM)
+  @Roles(UserRole.HO, UserRole.DO, UserRole.CO, UserRole.EM, UserRole.TPI_STAFF)
   @ApiOperation({
     summary: 'Get agreement by ID',
     description: 'Returns agreement details by agreement ID',
@@ -141,11 +141,11 @@ export class AgreementsController {
   }
 
   @Get(':id/work-items')
-  @Roles(UserRole.HO, UserRole.DO, UserRole.CO, UserRole.EM)
+  @Roles(UserRole.HO, UserRole.DO, UserRole.CO, UserRole.EM, UserRole.TPI_STAFF)
   @ApiOperation({
     summary: 'Get work items of a particular agreement',
     description:
-      'Returns paginated work items of an agreement. For EM role, returns only assigned work items.',
+      'Returns paginated work items of an agreement. For EM and TPI_STAFF role, returns only assigned work items.',
   })
   @ApiParam({ name: 'id', type: String, description: 'Agreement ID' })
   @ApiQuery({ name: 'page', required: false, type: Number, example: 1 })

@@ -78,13 +78,13 @@ Use this checklist in order. Do not mark a phase complete until every validation
 
 ## Phase 6 — mobile
 
-- [ ] Add TPI_STAFF mobile authentication/profile handling.
-- [ ] Scope agreement/work-item APIs to assigned TPI staff work only.
-- [ ] Reuse navigation/camera/location/compression/Cloudinary flow.
-- [ ] Hide quantity/progress input for TPI staff.
-- [ ] Use dedicated reference-photo upload endpoint for TPI staff.
-- [ ] Show reference-photo locked state after TPI selection.
-- [ ] Preserve all existing EM progress/photo behavior and tests.
+- [x] Add TPI_STAFF mobile authentication/profile handling.
+- [x] Scope agreement/work-item APIs to assigned TPI staff work only.
+- [x] Reuse navigation/camera/location/compression/Cloudinary flow.
+- [x] Hide quantity/progress input for TPI staff.
+- [x] Use dedicated reference-photo upload endpoint for TPI staff.
+- [x] Show reference-photo locked state after TPI selection.
+- [x] Preserve all existing EM progress/photo behavior and tests.
 
 ## Phase 7 — verification and release
 
