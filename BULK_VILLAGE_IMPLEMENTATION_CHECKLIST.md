@@ -69,8 +69,8 @@ Use this checklist in order. Do not mark a phase complete until every validation
 - [ ] Add Executive Engineer-only DO mode switch and direct-route protection.
 - [ ] Clear/reject Bulk navigation after Executive Engineer revocation.
 - [ ] Add HO TPI management tab; do not add Excel import.
-- [ ] Add Executive Engineer toggle to DO create/edit/list UI.
-- [ ] Add type-aware work order/agreement filters and creation/import context.
+- [x] Add Executive Engineer toggle to DO create/edit/list UI.
+- [x] Add type-aware work order/agreement filters and creation/import context.
 - [ ] Add Executive Engineer Bulk work-order TPI assignment controls with no picker.
 - [ ] Show contractor and TPI evidence as separate groups; only contractor group gets approval buttons.
 - [ ] Build TPI dashboard, staff management, staff assignment, and reference selection views.
