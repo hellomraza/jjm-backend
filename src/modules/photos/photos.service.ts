@@ -435,6 +435,7 @@ export class PhotosService {
 
       const mapping = await manager.findOne(WorkItemComponent, {
         where: { component_id: statusRecord.component_id, work_item_id: statusRecord.work_item_id },
+        lock: { mode: 'pessimistic_write' },
       });
       if (!mapping) {
         throw new NotFoundException('Component mapping not found');

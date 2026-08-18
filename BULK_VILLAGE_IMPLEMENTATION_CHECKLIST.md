@@ -88,13 +88,13 @@ Use this checklist in order. Do not mark a phase complete until every validation
 
 ## Phase 7 — verification and release
 
-- [ ] Unit-test every validation/guard and role matrix allow/deny condition.
-- [ ] Add controller/e2e tests for types, agreements, TPI management, assignments, staff, reference evidence, locking, and redaction.
-- [ ] Test concurrent TPI selection requests; only one selection may succeed.
-- [ ] Test TPI/parent deactivation with already issued tokens.
-- [ ] Test Executive Engineer revocation with already issued token.
-- [ ] Test Next.js mode, navigation, cache invalidation, loading, and error states.
-- [ ] Test React Native EM and TPI_STAFF flows separately.
-- [ ] Manually walk through HO, normal DO, Executive Engineer DO, CO, EM, TPI, TPI_STAFF across at least two districts.
-- [ ] Verify no TPI reference URL exists in any HO API response, network response, or rendered markup.
-- [ ] Run lint, unit tests, builds, migration dry run, and smoke test before release.
+- [x] Unit-test every validation/guard and role matrix allow/deny condition.
+- [x] Add controller/e2e tests for types, agreements, TPI management, assignments, staff, reference evidence, locking, and redaction.
+- [x] Test concurrent TPI selection requests; only one selection may succeed.
+- [x] Test TPI/parent deactivation with already issued tokens.
+- [x] Test Executive Engineer revocation with already issued token.
+- [x] Test Next.js mode, navigation, cache invalidation, loading, and error states.
+- [x] Test React Native EM and TPI_STAFF flows separately.
+- [x] Manually walk through HO, normal DO, Executive Engineer DO, CO, EM, TPI, TPI_STAFF across at least two districts.
+- [x] Verify no TPI reference URL exists in any HO API response, network response, or rendered markup.
+- [x] Run lint, unit tests, builds, migration dry run, and smoke test before release.

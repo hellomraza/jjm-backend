@@ -7,6 +7,7 @@
   "license": "UNLICENSED",
   "scripts": {
     "build": "nest build",
+    "verify:phase7": "yarn build && node dist/src/database/verify-phase7-e2e.js",
     "start:db": "sh ./scripts/start-db.sh",
     "stop:db": "sh ./scripts/stop-db.sh",
     "mock-data": "yarn build && node dist/src/database/seed-mock-data.js",
