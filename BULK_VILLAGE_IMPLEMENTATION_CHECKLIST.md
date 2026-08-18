@@ -28,15 +28,15 @@ Use this checklist in order. Do not mark a phase complete until every validation
 
 ## Phase 2 — backend authorization and data access
 
-- [ ] Add current active-user check that also denies staff when parent TPI is inactive.
-- [ ] Add Executive Engineer guard/service check that reads current database state.
-- [ ] Add own-district Bulk Village scope validation.
-- [ ] Add TPI ownership and staff assignment validation.
-- [ ] Add agreement type-compatibility validation.
-- [ ] Add work-order type filtering to lists and type-derived agreement filtering.
-- [ ] Ensure untyped agreements appear in both mode lists.
-- [ ] Ensure typed agreement cannot accept a work item of another type.
-- [ ] Add DTO response projections that exclude TPI photo URLs from HO responses.
+- [x] Add current active-user check that also denies staff when parent TPI is inactive.
+- [x] Add Executive Engineer guard/service check that reads current database state.
+- [x] Add own-district Bulk Village scope validation.
+- [x] Add TPI ownership and staff assignment validation.
+- [x] Add agreement type-compatibility validation.
+- [x] Add work-order type filtering to lists and type-derived agreement filtering.
+- [x] Ensure untyped agreements appear in both mode lists.
+- [x] Ensure typed agreement cannot accept a work item of another type.
+- [x] Add DTO response projections that exclude TPI photo URLs from HO responses.
 
 ## Phase 3 — accounts and assignments
 

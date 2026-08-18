@@ -10,7 +10,7 @@ import { Repository } from 'typeorm';
 import { UploadService } from '../../common/upload/upload.service';
 import { UploadPhotoUrlDto } from './dto/upload-photo-url.dto';
 import { UploadPhotoDto } from './dto/upload-photo.dto';
-import { Photo } from './entities/photo.entity';
+import { Photo, PhotoSource } from './entities/photo.entity';
 import { PhotoStatusService } from './photo-status.service';
 
 @Injectable()
@@ -109,6 +109,7 @@ export class PhotosService {
     totalPages: number;
   }> {
     const [items, total] = await this.photoRepo.findAndCount({
+      where: { source: PhotoSource.CONTRACTOR },
       skip: (page - 1) * limit,
       take: limit,
       relations: [
@@ -141,7 +142,7 @@ export class PhotosService {
     totalPages: number;
   }> {
     const [items, total] = await this.photoRepo.findAndCount({
-      where: { component_id: componentId },
+      where: { component_id: componentId, source: PhotoSource.CONTRACTOR },
       skip: (page - 1) * limit,
       take: limit,
       relations: [
@@ -164,6 +165,10 @@ export class PhotosService {
 
   async selectBestPhoto(photoId: string, contractorId: string): Promise<Photo> {
     const targetPhoto = await this.findOne(photoId);
+
+    if (targetPhoto.source !== PhotoSource.CONTRACTOR) {
+      throw new BadRequestException('Only contractor progress photos can be selected');
+    }
 
     await this.photoRepo.update(
       { component_id: targetPhoto.component_id },
@@ -190,6 +195,10 @@ export class PhotosService {
     contractorId: string,
   ): Promise<Photo> {
     const photo = await this.findOne(photoId);
+
+    if (photo.source !== PhotoSource.CONTRACTOR) {
+      throw new BadRequestException('Only contractor progress photos can be forwarded');
+    }
 
     if (!photo.is_selected) {
       throw new BadRequestException(

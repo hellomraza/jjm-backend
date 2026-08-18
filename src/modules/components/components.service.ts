@@ -8,7 +8,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, EntityManager, Repository } from 'typeorm';
 import { UploadPhotoUrlDto } from '../photos/dto/upload-photo-url.dto';
 import { UploadPhotoDto } from '../photos/dto/upload-photo.dto';
-import { Photo } from '../photos/entities/photo.entity';
+import { Photo, PhotoSource } from '../photos/entities/photo.entity';
 import { PhotosService } from '../photos/photos.service';
 import { User, UserRole } from '../users/entities/user.entity';
 import { WorkItem } from '../work-items/entities/work-item.entity';
@@ -358,7 +358,7 @@ export class ComponentsService {
     }
 
     const [data, total] = await this.photoRepo.findAndCount({
-      where: { component_id: componentId },
+      where: { component_id: componentId, source: PhotoSource.CONTRACTOR },
       relations: ['employee', 'selectedByUser'],
       order: { created_at: 'DESC' },
       skip: (page - 1) * limit,

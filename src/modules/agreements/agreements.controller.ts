@@ -31,6 +31,7 @@ import { Roles } from '../../common/decorators/roles.decorator';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { UserRole } from '../users/entities/user.entity';
+import { WorkOrderType } from '../work-items/entities/work-item.entity';
 import { AgreementsService } from './agreements.service';
 import { AttachAgreementFileDto } from './dto/attach-agreement-file.dto';
 import {
@@ -97,6 +98,7 @@ export class AgreementsController {
     @Query('limit') limit: number = 20,
     @Query('search') search?: string,
     @Query('agreementyear') agreementyear?: string,
+    @Query('workOrderType') workOrderType?: WorkOrderType,
   ) {
     const result = await this.agreementsService.findAllForUser(
       req.user.userId,
@@ -105,6 +107,7 @@ export class AgreementsController {
       limit,
       search,
       agreementyear,
+      workOrderType,
     );
 
     return {

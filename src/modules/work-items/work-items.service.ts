@@ -42,6 +42,7 @@ import {
   WorkItemBankDetail,
 } from './entities/work-item-bank-detail.entity';
 import { WorkItemEmployeeAssignment } from './entities/work-item-employee-assignment.entity';
+import { WorkItemTpiStaffAssignment } from './entities/work-item-tpi-staff-assignment.entity';
 import { WorkItem, WorkItemStatus, WorkOrderType } from './entities/work-item.entity';
 
 @Injectable()
@@ -527,6 +528,7 @@ export class WorkItemsService {
     page: number = 1,
     limit: number = 20,
     search?: string,
+    workOrderType?: WorkOrderType,
   ): Promise<{
     data: WorkItem[];
     total: number;
@@ -607,8 +609,41 @@ export class WorkItemsService {
       where = { id: In(assignedWorkItemIds) };
     }
 
+    if (role === UserRole.TPI) {
+      where = { tpi_id: userId };
+    }
+
+    if (role === UserRole.TPI_STAFF) {
+      const assignedRows = await this.dataSource
+        .getRepository(WorkItemTpiStaffAssignment)
+        .find({
+          where: { staff_id: userId },
+          select: ['work_item_id'],
+        });
+
+      const assignedWorkItemIds = [
+        ...new Set(assignedRows.map((row) => row.work_item_id)),
+      ];
+
+      if (assignedWorkItemIds.length === 0) {
+        return {
+          data: [],
+          total: 0,
+          page: safePage,
+          limit: safeLimit,
+          totalPages: 0,
+        };
+      }
+
+      where = { id: In(assignedWorkItemIds) };
+    }
+
     // Exclude temporary work items for all roles
     where.schemetype = Not('TEMP');
+
+    if (workOrderType) {
+      where.work_order_type = workOrderType;
+    }
 
     if (search) {
       where.work_code = ILike(`%${search}%`);

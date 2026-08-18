@@ -1,6 +1,13 @@
 import { ApiProperty } from '@nestjs/swagger';
+import { PhotoSource } from '../entities/photo.entity';
 
 export class PhotoResponseDto {
+  @ApiProperty({
+    description: 'Source of the photo (CONTRACTOR or TPI)',
+    enum: PhotoSource,
+    example: 'CONTRACTOR',
+  })
+  source: string;
   @ApiProperty({
     description: 'Unique identifier for the photo',
     example: '550e8400-e29b-41d4-a716-446655440000',

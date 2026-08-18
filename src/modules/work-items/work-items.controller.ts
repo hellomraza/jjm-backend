@@ -47,7 +47,7 @@ import {
   EmployeeResponseDto,
   WorkItemResponseDto,
 } from './dto/work-item-return-type.dto';
-import { WorkItem, WorkItemStatus } from './entities/work-item.entity';
+import { WorkItem, WorkItemStatus, WorkOrderType } from './entities/work-item.entity';
 import { WorkItemsService } from './work-items.service';
 
 @ApiTags('Work Items')
@@ -60,7 +60,7 @@ export class WorkItemsController {
   constructor(private readonly workItemsService: WorkItemsService) {}
 
   @Get('my-work-items')
-  @Roles(UserRole.HO, UserRole.DO, UserRole.CO, UserRole.EM)
+  @Roles(UserRole.HO, UserRole.DO, UserRole.CO, UserRole.EM, UserRole.TPI, UserRole.TPI_STAFF)
   @ApiOperation({
     summary: 'List my work items',
     description:
@@ -74,12 +74,19 @@ export class WorkItemsController {
     type: String,
     description: 'Search by work code (partial match)',
   })
+  @ApiQuery({
+    name: 'workOrderType',
+    required: false,
+    enum: WorkOrderType,
+    description: 'Filter by work order type',
+  })
   @ApiPaginatedResponse(WorkItemResponseDto)
   async getMyWorkItems(
     @Request() req: { user: { userId: string; role: UserRole } },
     @Query('page') page: number = 1,
     @Query('limit') limit: number = 20,
     @Query('search') search?: string,
+    @Query('workOrderType') workOrderType?: WorkOrderType,
   ): Promise<PaginatedResponse<WorkItem>> {
     return await this.workItemsService.getMyWorkItems(
       req.user.userId,
@@ -87,6 +94,7 @@ export class WorkItemsController {
       page,
       limit,
       search,
+      workOrderType,
     );
   }
 

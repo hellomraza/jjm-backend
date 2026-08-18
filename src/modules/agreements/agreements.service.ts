@@ -26,6 +26,7 @@ import { User, UserRole } from '../users/entities/user.entity';
 import {
   WorkItem,
   WorkItemStatus,
+  WorkOrderType,
 } from '../work-items/entities/work-item.entity';
 import { AttachAgreementFileDto } from './dto/attach-agreement-file.dto';
 import { CreateAgreementDto } from './dto/create-agreement.dto';
@@ -124,6 +125,48 @@ export class AgreementsService {
         throw new UnprocessableEntityException(
           `One or more work items not found`,
         );
+      }
+    }
+  }
+
+  private async validateWorkItemTypeCompatibility(
+    agreementId: string | null,
+    workIds?: string[] | null,
+  ): Promise<void> {
+    if (!workIds || workIds.length === 0) {
+      return;
+    }
+
+    const newWorkItems = await this.workItemsRepository.find({
+      where: { id: In(workIds) },
+    });
+
+    if (newWorkItems.length === 0) {
+      return;
+    }
+
+    const firstType = newWorkItems[0].work_order_type;
+    const hasDifferentType = newWorkItems.some(
+      (wi) => wi.work_order_type !== firstType,
+    );
+    if (hasDifferentType) {
+      throw new BadRequestException(
+        'Cannot link work items of different types to the same agreement',
+      );
+    }
+
+    if (agreementId) {
+      const existingWorkItems = await this.workItemsRepository.find({
+        where: { agreement_id: agreementId },
+      });
+
+      if (existingWorkItems.length > 0) {
+        const existingType = existingWorkItems[0].work_order_type;
+        if (existingType !== firstType) {
+          throw new BadRequestException(
+            `Agreement is typed as ${existingType} and cannot accept work items of type ${firstType}`,
+          );
+        }
       }
     }
   }
@@ -298,6 +341,7 @@ export class AgreementsService {
       createAgreementDto.contractor_id,
       work_ids || [],
     );
+    await this.validateWorkItemTypeCompatibility(null, work_ids);
 
     const agreement = this.agreementsRepository.create({
       ...agreementData,
@@ -765,6 +809,7 @@ export class AgreementsService {
     limit: number = 20,
     search?: string,
     agreementyear?: string,
+    workOrderType?: WorkOrderType,
   ): Promise<{
     data: Agreement[];
     total: number;
@@ -790,8 +835,18 @@ export class AgreementsService {
       where.agreementyear = agreementyear;
     }
 
+    let whereList: FindOptionsWhere<Agreement>[];
+    if (workOrderType) {
+      whereList = [
+        { ...where, workItems: { work_order_type: workOrderType } },
+        { ...where, workItems: { id: IsNull() } },
+      ];
+    } else {
+      whereList = [where];
+    }
+
     const [items, total] = await this.agreementsRepository.findAndCount({
-      where,
+      where: whereList,
       skip: (safePage - 1) * safeLimit,
       take: safeLimit,
       order: { created_at: 'DESC' },
@@ -945,6 +1000,7 @@ export class AgreementsService {
       const addedWorkIds = work_ids.filter((id) => !currentWorkItemIds.includes(id));
       if (addedWorkIds.length > 0) {
         await this.validateForeignKeys(agreement.contractor_id, addedWorkIds);
+        await this.validateWorkItemTypeCompatibility(agreement.id, addedWorkIds);
 
         const addedWorkItems = await this.workItemsRepository.find({
           where: { id: In(addedWorkIds) },
