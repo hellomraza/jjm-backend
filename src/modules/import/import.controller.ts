@@ -25,8 +25,8 @@ import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { AgreementsService } from '../agreements/agreements.service';
 import { UserRole } from '../users/entities/user.entity';
-import { WorkOrderType } from '../work-items/entities/work-item.entity';
 import { UsersService } from '../users/users.service';
+import { WorkOrderType } from '../work-items/entities/work-item.entity';
 import { WorkItemsService } from '../work-items/work-items.service';
 import {
   type AgreementImport,
@@ -149,7 +149,8 @@ export class ImportController {
   })
   async bulkInsertWorkItems(
     @Body('workItems') workItems: WorkItemImport[],
-    @Body('workOrderType') workOrderType?: WorkOrderType,
+    @Query('workOrderType', new ParseEnumPipe(WorkOrderType))
+    workOrderType?: WorkOrderType,
   ) {
     return this.workItemsService.bulkCreateFromImport(
       workItems,

@@ -9,25 +9,31 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import * as bcrypt from 'bcryptjs';
 import * as crypto from 'crypto';
-import { DataSource, DeepPartial, FindOptionsWhere, IsNull, Repository } from 'typeorm';
+import {
+  DataSource,
+  DeepPartial,
+  FindOptionsWhere,
+  IsNull,
+  Repository,
+} from 'typeorm';
 import { PaginatedResponse } from '../../common/types/response.type';
 import { importContractorMapping } from '../import/import.service';
 import { WorkItemEmployeeAssignment } from '../work-items/entities/work-item-employee-assignment.entity';
 import { CreateContractorDto } from './dto/create-contractor.dto';
 import { CreateDODto } from './dto/create-do.dto';
 import { CreateEmployeeDto } from './dto/create-employee.dto';
+import { CreateTpiStaffDto } from './dto/create-tpi-staff.dto';
+import { CreateTpiDto } from './dto/create-tpi.dto';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateContractorDto } from './dto/update-contractor.dto';
 import { UpdateDODto } from './dto/update-do.dto';
-import { CreateTpiDto } from './dto/create-tpi.dto';
-import { UpdateTpiDto } from './dto/update-tpi.dto';
-import { CreateTpiStaffDto } from './dto/create-tpi-staff.dto';
 import { UpdateTpiStaffDto } from './dto/update-tpi-staff.dto';
+import { UpdateTpiDto } from './dto/update-tpi.dto';
 import { ContractorContract } from './entities/contractor-contract.entity';
-import { EmployeeContract } from './entities/employee-contract.entity';
-import { User, UserRole } from './entities/user.entity';
 import { DistrictTpiAssignment } from './entities/district-tpi-assignment.entity';
+import { EmployeeContract } from './entities/employee-contract.entity';
 import { TpiStaffRelationship } from './entities/tpi-staff-relationship.entity';
+import { User, UserRole } from './entities/user.entity';
 
 @Injectable()
 export class UsersService {
@@ -367,9 +373,11 @@ export class UsersService {
 
         // Password: must hash
         const rawPassword =
-          typeof userPayload.password === 'string' && userPayload.password.trim()
+          typeof userPayload.password === 'string' &&
+          userPayload.password.trim()
             ? userPayload.password.trim()
-            : typeof item.contractorpass === 'string' && item.contractorpass.trim()
+            : typeof item.contractorpass === 'string' &&
+                item.contractorpass.trim()
               ? item.contractorpass.trim()
               : `Temp@${crypto.randomBytes(4).toString('hex')}`;
 
@@ -403,7 +411,10 @@ export class UsersService {
                 where: { auid: normalizedAuid },
                 select: ['id'],
               });
-              if (existingAuidUser && existingAuidUser.id !== existingContractor.id) {
+              if (
+                existingAuidUser &&
+                existingAuidUser.id !== existingContractor.id
+              ) {
                 delete userPayload.auid;
               }
             }
@@ -729,7 +740,6 @@ export class UsersService {
     await this.userRepository.save(user);
   }
 
-
   async getAllEmployees(): Promise<Omit<User, 'password'>[]> {
     const employees = await this.userRepository.find({
       where: { role: UserRole.EM },
@@ -806,7 +816,9 @@ export class UsersService {
       .take(limit)
       .getManyAndCount();
 
-    const data = contractors.map((contractor) => this.stripPassword(contractor));
+    const data = contractors.map((contractor) =>
+      this.stripPassword(contractor),
+    );
     const totalPages = Math.ceil(total / limit) || 1;
 
     return {
@@ -901,21 +913,35 @@ export class UsersService {
 
   async createTpi(dto: CreateTpiDto): Promise<Omit<User, 'password'>> {
     return await this.dataSource.transaction(async (manager) => {
-      const existingUser = await manager.findOne(User, { where: { email: dto.email } });
+      const existingUser = await manager.findOne(User, {
+        where: { email: dto.email },
+      });
       if (existingUser) {
-        throw new ConflictException(`User with email ${dto.email} already exists`);
+        throw new ConflictException(
+          `User with email ${dto.email} already exists`,
+        );
       }
 
-      const existingCode = await manager.findOne(User, { where: { code: dto.code } });
+      const existingCode = await manager.findOne(User, {
+        where: { code: dto.code },
+      });
       if (existingCode) {
-        throw new ConflictException(`User with code ${dto.code} already exists`);
+        throw new ConflictException(
+          `User with code ${dto.code} already exists`,
+        );
       }
 
       const activeTpi = await manager.findOne(User, {
-        where: { role: UserRole.TPI, district_id: dto.district_id, is_active: true },
+        where: {
+          role: UserRole.TPI,
+          district_id: dto.district_id,
+          is_active: true,
+        },
       });
       if (activeTpi) {
-        throw new ConflictException(`An active TPI agency already exists in district ${dto.district_id}`);
+        throw new ConflictException(
+          `An active TPI agency already exists in district ${dto.district_id}`,
+        );
       }
 
       const hashedPassword = await bcrypt.hash(dto.password, 10);
@@ -993,36 +1019,56 @@ export class UsersService {
     };
   }
 
-  async updateTpi(id: string, dto: UpdateTpiDto): Promise<Omit<User, 'password'>> {
+  async updateTpi(
+    id: string,
+    dto: UpdateTpiDto,
+  ): Promise<Omit<User, 'password'>> {
     return await this.dataSource.transaction(async (manager) => {
-      const tpi = await manager.findOne(User, { where: { id, role: UserRole.TPI } });
+      const tpi = await manager.findOne(User, {
+        where: { id, role: UserRole.TPI },
+      });
       if (!tpi) {
         throw new NotFoundException(`TPI user #${id} not found`);
       }
 
       if (dto.email && dto.email !== tpi.email) {
-        const existingEmail = await manager.findOne(User, { where: { email: dto.email } });
+        const existingEmail = await manager.findOne(User, {
+          where: { email: dto.email },
+        });
         if (existingEmail) {
-          throw new ConflictException(`User with email ${dto.email} already exists`);
+          throw new ConflictException(
+            `User with email ${dto.email} already exists`,
+          );
         }
       }
 
       if (dto.code && dto.code !== tpi.code) {
-        const existingCode = await manager.findOne(User, { where: { code: dto.code } });
+        const existingCode = await manager.findOne(User, {
+          where: { code: dto.code },
+        });
         if (existingCode) {
-          throw new ConflictException(`User with code ${dto.code} already exists`);
+          throw new ConflictException(
+            `User with code ${dto.code} already exists`,
+          );
         }
       }
 
       const newDistrict = dto.district_id ?? tpi.district_id;
-      const isDistrictChanging = dto.district_id && dto.district_id !== tpi.district_id;
+      const isDistrictChanging =
+        dto.district_id && dto.district_id !== tpi.district_id;
 
       if (tpi.is_active && isDistrictChanging) {
         const activeTpiInTarget = await manager.findOne(User, {
-          where: { role: UserRole.TPI, district_id: newDistrict, is_active: true },
+          where: {
+            role: UserRole.TPI,
+            district_id: newDistrict,
+            is_active: true,
+          },
         });
         if (activeTpiInTarget && activeTpiInTarget.id !== tpi.id) {
-          throw new ConflictException(`An active TPI agency already exists in district ${newDistrict}`);
+          throw new ConflictException(
+            `An active TPI agency already exists in district ${newDistrict}`,
+          );
         }
       }
 
@@ -1054,9 +1100,14 @@ export class UsersService {
     });
   }
 
-  async updateTpiStatus(id: string, is_active: boolean): Promise<Omit<User, 'password'>> {
+  async updateTpiStatus(
+    id: string,
+    is_active: boolean,
+  ): Promise<Omit<User, 'password'>> {
     return await this.dataSource.transaction(async (manager) => {
-      const tpi = await manager.findOne(User, { where: { id, role: UserRole.TPI } });
+      const tpi = await manager.findOne(User, {
+        where: { id, role: UserRole.TPI },
+      });
       if (!tpi) {
         throw new NotFoundException(`TPI user #${id} not found`);
       }
@@ -1067,10 +1118,16 @@ export class UsersService {
 
       if (is_active) {
         const activeTpi = await manager.findOne(User, {
-          where: { role: UserRole.TPI, district_id: tpi.district_id, is_active: true },
+          where: {
+            role: UserRole.TPI,
+            district_id: tpi.district_id,
+            is_active: true,
+          },
         });
         if (activeTpi && activeTpi.id !== tpi.id) {
-          throw new ConflictException(`An active TPI agency already exists in district ${tpi.district_id}`);
+          throw new ConflictException(
+            `An active TPI agency already exists in district ${tpi.district_id}`,
+          );
         }
 
         const assignment = manager.create(DistrictTpiAssignment, {
@@ -1094,19 +1151,30 @@ export class UsersService {
     });
   }
 
-  async createTpiStaff(dto: CreateTpiStaffDto, tpiId: string): Promise<Omit<User, 'password'>> {
+  async createTpiStaff(
+    dto: CreateTpiStaffDto,
+    tpiId: string,
+  ): Promise<Omit<User, 'password'>> {
     return await this.dataSource.transaction(async (manager) => {
-      const tpi = await manager.findOne(User, { where: { id: tpiId, role: UserRole.TPI } });
+      const tpi = await manager.findOne(User, {
+        where: { id: tpiId, role: UserRole.TPI },
+      });
       if (!tpi) {
         throw new NotFoundException('Parent TPI user not found');
       }
       if (!tpi.is_active) {
-        throw new BadRequestException('Cannot create staff for an inactive TPI agency');
+        throw new BadRequestException(
+          'Cannot create staff for an inactive TPI agency',
+        );
       }
 
-      const existingUser = await manager.findOne(User, { where: { email: dto.email } });
+      const existingUser = await manager.findOne(User, {
+        where: { email: dto.email },
+      });
       if (existingUser) {
-        throw new ConflictException(`User with email ${dto.email} already exists`);
+        throw new ConflictException(
+          `User with email ${dto.email} already exists`,
+        );
       }
 
       const hashedPassword = await bcrypt.hash(dto.password, 10);
@@ -1140,10 +1208,12 @@ export class UsersService {
   ): Promise<PaginatedResponse<Omit<User, 'password'>>> {
     const skip = (page - 1) * limit;
 
-    const relationships = await this.dataSource.getRepository(TpiStaffRelationship).find({
-      where: { tpi_id: tpiId },
-      select: ['staff_id'],
-    });
+    const relationships = await this.dataSource
+      .getRepository(TpiStaffRelationship)
+      .find({
+        where: { tpi_id: tpiId },
+        select: ['staff_id'],
+      });
 
     const staffIds = relationships.map((r) => r.staff_id);
     if (staffIds.length === 0) {
@@ -1192,15 +1262,21 @@ export class UsersService {
         throw new ForbiddenException('You do not own this TPI staff member');
       }
 
-      const staff = await manager.findOne(User, { where: { id, role: UserRole.TPI_STAFF } });
+      const staff = await manager.findOne(User, {
+        where: { id, role: UserRole.TPI_STAFF },
+      });
       if (!staff) {
         throw new NotFoundException(`TPI staff #${id} not found`);
       }
 
       if (dto.email && dto.email !== staff.email) {
-        const existingEmail = await manager.findOne(User, { where: { email: dto.email } });
+        const existingEmail = await manager.findOne(User, {
+          where: { email: dto.email },
+        });
         if (existingEmail) {
-          throw new ConflictException(`User with email ${dto.email} already exists`);
+          throw new ConflictException(
+            `User with email ${dto.email} already exists`,
+          );
         }
       }
 

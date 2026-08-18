@@ -1,6 +1,5 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import * as ExcelJS from 'exceljs';
-import { Agreement } from '../agreements/entities/agreement.entity';
 import { User } from '../users/entities/user.entity';
 import { WorkItem } from '../work-items/entities/work-item.entity';
 
@@ -61,10 +60,7 @@ export type AgreementImport = {
   sr: string | null;
 };
 
-export const importAgreementMapping: Record<
-  string,
-  keyof AgreementImport
-> = {
+export const importAgreementMapping: Record<string, keyof AgreementImport> = {
   agreementno: 'agreementno',
   agreementyear: 'agreementyear',
   division_code: 'division_code',
@@ -95,7 +91,6 @@ export type WorkItemImport = {
   payment_rs: number | null;
   sr: string | null;
   systemdate: Date | null;
-  contractor_code: string | null;
 };
 
 export const importWorkItemMapping: Record<
@@ -130,6 +125,7 @@ export const importWorkItemMapping: Record<
     | 'tpi_assigned_by_id'
     | 'tpi_assigned_by'
     | 'tpi_assigned_at'
+    | 'contractor_id'
   >,
   keyof WorkItemImport
 > = {
@@ -138,7 +134,6 @@ export const importWorkItemMapping: Record<
   district_id: 'district_code',
   excel: 'excel',
   nofhtc: 'nofhtc',
-  contractor_id: 'contractor_code',
   panchayat_id: 'panchayat_code',
   work_code: 'workcode',
   payment_amount: 'payment_rs',
@@ -329,7 +324,9 @@ export class ImportService {
     }
 
     const headers = (rows[headerRowIndex] ?? []).map((h) =>
-      String(h ?? '').toLowerCase().trim(),
+      String(h ?? '')
+        .toLowerCase()
+        .trim(),
     );
 
     const findIndex = (names: string[]) => {
@@ -427,7 +424,11 @@ export class ImportService {
       const parsedIdNum = this.normalizeNumber(parsedIdRaw);
 
       let contractorCode = parsedCode;
-      if (!contractorCode && parsedIdRaw !== undefined && parsedIdRaw !== null) {
+      if (
+        !contractorCode &&
+        parsedIdRaw !== undefined &&
+        parsedIdRaw !== null
+      ) {
         contractorCode = String(parsedIdRaw).trim() || null;
       }
 
@@ -496,7 +497,9 @@ export class ImportService {
     }
 
     const headers = (rows[headerRowIndex] ?? []).map((h) =>
-      String(h ?? '').toLowerCase().trim(),
+      String(h ?? '')
+        .toLowerCase()
+        .trim(),
     );
 
     const findIndex = (names: string[]) => {
@@ -585,12 +588,6 @@ export class ImportService {
         'system_date',
         'date',
       ]),
-      contractor_code: findIndex([
-        'contractor_code',
-        'contractor code',
-        'cid',
-        'contractorid',
-      ]),
     };
 
     const dataRows = rows.slice(headerRowIndex + 1);
@@ -614,7 +611,6 @@ export class ImportService {
         payment_rs: this.normalizeNumber(get(idxMap.payment_rs)),
         sr: this.normalizeString(get(idxMap.sr)),
         systemdate: this.excelDateFix(get(idxMap.systemdate)),
-        contractor_code: this.normalizeString(get(idxMap.contractor_code)),
       };
 
       items.push(item);
@@ -677,7 +673,9 @@ export class ImportService {
 
     if (isModernFormat) {
       const headers = (rows[headerRowIndex] ?? []).map((h) =>
-        String(h ?? '').toLowerCase().trim(),
+        String(h ?? '')
+          .toLowerCase()
+          .trim(),
       );
 
       const findIndex = (names: string[]) => {
@@ -727,7 +725,11 @@ export class ImportService {
           'work code',
           'work_id',
         ]),
-        workorderno: findIndex(['workorderno', 'work order no', 'work_order_no']),
+        workorderno: findIndex([
+          'workorderno',
+          'work order no',
+          'work_order_no',
+        ]),
         workorderdate: findIndex([
           'workorderdate',
           'work order date',
