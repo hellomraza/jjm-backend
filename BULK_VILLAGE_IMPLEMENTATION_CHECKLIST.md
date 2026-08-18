@@ -52,16 +52,16 @@ Use this checklist in order. Do not mark a phase complete until every validation
 
 ## Phase 4 — reference evidence
 
-- [ ] Implement TPI_STAFF no-progress upload endpoint.
-- [ ] Confirm upload accepts URL/location/timestamp but rejects `progress`.
-- [ ] Confirm upload does not modify `WorkItemComponent.progress` or contractor status.
-- [ ] Implement strict reference photo listing by TPI/staff/Executive Engineer scope.
-- [ ] Implement TPI select/deselect reference endpoints.
-- [ ] Enforce one selected reference photo per component transactionally.
-- [ ] Block staff upload after TPI selection.
-- [ ] Allow deselect/re-upload only before contractor approval.
-- [ ] Block select/deselect/upload after contractor approval.
-- [ ] Confirm DO has no approve/reject endpoint for reference photos.
+- [x] Implement TPI_STAFF no-progress upload endpoint.
+- [x] Confirm upload accepts URL/location/timestamp but rejects `progress`.
+- [x] Confirm upload does not modify `WorkItemComponent.progress` or contractor status.
+- [x] Implement strict reference photo listing by TPI/staff/Executive Engineer scope.
+- [x] Implement TPI select/deselect reference endpoints.
+- [x] Enforce one selected reference photo per component transactionally.
+- [x] Block staff upload after TPI selection.
+- [x] Allow deselect/re-upload only before contractor approval.
+- [x] Block select/deselect/upload after contractor approval.
+- [x] Confirm DO has no approve/reject endpoint for reference photos.
 
 ## Phase 5 — dashboard
 

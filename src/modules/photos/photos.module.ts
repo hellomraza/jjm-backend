@@ -11,6 +11,7 @@ import { PhotoStatusController } from './photo-status.controller';
 import { PhotoStatusService } from './photo-status.service';
 import { PhotosController } from './photos.controller';
 import { PhotosService } from './photos.service';
+import { TpiPhotoStatusController } from './tpi-photo-status.controller';
 
 import { TpiReferencePhotoStatus } from './entities/tpi-reference-photo-status.entity';
 
@@ -26,7 +27,7 @@ import { TpiReferencePhotoStatus } from './entities/tpi-reference-photo-status.e
     ]),
     UploadModule,
   ],
-  controllers: [PhotosController, PhotoStatusController],
+  controllers: [PhotosController, PhotoStatusController, TpiPhotoStatusController],
   providers: [PhotosService, PhotoStatusService, RolesGuard],
   exports: [PhotosService, PhotoStatusService],
 })
