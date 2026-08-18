@@ -44,6 +44,7 @@ import {
 import { WorkItemEmployeeAssignment } from './entities/work-item-employee-assignment.entity';
 import { WorkItemTpiStaffAssignment } from './entities/work-item-tpi-staff-assignment.entity';
 import { WorkItem, WorkItemStatus, WorkOrderType } from './entities/work-item.entity';
+import { TpiStaffRelationship } from '../users/entities/tpi-staff-relationship.entity';
 
 @Injectable()
 export class WorkItemsService {
@@ -1161,5 +1162,150 @@ export class WorkItemsService {
     bankDetail.approved_by_id = userId;
 
     return await this.bankDetailsRepository.save(bankDetail);
+  }
+
+  async assignTpi(workItemId: string, doUserId: string): Promise<WorkItem> {
+    return await this.dataSource.transaction(async (manager) => {
+      const doUser = await manager.findOne(User, { where: { id: doUserId } });
+      if (!doUser || doUser.role !== UserRole.DO) {
+        throw new ForbiddenException('Only District Officers can assign TPIs');
+      }
+
+      if (!doUser.is_executive_engineer) {
+        throw new ForbiddenException('Only Executive Engineers can assign TPIs');
+      }
+
+      const workItem = await manager.findOne(WorkItem, { where: { id: workItemId } });
+      if (!workItem) {
+        throw new NotFoundException(`Work item #${workItemId} not found`);
+      }
+
+      if (workItem.work_order_type !== WorkOrderType.BULK_VILLAGE) {
+        throw new BadRequestException('TPI can only be assigned to Bulk Village work items');
+      }
+
+      if (doUser.district_id !== workItem.district_id) {
+        throw new ForbiddenException('District Officer does not belong to this work item district');
+      }
+
+      // Automatically resolve the active TPI for the district
+      const activeTpi = await manager.findOne(User, {
+        where: { role: UserRole.TPI, district_id: doUser.district_id, is_active: true },
+      });
+
+      if (!activeTpi) {
+        throw new BadRequestException(`No active TPI agency found in district ${doUser.district_id}`);
+      }
+
+      workItem.tpi_id = activeTpi.id;
+      workItem.tpi_assigned_by_id = doUser.id;
+      workItem.tpi_assigned_at = new Date();
+
+      return await manager.save(WorkItem, workItem);
+    });
+  }
+
+  async unassignTpi(workItemId: string, doUserId: string): Promise<WorkItem> {
+    return await this.dataSource.transaction(async (manager) => {
+      const doUser = await manager.findOne(User, { where: { id: doUserId } });
+      if (!doUser || doUser.role !== UserRole.DO) {
+        throw new ForbiddenException('Only District Officers can unassign TPIs');
+      }
+
+      if (!doUser.is_executive_engineer) {
+        throw new ForbiddenException('Only Executive Engineers can unassign TPIs');
+      }
+
+      const workItem = await manager.findOne(WorkItem, { where: { id: workItemId } });
+      if (!workItem) {
+        throw new NotFoundException(`Work item #${workItemId} not found`);
+      }
+
+      if (workItem.work_order_type !== WorkOrderType.BULK_VILLAGE) {
+        throw new BadRequestException('TPI operations are only supported for Bulk Village work items');
+      }
+
+      if (doUser.district_id !== workItem.district_id) {
+        throw new ForbiddenException('District Officer does not belong to this work item district');
+      }
+
+      workItem.tpi_id = null;
+      workItem.tpi_assigned_by_id = null;
+      workItem.tpi_assigned_at = null;
+
+      // Also clean up any active staff assignments for this work item
+      await manager.delete(WorkItemTpiStaffAssignment, { work_item_id: workItemId });
+
+      return await manager.save(WorkItem, workItem);
+    });
+  }
+
+  async assignTpiStaff(workItemId: string, tpiId: string, staffId: string): Promise<WorkItemTpiStaffAssignment> {
+    return await this.dataSource.transaction(async (manager) => {
+      const tpi = await manager.findOne(User, { where: { id: tpiId, role: UserRole.TPI } });
+      if (!tpi || !tpi.is_active) {
+        throw new ForbiddenException('Access denied or inactive TPI agency');
+      }
+
+      const workItem = await manager.findOne(WorkItem, { where: { id: workItemId } });
+      if (!workItem) {
+        throw new NotFoundException(`Work item #${workItemId} not found`);
+      }
+
+      if (workItem.tpi_id !== tpi.id) {
+        throw new ForbiddenException('This work item is not assigned to your TPI agency');
+      }
+
+      // Verify staff belongs to TPI
+      const rel = await manager.findOne(TpiStaffRelationship, {
+        where: { staff_id: staffId, tpi_id: tpi.id },
+      });
+      if (!rel) {
+        throw new ForbiddenException('Staff member does not belong to your TPI agency');
+      }
+
+      const staff = await manager.findOne(User, { where: { id: staffId, role: UserRole.TPI_STAFF } });
+      if (!staff || !staff.is_active) {
+        throw new BadRequestException('Staff member not found or inactive');
+      }
+
+      // Check if assignment already exists
+      const existing = await manager.findOne(WorkItemTpiStaffAssignment, {
+        where: { work_item_id: workItemId, staff_id: staffId },
+      });
+      if (existing) {
+        return existing;
+      }
+
+      const assignment = manager.create(WorkItemTpiStaffAssignment, {
+        work_item_id: workItemId,
+        staff_id: staffId,
+      });
+
+      return await manager.save(WorkItemTpiStaffAssignment, assignment);
+    });
+  }
+
+  async unassignTpiStaff(workItemId: string, tpiId: string, staffId: string): Promise<void> {
+    await this.dataSource.transaction(async (manager) => {
+      const tpi = await manager.findOne(User, { where: { id: tpiId, role: UserRole.TPI } });
+      if (!tpi || !tpi.is_active) {
+        throw new ForbiddenException('Access denied or inactive TPI agency');
+      }
+
+      const workItem = await manager.findOne(WorkItem, { where: { id: workItemId } });
+      if (!workItem) {
+        throw new NotFoundException(`Work item #${workItemId} not found`);
+      }
+
+      if (workItem.tpi_id !== tpi.id) {
+        throw new ForbiddenException('This work item is not assigned to your TPI agency');
+      }
+
+      await manager.delete(WorkItemTpiStaffAssignment, {
+        work_item_id: workItemId,
+        staff_id: staffId,
+      });
+    });
   }
 }

@@ -43,9 +43,9 @@ export class AuthService {
       return null;
     }
 
-    if (user.role === UserRole.CO && user.is_active === false) {
+    if (user.role !== UserRole.HO && user.is_active === false) {
       throw new UnauthorizedException(
-        'Your contractor account has been deactivated. Please contact your administrator.',
+        'Your account has been deactivated. Please contact your administrator.',
       );
     }
 
@@ -71,9 +71,9 @@ export class AuthService {
       return null;
     }
 
-    if (user.role === UserRole.CO && user.is_active === false) {
+    if (user.role !== UserRole.HO && user.is_active === false) {
       throw new UnauthorizedException(
-        'Your contractor account has been deactivated. Please contact your administrator.',
+        'Your account has been deactivated. Please contact your administrator.',
       );
     }
 
@@ -116,8 +116,8 @@ export class AuthService {
       throw new UnauthorizedException('Invalid credentials');
     }
 
-    // Only allow HO, CO, and DO roles for dashboard login
-    const allowedRoles = [UserRole.HO, UserRole.CO, UserRole.DO];
+    // Only allow HO, CO, DO, and TPI roles for dashboard login
+    const allowedRoles = [UserRole.HO, UserRole.CO, UserRole.DO, UserRole.TPI];
     if (!allowedRoles.includes(user.role)) {
       throw new ForbiddenException(
         'Your role does not have access to the dashboard',
@@ -146,8 +146,8 @@ export class AuthService {
       this.logger.log(`Forgot password requested for non-existent email: ${email}`);
       return { message: 'If an account exists, an OTP has been sent.' };
     }
-    if (user.role !== UserRole.CO) {
-      throw new BadRequestException('Only Contractor (CO) accounts are allowed to reset their password.');
+    if (user.role !== UserRole.CO && user.role !== UserRole.TPI) {
+      throw new BadRequestException('Only Contractor (CO) and Third-Party Inspector (TPI) accounts are allowed to reset their password.');
     }
 
     // Generate 6-digit OTP

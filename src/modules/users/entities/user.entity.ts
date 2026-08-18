@@ -32,8 +32,8 @@ export class User {
   @Column({ type: 'varchar', length: 255, nullable: true })
   contractorid?: string; // contractorid
 
-  @Column({ unique: true })
-  code!: string; // userid,
+  @Column({ type: 'varchar', unique: true, nullable: true })
+  code?: string | null; // userid,
 
   @Column({ unique: true })
   email!: string;

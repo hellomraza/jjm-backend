@@ -38,6 +38,11 @@ import { UpdateDODto } from './dto/update-do.dto';
 import { UpdateEmployeeDto } from './dto/update-employee.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { UserResponseDto } from './dto/user-response.dto';
+import { CreateTpiDto } from './dto/create-tpi.dto';
+import { UpdateTpiDto } from './dto/update-tpi.dto';
+import { CreateTpiStaffDto } from './dto/create-tpi-staff.dto';
+import { UpdateTpiStaffDto } from './dto/update-tpi-staff.dto';
+import { UpdateTpiStatusDto } from './dto/update-tpi-status.dto';
 import { UserRole } from './entities/user.entity';
 import { UsersService } from './users.service';
 
@@ -395,5 +400,172 @@ export class UsersController {
   @ApiNotFoundResponse({ description: 'User not found' })
   remove(@Param('id') id: string) {
     return this.usersService.remove(id);
+  }
+
+  @Post('tpi')
+  @Roles(UserRole.HO)
+  @ApiOperation({
+    summary: 'Create TPI agency',
+    description: 'Creates a new TPI agency user account (HO only)',
+  })
+  @ApiCreatedResponse({
+    description: 'TPI agency created successfully',
+    type: UserResponseDto,
+  })
+  @ApiBadRequestResponse({ description: 'Invalid request body' })
+  @ApiConflictResponse({ description: 'User email or code already exists' })
+  createTpi(@Body() createTpiDto: CreateTpiDto) {
+    return this.usersService.createTpi(createTpiDto);
+  }
+
+  @Get('tpis')
+  @Roles(UserRole.HO)
+  @ApiOperation({
+    summary: 'Get all TPI agencies with search and filter',
+    description: 'Returns a paginated list of TPI agencies (HO only)',
+  })
+  @ApiQuery({ name: 'page', required: false, type: Number, example: 1 })
+  @ApiQuery({ name: 'limit', required: false, type: Number, example: 20 })
+  @ApiQuery({ name: 'search', required: false, type: String })
+  @ApiQuery({ name: 'districtId', required: false, type: String })
+  @ApiQuery({ name: 'isActive', required: false, type: Boolean })
+  @ApiPaginatedResponse(UserResponseDto)
+  getAllTpis(
+    @Query('page') page: number = 1,
+    @Query('limit') limit: number = 20,
+    @Query('search') search?: string,
+    @Query('districtId') districtId?: string,
+    @Query('isActive') isActive?: string,
+  ) {
+    const resolvedActive =
+      isActive === 'true' ? true : isActive === 'false' ? false : undefined;
+    return this.usersService.findAllTpis(
+      page,
+      limit,
+      search,
+      districtId,
+      resolvedActive,
+    );
+  }
+
+  @Get('tpi/:id')
+  @Roles(UserRole.HO)
+  @ApiOperation({
+    summary: 'Get TPI agency by ID',
+    description: 'Returns a single TPI agency details (HO only)',
+  })
+  @ApiParam({ name: 'id', type: String, description: 'TPI ID' })
+  @ApiOkResponse({ description: 'TPI agency found', type: UserResponseDto })
+  @ApiNotFoundResponse({ description: 'TPI agency not found' })
+  findOneTpi(@Param('id') id: string) {
+    return this.usersService.findOne(id);
+  }
+
+  @Patch('tpi/:id')
+  @Roles(UserRole.HO)
+  @ApiOperation({
+    summary: 'Update TPI agency details',
+    description: 'Updates selected fields of an existing TPI agency (HO only)',
+  })
+  @ApiParam({ name: 'id', type: String, description: 'TPI ID' })
+  @ApiOkResponse({
+    description: 'TPI agency updated successfully',
+    type: UserResponseDto,
+  })
+  @ApiBadRequestResponse({ description: 'Invalid request body' })
+  @ApiNotFoundResponse({ description: 'TPI agency not found' })
+  @ApiConflictResponse({ description: 'Email or code already in use' })
+  updateTpi(@Param('id') id: string, @Body() updateTpiDto: UpdateTpiDto) {
+    return this.usersService.updateTpi(id, updateTpiDto);
+  }
+
+  @Patch('tpi/:id/status')
+  @Roles(UserRole.HO)
+  @ApiOperation({
+    summary: 'Update TPI agency active status',
+    description: 'Activates or deactivates a TPI agency account (HO only)',
+  })
+  @ApiParam({ name: 'id', type: String, description: 'TPI ID' })
+  @ApiOkResponse({
+    description: 'TPI status updated successfully',
+    type: UserResponseDto,
+  })
+  @ApiBadRequestResponse({ description: 'Invalid request body' })
+  @ApiNotFoundResponse({ description: 'TPI agency not found' })
+  updateTpiStatus(
+    @Param('id') id: string,
+    @Body() updateStatusDto: UpdateTpiStatusDto,
+  ) {
+    return this.usersService.updateTpiStatus(id, updateStatusDto.is_active);
+  }
+
+  @Post('tpi-staff')
+  @Roles(UserRole.TPI)
+  @ApiOperation({
+    summary: 'Create TPI staff member',
+    description: 'Creates a new TPI staff member account (TPI only)',
+  })
+  @ApiCreatedResponse({
+    description: 'TPI staff member created successfully',
+    type: UserResponseDto,
+  })
+  @ApiBadRequestResponse({ description: 'Invalid request body' })
+  @ApiConflictResponse({ description: 'User email already exists' })
+  createTpiStaff(
+    @Body() createTpiStaffDto: CreateTpiStaffDto,
+    @Request() req: AuthenticatedRequest,
+  ) {
+    return this.usersService.createTpiStaff(createTpiStaffDto, req.user.userId);
+  }
+
+  @Get('tpi-staff')
+  @Roles(UserRole.TPI)
+  @ApiOperation({
+    summary: 'Get all TPI staff members',
+    description:
+      'Returns a paginated list of staff members belonging to the logged-in TPI',
+  })
+  @ApiQuery({ name: 'page', required: false, type: Number, example: 1 })
+  @ApiQuery({ name: 'limit', required: false, type: Number, example: 20 })
+  @ApiQuery({ name: 'search', required: false, type: String })
+  @ApiPaginatedResponse(UserResponseDto)
+  getAllTpiStaff(
+    @Request() req: AuthenticatedRequest,
+    @Query('page') page: number = 1,
+    @Query('limit') limit: number = 20,
+    @Query('search') search?: string,
+  ) {
+    return this.usersService.findAllTpiStaff(
+      req.user.userId,
+      page,
+      limit,
+      search,
+    );
+  }
+
+  @Patch('tpi-staff/:id')
+  @Roles(UserRole.TPI)
+  @ApiOperation({
+    summary: 'Update TPI staff member',
+    description: 'Updates selected fields of a TPI staff member (TPI only)',
+  })
+  @ApiParam({ name: 'id', type: String, description: 'Staff member ID' })
+  @ApiOkResponse({
+    description: 'Staff member updated successfully',
+    type: UserResponseDto,
+  })
+  @ApiBadRequestResponse({ description: 'Invalid request body' })
+  @ApiNotFoundResponse({ description: 'Staff member not found' })
+  @ApiConflictResponse({ description: 'Email already in use' })
+  updateTpiStaff(
+    @Param('id') id: string,
+    @Body() updateTpiStaffDto: UpdateTpiStaffDto,
+    @Request() req: AuthenticatedRequest,
+  ) {
+    return this.usersService.updateTpiStaff(
+      id,
+      req.user.userId,
+      updateTpiStaffDto,
+    );
   }
 }

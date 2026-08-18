@@ -74,6 +74,26 @@ export class UserResponseDto {
   address?: string | null;
 
   @ApiProperty({
+    description: 'Designation of the user',
+    required: false,
+    nullable: true,
+    example: 'Lead Inspector',
+  })
+  designation?: string | null;
+
+  @ApiProperty({
+    description: 'Active status of the user',
+    example: true,
+  })
+  is_active: boolean;
+
+  @ApiProperty({
+    description: 'Executive Engineer flag (only for DO)',
+    example: false,
+  })
+  is_executive_engineer: boolean;
+
+  @ApiProperty({
     description: 'Timestamp when the user was created',
     example: '2026-03-07T10:30:00.000Z',
   })

@@ -1,5 +1,6 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import {
+  IsBoolean,
   IsEmail,
   IsOptional,
   IsString,
@@ -54,4 +55,12 @@ export class UpdateDODto {
     message: 'Mobile must be a valid 10 digit Indian mobile number',
   })
   mobile?: string;
+
+  @ApiPropertyOptional({
+    description: 'Executive Engineer flag (only for DO)',
+    example: false,
+  })
+  @IsOptional()
+  @IsBoolean()
+  is_executive_engineer?: boolean;
 }

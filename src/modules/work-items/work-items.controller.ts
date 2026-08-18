@@ -48,6 +48,8 @@ import {
   WorkItemResponseDto,
 } from './dto/work-item-return-type.dto';
 import { WorkItem, WorkItemStatus, WorkOrderType } from './entities/work-item.entity';
+import { AssignTpiStaffDto } from './dto/assign-tpi-staff.dto';
+import { ExecutiveEngineerGuard } from '../../common/guards/executive-engineer.guard';
 import { WorkItemsService } from './work-items.service';
 
 @ApiTags('Work Items')
@@ -141,10 +143,15 @@ export class WorkItemsController {
     type: [EmployeeResponseDto],
   })
   @ApiNotFoundResponse({ description: 'Work item not found' })
-  getAssignedEmployees(
+  async getAssignedEmployees(
     @Param('id') id: string,
   ): Promise<EmployeeResponseDto[]> {
-    return this.workItemsService.getAssignedEmployees(id);
+    const employees = await this.workItemsService.getAssignedEmployees(id);
+    return employees.map((emp) => ({
+      id: emp.id,
+      code: emp.code ?? '',
+      email: emp.email,
+    }));
   }
 
   @Post(':id/assign-employee')
@@ -322,13 +329,90 @@ export class WorkItemsController {
   @Roles(UserRole.HO)
   @ApiOperation({
     summary: 'Delete work item',
-    description: 'Deletes a work item by ID',
+    description: 'Deletes an existing work item by ID (HO only)',
   })
   @ApiParam({ name: 'id', type: String, description: 'Work item ID' })
   @ApiOkResponse({ description: 'Work item deleted successfully' })
   @ApiNotFoundResponse({ description: 'Work item not found' })
   remove(@Param('id') id: string) {
     return this.workItemsService.remove(id);
+  }
+
+  @Post(':id/assign-tpi')
+  @UseGuards(ExecutiveEngineerGuard)
+  @Roles(UserRole.DO)
+  @ApiOperation({
+    summary: 'Assign TPI agency to work item',
+    description: 'Automatically resolves and assigns the active TPI of the district to the work item (Executive Engineer DO only)',
+  })
+  @ApiParam({ name: 'id', type: String, description: 'Work item ID' })
+  @ApiOkResponse({
+    description: 'TPI agency assigned successfully',
+    type: WorkItemResponseDto,
+  })
+  @ApiBadRequestResponse({ description: 'Invalid assignment payload or state' })
+  @ApiForbiddenResponse({ description: 'DO is not an Executive Engineer or district mismatch' })
+  assignTpi(
+    @Param('id') id: string,
+    @Request() req: { user: { userId: string } },
+  ) {
+    return this.workItemsService.assignTpi(id, req.user.userId);
+  }
+
+  @Delete(':id/tpi')
+  @UseGuards(ExecutiveEngineerGuard)
+  @Roles(UserRole.DO)
+  @ApiOperation({
+    summary: 'Unassign TPI agency from work item',
+    description: 'Removes TPI agency and staff assignments from the work item (Executive Engineer DO only)',
+  })
+  @ApiParam({ name: 'id', type: String, description: 'Work item ID' })
+  @ApiOkResponse({
+    description: 'TPI agency unassigned successfully',
+    type: WorkItemResponseDto,
+  })
+  @ApiForbiddenResponse({ description: 'DO is not an Executive Engineer or district mismatch' })
+  unassignTpi(
+    @Param('id') id: string,
+    @Request() req: { user: { userId: string } },
+  ) {
+    return this.workItemsService.unassignTpi(id, req.user.userId);
+  }
+
+  @Post(':id/assign-tpi-staff')
+  @Roles(UserRole.TPI)
+  @ApiOperation({
+    summary: 'Assign TPI staff to Bulk Village work item',
+    description: 'Assigns TPI staff member to work item (TPI agency only)',
+  })
+  @ApiParam({ name: 'id', type: String, description: 'Work item ID' })
+  @ApiBody({ type: AssignTpiStaffDto })
+  @ApiCreatedResponse({ description: 'Staff member assigned successfully' })
+  @ApiForbiddenResponse({ description: 'Work item not owned by caller TPI or staff does not belong to TPI' })
+  assignTpiStaff(
+    @Param('id') id: string,
+    @Body() dto: AssignTpiStaffDto,
+    @Request() req: { user: { userId: string } },
+  ) {
+    return this.workItemsService.assignTpiStaff(id, req.user.userId, dto.staffId);
+  }
+
+  @Delete(':id/tpi-staff/:staffId')
+  @Roles(UserRole.TPI)
+  @ApiOperation({
+    summary: 'Unassign TPI staff from Bulk Village work item',
+    description: 'Removes TPI staff member assignment from work item (TPI agency only)',
+  })
+  @ApiParam({ name: 'id', type: String, description: 'Work item ID' })
+  @ApiParam({ name: 'staffId', type: String, description: 'TPI Staff user ID' })
+  @ApiOkResponse({ description: 'Staff member unassigned successfully' })
+  @ApiForbiddenResponse({ description: 'Work item not owned by caller TPI' })
+  unassignTpiStaff(
+    @Param('id') id: string,
+    @Param('staffId') staffId: string,
+    @Request() req: { user: { userId: string } },
+  ) {
+    return this.workItemsService.unassignTpiStaff(id, req.user.userId, staffId);
   }
 
   @Post(':id/bank-details')

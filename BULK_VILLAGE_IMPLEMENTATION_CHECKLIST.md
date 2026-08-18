@@ -40,15 +40,15 @@ Use this checklist in order. Do not mark a phase complete until every validation
 
 ## Phase 3 — accounts and assignments
 
-- [ ] Implement HO TPI create/list/search/edit/status APIs.
-- [ ] Enforce one active TPI per district transactionally.
-- [ ] Extend DO update API with Executive Engineer flag.
-- [ ] Permit TPI dashboard login and password reset.
-- [ ] Deny dashboard login for TPI staff.
-- [ ] Implement TPI staff create/list/edit APIs with no user code.
-- [ ] Implement Executive Engineer assign/change/unassign TPI APIs.
-- [ ] Resolve current active district TPI automatically; never accept arbitrary TPI ID from DO assignment request.
-- [ ] Implement TPI staff work-order assignment APIs.
+- [x] Implement HO TPI create/list/search/edit/status APIs.
+- [x] Enforce one active TPI per district transactionally.
+- [x] Extend DO update API with Executive Engineer flag.
+- [x] Permit TPI dashboard login and password reset.
+- [x] Deny dashboard login for TPI staff.
+- [x] Implement TPI staff create/list/edit APIs with no user code.
+- [x] Implement Executive Engineer assign/change/unassign TPI APIs.
+- [x] Resolve current active district TPI automatically; never accept arbitrary TPI ID from DO assignment request.
+- [x] Implement TPI staff work-order assignment APIs.
 
 ## Phase 4 — reference evidence
 
