@@ -123,6 +123,7 @@ export const importWorkItemMapping: Record<
     | 'zone_id'
     | 'subdivision_id'
     | 'agreement_id'
+    | 'bankDetails'
   >,
   keyof WorkItemImport
 > = {

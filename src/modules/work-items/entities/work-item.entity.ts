@@ -5,9 +5,11 @@ import {
   Index,
   JoinColumn,
   ManyToOne,
+  OneToOne,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
+import { WorkItemBankDetail } from './work-item-bank-detail.entity';
 import { Block } from '../../locations/entities/block.entity';
 import { Circle } from '../../locations/entities/circle.entity';
 import { District } from '../../locations/entities/district.entity';
@@ -161,4 +163,7 @@ export class WorkItem {
 
   @Column({ type: 'varchar', length: 100, nullable: true })
   workcodeid?: string | null;
+
+  @OneToOne(() => WorkItemBankDetail, (bankDetail) => bankDetail.workItem, { nullable: true })
+  bankDetails?: WorkItemBankDetail | null;
 }

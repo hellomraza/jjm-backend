@@ -7,18 +7,22 @@ import { WorkItemComponent } from '../components/entities/work-item-component.en
 import { User } from '../users/entities/user.entity';
 import { WorkItemEmployeeAssignment } from './entities/work-item-employee-assignment.entity';
 import { WorkItem } from './entities/work-item.entity';
+import { WorkItemBankDetail } from './entities/work-item-bank-detail.entity';
 import { WorkItemsController } from './work-items.controller';
 import { WorkItemsService } from './work-items.service';
+import { UploadModule } from '../../common/upload/upload.module';
 
 @Module({
   imports: [
     AgreementsModule,
+    UploadModule,
     TypeOrmModule.forFeature([
       WorkItem,
       Component,
       WorkItemComponent,
       WorkItemEmployeeAssignment,
       User,
+      WorkItemBankDetail,
     ]),
   ],
   controllers: [WorkItemsController],

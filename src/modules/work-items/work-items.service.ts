@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ConflictException,
   ForbiddenException,
   Injectable,
@@ -19,6 +20,7 @@ import {
   Not,
   Repository,
 } from 'typeorm';
+import { UploadService } from '../../common/upload/upload.service';
 import { AgreementsService } from '../agreements/agreements.service';
 import { Agreement } from '../agreements/entities/agreement.entity';
 import { Component } from '../components/entities/component.entity';
@@ -33,7 +35,12 @@ import {
 import { User, UserRole } from '../users/entities/user.entity';
 import { AssignMultipleEmployeesResponseDto } from './dto/assign-work-item-employee.dto';
 import { CreateWorkItemDto } from './dto/create-work-item.dto';
+import { SubmitBankDetailsDto } from './dto/submit-bank-details.dto';
 import { UpdateWorkItemDto } from './dto/update-work-item.dto';
+import {
+  BankDetailsStatus,
+  WorkItemBankDetail,
+} from './entities/work-item-bank-detail.entity';
 import { WorkItemEmployeeAssignment } from './entities/work-item-employee-assignment.entity';
 import { WorkItem, WorkItemStatus } from './entities/work-item.entity';
 
@@ -46,8 +53,11 @@ export class WorkItemsService {
     private readonly workItemEmployeeAssignmentsRepository: Repository<WorkItemEmployeeAssignment>,
     @InjectRepository(User)
     private readonly usersRepository: Repository<User>,
+    @InjectRepository(WorkItemBankDetail)
+    private readonly bankDetailsRepository: Repository<WorkItemBankDetail>,
     private readonly agreementsService: AgreementsService,
     private readonly dataSource: DataSource,
+    private readonly uploadService: UploadService,
   ) {}
 
   private readonly locationRelations = {
@@ -298,7 +308,8 @@ export class WorkItemsService {
 
             if (existingWorkItemForCode) {
               contractorId = existingWorkItemForCode.contractor_id ?? null;
-              inferredAgreementId = existingWorkItemForCode.agreement_id ?? null;
+              inferredAgreementId =
+                existingWorkItemForCode.agreement_id ?? null;
             }
           }
         }
@@ -918,5 +929,183 @@ export class WorkItemsService {
   async remove(id: string): Promise<void> {
     const workItem = await this.findOne(id);
     await this.workItemsRepository.remove(workItem);
+  }
+
+  async findCompletedWorkItemsForDO(
+    userId: string,
+    page: number = 1,
+    limit: number = 20,
+    search?: string,
+  ): Promise<{
+    data: WorkItem[];
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+  }> {
+    const safePage = Number.isNaN(Number(page)) ? 1 : Number(page);
+    const safeLimit = Number.isNaN(Number(limit)) ? 20 : Number(limit);
+
+    const user = await this.usersRepository.findOne({ where: { id: userId } });
+    if (!user || user.role !== UserRole.DO) {
+      throw new ForbiddenException(
+        'Only district officers can access completed workflows',
+      );
+    }
+    if (!user.district_id) {
+      throw new BadRequestException(
+        'District officer district is not configured',
+      );
+    }
+
+    const where: FindOptionsWhere<WorkItem> = {
+      status: WorkItemStatus.COMPLETED,
+      district_id: user.district_id,
+    };
+
+    if (search) {
+      where.work_code = ILike(`%${search}%`);
+    }
+
+    const [items, total] = await this.workItemsRepository.findAndCount({
+      where,
+      skip: (safePage - 1) * safeLimit,
+      take: safeLimit,
+      order: { updated_at: 'DESC' },
+      relations: {
+        ...this.locationRelations,
+        bankDetails: true,
+      },
+    });
+
+    return {
+      data: items,
+      total,
+      page: safePage,
+      limit: safeLimit,
+      totalPages: Math.ceil(total / safeLimit),
+    };
+  }
+
+  async submitBankDetails(
+    workItemId: string,
+    file: any,
+    dto: SubmitBankDetailsDto,
+    userId: string,
+  ): Promise<WorkItemBankDetail> {
+    // Validate user role
+    const user = await this.usersRepository.findOne({ where: { id: userId } });
+    if (!user || user.role !== UserRole.DO) {
+      throw new ForbiddenException(
+        'Only district officers can submit bank details',
+      );
+    }
+
+    // Find the completed work item
+    const workItem = await this.workItemsRepository.findOne({
+      where: { id: workItemId },
+    });
+    if (!workItem) {
+      throw new NotFoundException(`Work item with ID ${workItemId} not found`);
+    }
+    if (workItem.status !== WorkItemStatus.COMPLETED) {
+      throw new BadRequestException(
+        'Bank details can only be submitted for completed work items',
+      );
+    }
+    if (user.district_id !== workItem.district_id) {
+      throw new ForbiddenException(
+        'District officer does not belong to this work item district',
+      );
+    }
+
+    // Upload the file to S3
+    const sanitizedName = file.originalname.replace(/[^a-zA-Z0-9.-]/g, '_');
+    const objectKey = `work-items/${workItemId}/vouchers/${Date.now()}-${sanitizedName}`;
+
+    let uploadResult;
+    try {
+      uploadResult = await this.uploadService.uploadObject({
+        objectKey,
+        body: file.buffer,
+        contentType: file.mimetype,
+      });
+    } catch (err) {
+      throw new InternalServerErrorException('Failed to upload voucher file');
+    }
+
+    // Check if bank details already exist
+    let bankDetail = await this.bankDetailsRepository.findOne({
+      where: { work_item_id: workItemId },
+    });
+
+    if (bankDetail) {
+      if (bankDetail.status === BankDetailsStatus.APPROVED) {
+        throw new BadRequestException(
+          'Approved bank details cannot be modified',
+        );
+      }
+      Object.assign(bankDetail, {
+        bank_account_name: dto.bank_account_name,
+        bank_account_number: dto.bank_account_number,
+        ifsc_code: dto.ifsc_code,
+        voucher_number: dto.voucher_number,
+        voucher_file_url: uploadResult.url,
+        status: BankDetailsStatus.SUBMITTED,
+        submitted_at: new Date(),
+      });
+    } else {
+      bankDetail = this.bankDetailsRepository.create({
+        work_item_id: workItemId,
+        bank_account_name: dto.bank_account_name,
+        bank_account_number: dto.bank_account_number,
+        ifsc_code: dto.ifsc_code,
+        voucher_number: dto.voucher_number,
+        voucher_file_url: uploadResult.url,
+        status: BankDetailsStatus.SUBMITTED,
+      });
+    }
+
+    return await this.bankDetailsRepository.save(bankDetail);
+  }
+
+  async approveBankDetails(
+    workItemId: string,
+    userId: string,
+  ): Promise<WorkItemBankDetail> {
+    // Validate user role
+    const user = await this.usersRepository.findOne({ where: { id: userId } });
+    if (!user || user.role !== UserRole.DO) {
+      throw new ForbiddenException(
+        'Only district officers can approve bank details',
+      );
+    }
+
+    // Find bank details
+    const bankDetail = await this.bankDetailsRepository.findOne({
+      where: { work_item_id: workItemId },
+      relations: ['workItem'],
+    });
+    if (!bankDetail) {
+      throw new NotFoundException(
+        `Bank details for work item ID ${workItemId} not found`,
+      );
+    }
+
+    if (user.district_id !== bankDetail.workItem.district_id) {
+      throw new ForbiddenException(
+        'District officer does not belong to this work item district',
+      );
+    }
+
+    if (bankDetail.status === BankDetailsStatus.APPROVED) {
+      throw new BadRequestException('Bank details are already approved');
+    }
+
+    bankDetail.status = BankDetailsStatus.APPROVED;
+    bankDetail.approved_at = new Date();
+    bankDetail.approved_by_id = userId;
+
+    return await this.bankDetailsRepository.save(bankDetail);
   }
 }

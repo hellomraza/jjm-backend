@@ -9,7 +9,12 @@ import {
   Query,
   Request,
   UseGuards,
+  UseInterceptors,
+  UploadedFile,
+  ParseFilePipeBuilder,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { SubmitBankDetailsDto } from './dto/submit-bank-details.dto';
 import {
   ApiBadRequestResponse,
   ApiBearerAuth,
@@ -24,6 +29,7 @@ import {
   ApiTags,
   ApiUnauthorizedResponse,
   ApiUnprocessableEntityResponse,
+  ApiConsumes,
 } from '@nestjs/swagger';
 import { PaginatedResponse } from '../../common/types/response.type';
 import { ApiPaginatedResponse } from '../../common/decorators/paginated.responce.decorator';
@@ -184,6 +190,29 @@ export class WorkItemsController {
     return await this.workItemsService.findAll(page, limit, search);
   }
 
+  @Get('completed')
+  @Roles(UserRole.DO)
+  @ApiOperation({
+    summary: 'List completed work items for DO',
+    description: 'Returns completed work items for the logged-in DO with bank details left joined.',
+  })
+  @ApiQuery({ name: 'page', required: false, type: Number, example: 1 })
+  @ApiQuery({ name: 'limit', required: false, type: Number, example: 20 })
+  @ApiQuery({ name: 'search', required: false, type: String })
+  async getCompletedWorkItems(
+    @Request() req: { user: { userId: string } },
+    @Query('page') page: number = 1,
+    @Query('limit') limit: number = 20,
+    @Query('search') search?: string,
+  ) {
+    return await this.workItemsService.findCompletedWorkItemsForDO(
+      req.user.userId,
+      page,
+      limit,
+      search,
+    );
+  }
+
   @Get(':id')
   @Roles(UserRole.HO, UserRole.DO, UserRole.CO, UserRole.EM)
   @ApiOperation({
@@ -292,5 +321,46 @@ export class WorkItemsController {
   @ApiNotFoundResponse({ description: 'Work item not found' })
   remove(@Param('id') id: string) {
     return this.workItemsService.remove(id);
+  }
+
+  @Post(':id/bank-details')
+  @Roles(UserRole.DO)
+  @UseInterceptors(FileInterceptor('file'))
+  @ApiOperation({
+    summary: 'Submit bank details for a completed work item',
+    description: 'Uploads voucher file and saves/submits bank details for a completed work item.',
+  })
+  @ApiConsumes('multipart/form-data')
+  async submitBankDetails(
+    @Param('id') id: string,
+    @UploadedFile(
+      new ParseFilePipeBuilder()
+        .addMaxSizeValidator({ maxSize: 5 * 1024 * 1024 })
+        .build({ fileIsRequired: true }),
+    )
+    file: any,
+    @Body() dto: SubmitBankDetailsDto,
+    @Request() req: { user: { userId: string } },
+  ) {
+    return await this.workItemsService.submitBankDetails(
+      id,
+      file,
+      dto,
+      req.user.userId,
+    );
+  }
+
+  @Patch(':id/bank-details/approve')
+  @Roles(UserRole.DO)
+  @ApiOperation({
+    summary: 'Approve bank details for a completed work item',
+    description: 'Approve submitted bank details for a completed work item.',
+  })
+  @ApiParam({ name: 'id', type: String, description: 'Work item ID' })
+  async approveBankDetails(
+    @Param('id') id: string,
+    @Request() req: { user: { userId: string } },
+  ) {
+    return await this.workItemsService.approveBankDetails(id, req.user.userId);
   }
 }
