@@ -10,7 +10,6 @@ import {
 import { WorkOrderType } from '../../work-items/entities/work-item.entity';
 
 @Entity('components')
-@Unique('UQ_COMPONENT_TYPE_ORDER_NUMBER', ['work_order_type', 'order_number'])
 @Index('IDX_COMPONENT_TYPE_ORDER_NUMBER', ['work_order_type', 'order_number'])
 export class Component {
   @PrimaryGeneratedColumn()

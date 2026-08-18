@@ -801,6 +801,10 @@ export class AgreementsService {
       return { workItems: { id: In(workItemIds) } };
     }
 
+    if (role === UserRole.TPI) {
+      return { workItems: { tpi_id: userId } };
+    }
+
     if (role === UserRole.TPI_STAFF) {
       // 1. Verify parent TPI is active
       const relationship = await this.agreementsRepository.manager.findOne(
@@ -960,6 +964,13 @@ export class AgreementsService {
       where = {
         agreement_id: agreementId,
         id: In(workItemIds),
+      };
+    }
+
+    if (role === UserRole.TPI) {
+      where = {
+        agreement_id: agreementId,
+        tpi_id: userId,
       };
     }
 
