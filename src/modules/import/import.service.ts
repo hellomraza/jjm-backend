@@ -124,6 +124,12 @@ export const importWorkItemMapping: Record<
     | 'subdivision_id'
     | 'agreement_id'
     | 'bankDetails'
+    | 'work_order_type'
+    | 'tpi_id'
+    | 'tpi'
+    | 'tpi_assigned_by_id'
+    | 'tpi_assigned_by'
+    | 'tpi_assigned_at'
   >,
   keyof WorkItemImport
 > = {
@@ -157,7 +163,7 @@ type Contractor = {
 };
 
 export const importContractorMapping: Record<
-  keyof Omit<User, 'district'>,
+  keyof Omit<User, 'district' | 'is_executive_engineer'>,
   keyof Contractor
 > = {
   address: 'contractoraddress',

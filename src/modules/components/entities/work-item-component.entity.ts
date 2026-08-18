@@ -44,6 +44,15 @@ export class WorkItemComponent {
   @Column()
   component_id: string;
 
+  @Column({ type: 'varchar', length: 255, nullable: true })
+  component_name?: string;
+
+  @Column({ type: 'varchar', length: 100, nullable: true })
+  component_unit?: string;
+
+  @Column({ type: 'int', nullable: true })
+  component_order_number?: number;
+
   @ManyToOne(() => Component)
   @JoinColumn({ name: 'component_id' })
   component: Component;

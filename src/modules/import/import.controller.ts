@@ -25,6 +25,7 @@ import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { AgreementsService } from '../agreements/agreements.service';
 import { UserRole } from '../users/entities/user.entity';
+import { WorkOrderType } from '../work-items/entities/work-item.entity';
 import { UsersService } from '../users/users.service';
 import { WorkItemsService } from '../work-items/work-items.service';
 import {
@@ -146,7 +147,13 @@ export class ImportController {
       items: { type: 'object' },
     },
   })
-  async bulkInsertWorkItems(@Body('workItems') workItems: WorkItemImport[]) {
-    return this.workItemsService.bulkCreateFromImport(workItems);
+  async bulkInsertWorkItems(
+    @Body('workItems') workItems: WorkItemImport[],
+    @Body('workOrderType') workOrderType?: WorkOrderType,
+  ) {
+    return this.workItemsService.bulkCreateFromImport(
+      workItems,
+      workOrderType || WorkOrderType.SVS,
+    );
   }
 }

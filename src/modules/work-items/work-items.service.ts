@@ -42,7 +42,7 @@ import {
   WorkItemBankDetail,
 } from './entities/work-item-bank-detail.entity';
 import { WorkItemEmployeeAssignment } from './entities/work-item-employee-assignment.entity';
-import { WorkItem, WorkItemStatus } from './entities/work-item.entity';
+import { WorkItem, WorkItemStatus, WorkOrderType } from './entities/work-item.entity';
 
 @Injectable()
 export class WorkItemsService {
@@ -162,13 +162,16 @@ export class WorkItemsService {
 
   async create(createWorkItemDto: CreateWorkItemDto): Promise<WorkItem> {
     return this.dataSource.transaction(async (manager) => {
+      const type = createWorkItemDto.work_order_type || WorkOrderType.SVS;
       const masterComponents = await manager.find(Component, {
+        where: { work_order_type: type },
         order: { order_number: 'ASC' },
       });
 
-      if (masterComponents.length !== 12) {
+      const expectedCount = type === WorkOrderType.BULK_VILLAGE ? 8 : 12;
+      if (masterComponents.length !== expectedCount) {
         throw new NotFoundException(
-          `Expected 12 static components, found ${masterComponents.length}`,
+          `Expected ${expectedCount} static components for type ${type}, found ${masterComponents.length}`,
         );
       }
 
@@ -196,7 +199,7 @@ export class WorkItemsService {
         contractorId = agreement.contractor_id ?? null;
       }
 
-      const { sr, agreement_id, title, latitude, longitude, ...rest } =
+      const { sr, agreement_id, title, latitude, longitude, work_order_type, ...rest } =
         createWorkItemDto;
 
       if (isNew) {
@@ -208,6 +211,7 @@ export class WorkItemsService {
           serial_no: sr ?? null,
           agreement_id: agreement_id ?? null,
           contractor_id: contractorId,
+          work_order_type: type,
           progress_percentage: 0,
           status: WorkItemStatus.PENDING,
         } as any);
@@ -220,6 +224,7 @@ export class WorkItemsService {
           serial_no: sr ?? null,
           agreement_id: agreement_id ?? null,
           contractor_id: contractorId,
+          work_order_type: type,
           status: WorkItemStatus.PENDING,
         });
       }
@@ -237,6 +242,9 @@ export class WorkItemsService {
         const mapping = new WorkItemComponent();
         mapping.work_item_id = savedWorkItem.id;
         mapping.component_id = component.id;
+        mapping.component_name = component.name;
+        mapping.component_unit = component.unit;
+        mapping.component_order_number = component.order_number;
         mapping.quantity = undefined;
         mapping.remarks = undefined;
         mapping.status = WorkItemComponentStatus.PENDING;
@@ -250,17 +258,20 @@ export class WorkItemsService {
 
   async bulkCreateFromImport(
     workItemImports: WorkItemImport[],
+    workOrderType: WorkOrderType = WorkOrderType.SVS,
   ): Promise<WorkItem[]> {
     return this.dataSource.transaction(async (manager) => {
       const createdWorkItems: WorkItem[] = [];
 
       const masterComponents = await manager.find(Component, {
+        where: { work_order_type: workOrderType },
         order: { order_number: 'ASC' },
       });
 
-      if (masterComponents.length !== 12) {
+      const expectedCount = workOrderType === WorkOrderType.BULK_VILLAGE ? 8 : 12;
+      if (masterComponents.length !== expectedCount) {
         throw new NotFoundException(
-          `Expected 12 static components, found ${masterComponents.length}`,
+          `Expected ${expectedCount} static components for type ${workOrderType}, found ${masterComponents.length}`,
         );
       }
 
@@ -366,6 +377,7 @@ export class WorkItemsService {
           work_code: workCode,
           contractor_id: contractorId ?? null,
           agreement_id: inferredAgreementId ?? undefined,
+          work_order_type: workOrderType,
           latitude: Number.isFinite(Number(mappedWorkItem.latitude))
             ? Number(mappedWorkItem.latitude)
             : 0,
@@ -411,6 +423,7 @@ export class WorkItemsService {
             ...updatableWorkItemFields,
             contractor_id: finalContractorId,
             agreement_id: finalAgreementId,
+            work_order_type: workOrderType,
             description: updatableWorkItemFields?.description
               ?.toLocaleLowerCase()
               ?.includes('temporary')
@@ -429,6 +442,9 @@ export class WorkItemsService {
             const mapping = new WorkItemComponent();
             mapping.work_item_id = savedWorkItem.id;
             mapping.component_id = component.id;
+            mapping.component_name = component.name;
+            mapping.component_unit = component.unit;
+            mapping.component_order_number = component.order_number;
             mapping.quantity = undefined;
             mapping.remarks = undefined;
             mapping.status = WorkItemComponentStatus.PENDING;
@@ -452,6 +468,9 @@ export class WorkItemsService {
           const mapping = new WorkItemComponent();
           mapping.work_item_id = savedWorkItem.id;
           mapping.component_id = component.id;
+          mapping.component_name = component.name;
+          mapping.component_unit = component.unit;
+          mapping.component_order_number = component.order_number;
           mapping.quantity = undefined;
           mapping.remarks = undefined;
           mapping.status = WorkItemComponentStatus.PENDING;

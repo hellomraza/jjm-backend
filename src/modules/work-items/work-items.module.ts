@@ -12,6 +12,8 @@ import { WorkItemsController } from './work-items.controller';
 import { WorkItemsService } from './work-items.service';
 import { UploadModule } from '../../common/upload/upload.module';
 
+import { WorkItemTpiStaffAssignment } from './entities/work-item-tpi-staff-assignment.entity';
+
 @Module({
   imports: [
     AgreementsModule,
@@ -23,6 +25,7 @@ import { UploadModule } from '../../common/upload/upload.module';
       WorkItemEmployeeAssignment,
       User,
       WorkItemBankDetail,
+      WorkItemTpiStaffAssignment,
     ]),
   ],
   controllers: [WorkItemsController],

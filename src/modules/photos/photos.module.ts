@@ -12,6 +12,8 @@ import { PhotoStatusService } from './photo-status.service';
 import { PhotosController } from './photos.controller';
 import { PhotosService } from './photos.service';
 
+import { TpiReferencePhotoStatus } from './entities/tpi-reference-photo-status.entity';
+
 @Module({
   imports: [
     TypeOrmModule.forFeature([
@@ -20,6 +22,7 @@ import { PhotosService } from './photos.service';
       WorkItem,
       Component,
       WorkItemComponent,
+      TpiReferencePhotoStatus,
     ]),
     UploadModule,
   ],
