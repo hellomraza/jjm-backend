@@ -14,6 +14,8 @@ export enum UserRole {
   DO = 'DO', // District Office
   CO = 'CO', // Contractor
   EM = 'EM', // Employee
+  TPI = 'TPI', // Third-Party Inspector
+  TPI_STAFF = 'TPI_STAFF', // TPI Staff
 }
 
 @Entity('users')
@@ -30,8 +32,8 @@ export class User {
   @Column({ type: 'varchar', length: 255, nullable: true })
   contractorid?: string; // contractorid
 
-  @Column({ unique: true })
-  code!: string; // userid,
+  @Column({ type: 'varchar', unique: true, nullable: true })
+  code?: string | null; // userid,
 
   @Column({ unique: true })
   email!: string;
@@ -81,6 +83,9 @@ export class User {
 
   @Column({ name: 'is_active', type: 'boolean', default: false })
   is_active!: boolean;
+
+  @Column({ name: 'is_executive_engineer', type: 'boolean', default: false })
+  is_executive_engineer!: boolean;
 
   @CreateDateColumn()
   created_at!: Date;

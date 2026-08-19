@@ -13,12 +13,20 @@ import {
   WorkItem,
   WorkItemStatus,
 } from '../work-items/entities/work-item.entity';
+import { TpiStaffRelationship } from '../users/entities/tpi-staff-relationship.entity';
+import { WorkItemTpiStaffAssignment } from '../work-items/entities/work-item-tpi-staff-assignment.entity';
+import {
+  TpiReferencePhotoStatus,
+  TpiReferencePhotoStatusEnum,
+} from '../photos/entities/tpi-reference-photo-status.entity';
 import {
   ComponentStatusCountDto,
   ContractorDashboardDto,
   ContractorWorkItemDto,
   DashboardStatsDto,
   DistrictDashboardDto,
+  TpiDashboardDto,
+  TpiWorkItemDto,
   UserStatsDto,
   WorkItemStatsDto,
   WorkItemWithProgressDto,
@@ -39,13 +47,19 @@ export class DashboardService {
     private readonly workItemComponentRepository: Repository<WorkItemComponent>,
     @InjectRepository(WorkItemEmployeeAssignment)
     private readonly workItemEmployeeAssignmentRepository: Repository<WorkItemEmployeeAssignment>,
+    @InjectRepository(TpiStaffRelationship)
+    private readonly tpiStaffRelationshipRepository: Repository<TpiStaffRelationship>,
+    @InjectRepository(WorkItemTpiStaffAssignment)
+    private readonly workItemTpiStaffAssignmentRepository: Repository<WorkItemTpiStaffAssignment>,
+    @InjectRepository(TpiReferencePhotoStatus)
+    private readonly tpiReferencePhotoStatusRepository: Repository<TpiReferencePhotoStatus>,
   ) {}
 
   async getStats(
     userId: string,
     userRole: UserRole,
   ): Promise<
-    DashboardStatsDto | DistrictDashboardDto | ContractorDashboardDto
+    DashboardStatsDto | DistrictDashboardDto | ContractorDashboardDto | TpiDashboardDto
   > {
     if (userRole === UserRole.HO) {
       return this.getHOStats();
@@ -59,7 +73,59 @@ export class DashboardService {
       return this.getCOStats(userId);
     }
 
+    if (userRole === UserRole.TPI) {
+      return this.getTpiStats(userId);
+    }
+
     throw new NotFoundException('Invalid user role for dashboard access');
+  }
+
+  private async getTpiStats(tpiId: string): Promise<TpiDashboardDto> {
+    const assignedWorkItems = await this.workItemRepository.find({
+      where: { tpi_id: tpiId },
+      order: { created_at: 'DESC' },
+    });
+
+    const totalStaffMembers = await this.tpiStaffRelationshipRepository.count({
+      where: { tpi_id: tpiId },
+    });
+
+    const workItems = await Promise.all(
+      assignedWorkItems.map(async (item) => {
+        const [totalComponents, selectedReferencePhotosCount, assignedStaffCount] =
+          await Promise.all([
+            this.workItemComponentRepository.count({
+              where: { work_item_id: item.id },
+            }),
+            this.tpiReferencePhotoStatusRepository.count({
+              where: {
+                work_item_id: item.id,
+                status: TpiReferencePhotoStatusEnum.SELECTED,
+              },
+            }),
+            this.workItemTpiStaffAssignmentRepository.count({
+              where: { work_item_id: item.id },
+            }),
+          ]);
+
+        return {
+          id: item.id,
+          work_code: item.work_code,
+          title: item.title,
+          status: item.status,
+          totalComponents,
+          selectedReferencePhotosCount,
+          assignedStaffCount,
+        };
+      }),
+    );
+
+    return {
+      totalAssignedWorkItems: assignedWorkItems.length,
+      totalStaffMembers,
+      workItems,
+      generatedAt: new Date(),
+    };
   }
 
   private async getHOStats(): Promise<DashboardStatsDto> {

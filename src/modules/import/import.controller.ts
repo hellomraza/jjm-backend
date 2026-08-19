@@ -26,6 +26,7 @@ import { RolesGuard } from '../../common/guards/roles.guard';
 import { AgreementsService } from '../agreements/agreements.service';
 import { UserRole } from '../users/entities/user.entity';
 import { UsersService } from '../users/users.service';
+import { WorkOrderType } from '../work-items/entities/work-item.entity';
 import { WorkItemsService } from '../work-items/work-items.service';
 import {
   type AgreementImport,
@@ -146,7 +147,16 @@ export class ImportController {
       items: { type: 'object' },
     },
   })
-  async bulkInsertWorkItems(@Body('workItems') workItems: WorkItemImport[]) {
-    return this.workItemsService.bulkCreateFromImport(workItems);
+  async bulkInsertWorkItems(
+    @Body('workItems') workItems: WorkItemImport[],
+    @Body('workOrderType') bodyType?: WorkOrderType,
+    @Query('workOrderType', new ParseEnumPipe(WorkOrderType, { optional: true }))
+    queryType?: WorkOrderType,
+  ) {
+    const resolvedType = queryType || bodyType || WorkOrderType.SVS;
+    return this.workItemsService.bulkCreateFromImport(
+      workItems,
+      resolvedType,
+    );
   }
 }

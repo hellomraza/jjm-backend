@@ -31,6 +31,7 @@ import { Roles } from '../../common/decorators/roles.decorator';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { UserRole } from '../users/entities/user.entity';
+import { WorkOrderType } from '../work-items/entities/work-item.entity';
 import { AgreementsService } from './agreements.service';
 import { AttachAgreementFileDto } from './dto/attach-agreement-file.dto';
 import {
@@ -71,7 +72,14 @@ export class AgreementsController {
   }
 
   @Get()
-  @Roles(UserRole.HO, UserRole.DO, UserRole.CO, UserRole.EM)
+  @Roles(
+    UserRole.HO,
+    UserRole.DO,
+    UserRole.CO,
+    UserRole.EM,
+    UserRole.TPI,
+    UserRole.TPI_STAFF,
+  )
   @ApiOperation({
     summary: 'List agreements',
     description: 'Returns paginated agreements list with search and filter support',
@@ -97,6 +105,7 @@ export class AgreementsController {
     @Query('limit') limit: number = 20,
     @Query('search') search?: string,
     @Query('agreementyear') agreementyear?: string,
+    @Query('workOrderType') workOrderType?: WorkOrderType,
   ) {
     const result = await this.agreementsService.findAllForUser(
       req.user.userId,
@@ -105,6 +114,7 @@ export class AgreementsController {
       limit,
       search,
       agreementyear,
+      workOrderType,
     );
 
     return {
@@ -116,7 +126,14 @@ export class AgreementsController {
   }
 
   @Get(':id')
-  @Roles(UserRole.HO, UserRole.DO, UserRole.CO, UserRole.EM)
+  @Roles(
+    UserRole.HO,
+    UserRole.DO,
+    UserRole.CO,
+    UserRole.EM,
+    UserRole.TPI,
+    UserRole.TPI_STAFF,
+  )
   @ApiOperation({
     summary: 'Get agreement by ID',
     description: 'Returns agreement details by agreement ID',
@@ -138,11 +155,18 @@ export class AgreementsController {
   }
 
   @Get(':id/work-items')
-  @Roles(UserRole.HO, UserRole.DO, UserRole.CO, UserRole.EM)
+  @Roles(
+    UserRole.HO,
+    UserRole.DO,
+    UserRole.CO,
+    UserRole.EM,
+    UserRole.TPI,
+    UserRole.TPI_STAFF,
+  )
   @ApiOperation({
     summary: 'Get work items of a particular agreement',
     description:
-      'Returns paginated work items of an agreement. For EM role, returns only assigned work items.',
+      'Returns paginated work items of an agreement. For EM and TPI_STAFF role, returns only assigned work items.',
   })
   @ApiParam({ name: 'id', type: String, description: 'Agreement ID' })
   @ApiQuery({ name: 'page', required: false, type: Number, example: 1 })

@@ -434,7 +434,7 @@ export class AgreementResponseDto {
       contractor: agreement.contractor
         ? {
             id: agreement.contractor.id,
-            code: agreement.contractor.code,
+            code: agreement.contractor.code ?? '',
             email: agreement.contractor.email,
             name: agreement.contractor.name,
             role: agreement.contractor.role,

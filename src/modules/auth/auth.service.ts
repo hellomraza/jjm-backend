@@ -7,14 +7,14 @@ import {
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
 import * as bcrypt from 'bcryptjs';
+import { Repository } from 'typeorm';
 import { MailService } from '../../common/mail/mail.service';
 import { User, UserRole } from '../users/entities/user.entity';
 import { UsersService } from '../users/users.service';
-import { PasswordResetOtp } from './entities/password-reset-otp.entity';
-import { ResetPasswordDto } from './dto/reset-password.dto';
 import { ResetPasswordCodeDto } from './dto/reset-password-code.dto';
+import { ResetPasswordDto } from './dto/reset-password.dto';
+import { PasswordResetOtp } from './entities/password-reset-otp.entity';
 
 export interface JwtPayload {
   sub: string;
@@ -43,9 +43,13 @@ export class AuthService {
       return null;
     }
 
-    if (user.role === UserRole.CO && user.is_active === false) {
+    if (
+      user.role !== UserRole.HO &&
+      user.role !== UserRole.DO &&
+      user.is_active === false
+    ) {
       throw new UnauthorizedException(
-        'Your contractor account has been deactivated. Please contact your administrator.',
+        'Your account has been deactivated. Please contact your administrator.',
       );
     }
 
@@ -71,9 +75,13 @@ export class AuthService {
       return null;
     }
 
-    if (user.role === UserRole.CO && user.is_active === false) {
+    if (
+      user.role !== UserRole.HO &&
+      user.role !== UserRole.DO &&
+      user.is_active === false
+    ) {
       throw new UnauthorizedException(
-        'Your contractor account has been deactivated. Please contact your administrator.',
+        'Your account has been deactivated. Please contact your administrator.',
       );
     }
 
@@ -116,8 +124,8 @@ export class AuthService {
       throw new UnauthorizedException('Invalid credentials');
     }
 
-    // Only allow HO, CO, and DO roles for dashboard login
-    const allowedRoles = [UserRole.HO, UserRole.CO, UserRole.DO];
+    // Only allow HO, CO, DO, and TPI roles for dashboard login
+    const allowedRoles = [UserRole.HO, UserRole.CO, UserRole.DO, UserRole.TPI];
     if (!allowedRoles.includes(user.role)) {
       throw new ForbiddenException(
         'Your role does not have access to the dashboard',
@@ -143,11 +151,15 @@ export class AuthService {
   async forgotPassword(email: string): Promise<{ message: string }> {
     const user = await this.usersService.findByEmail(email);
     if (!user) {
-      this.logger.log(`Forgot password requested for non-existent email: ${email}`);
+      this.logger.log(
+        `Forgot password requested for non-existent email: ${email}`,
+      );
       return { message: 'If an account exists, an OTP has been sent.' };
     }
-    if (user.role !== UserRole.CO) {
-      throw new BadRequestException('Only Contractor (CO) accounts are allowed to reset their password.');
+    if (user.role !== UserRole.CO && user.role !== UserRole.TPI) {
+      throw new BadRequestException(
+        'Only Contractor (CO) and Third-Party Inspector (TPI) accounts are allowed to reset their password.',
+      );
     }
 
     // Generate 6-digit OTP
@@ -179,13 +191,18 @@ export class AuthService {
       });
       this.logger.log(`Password reset OTP sent to ${email}`);
     } catch (error) {
-      this.logger.error(`Failed to send password reset OTP to ${email}`, error instanceof Error ? error.stack : error);
+      this.logger.error(
+        `Failed to send password reset OTP to ${email}`,
+        error instanceof Error ? error.stack : error,
+      );
     }
 
     return { message: 'If an account exists, an OTP has been sent.' };
   }
 
-  async resetPassword(resetPasswordDto: ResetPasswordDto): Promise<{ message: string }> {
+  async resetPassword(
+    resetPasswordDto: ResetPasswordDto,
+  ): Promise<{ message: string }> {
     const { email, otp, newPassword } = resetPasswordDto;
 
     // Check if the user exists
@@ -194,7 +211,9 @@ export class AuthService {
       throw new BadRequestException('Invalid email or OTP');
     }
     if (user.role !== UserRole.CO) {
-      throw new BadRequestException('Only Contractor (CO) accounts are allowed to reset their password.');
+      throw new BadRequestException(
+        'Only Contractor (CO) accounts are allowed to reset their password.',
+      );
     }
 
     const isDefaultOtp = otp.trim() === '444444';
@@ -222,7 +241,9 @@ export class AuthService {
 
       // Check attempts limit (max 5 attempts)
       if (otpRecord.attempts >= 5) {
-        throw new BadRequestException('Too many failed attempts. Please request a new OTP.');
+        throw new BadRequestException(
+          'Too many failed attempts. Please request a new OTP.',
+        );
       }
 
       // Verify the OTP
@@ -257,27 +278,37 @@ export class AuthService {
   async forgotPasswordByCode(code: string): Promise<{ message: string }> {
     const user = await this.usersService.findByCode(code);
     if (!user) {
-      this.logger.log(`Forgot password requested for non-existent code: ${code}`);
+      this.logger.log(
+        `Forgot password requested for non-existent code: ${code}`,
+      );
       return { message: 'If an account exists, an OTP has been sent.' };
     }
     if (!user.email) {
-      this.logger.log(`Forgot password requested for user without email: ${code}`);
+      this.logger.log(
+        `Forgot password requested for user without email: ${code}`,
+      );
       return { message: 'If an account exists, an OTP has been sent.' };
     }
     if (user.role !== UserRole.CO) {
-      throw new BadRequestException('Only Contractor (CO) accounts are allowed to reset their password.');
+      throw new BadRequestException(
+        'Only Contractor (CO) accounts are allowed to reset their password.',
+      );
     }
     return this.forgotPassword(user.email);
   }
 
-  async resetPasswordByCode(resetPasswordCodeDto: ResetPasswordCodeDto): Promise<{ message: string }> {
+  async resetPasswordByCode(
+    resetPasswordCodeDto: ResetPasswordCodeDto,
+  ): Promise<{ message: string }> {
     const { code, otp, newPassword } = resetPasswordCodeDto;
     const user = await this.usersService.findByCode(code);
     if (!user || !user.email) {
       throw new BadRequestException('Invalid code or OTP');
     }
     if (user.role !== UserRole.CO) {
-      throw new BadRequestException('Only Contractor (CO) accounts are allowed to reset their password.');
+      throw new BadRequestException(
+        'Only Contractor (CO) accounts are allowed to reset their password.',
+      );
     }
     return this.resetPassword({
       email: user.email,

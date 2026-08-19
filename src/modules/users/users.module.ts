@@ -8,6 +8,9 @@ import { User } from './entities/user.entity';
 import { UsersController } from './users.controller';
 import { UsersService } from './users.service';
 
+import { DistrictTpiAssignment } from './entities/district-tpi-assignment.entity';
+import { TpiStaffRelationship } from './entities/tpi-staff-relationship.entity';
+
 @Module({
   imports: [
     TypeOrmModule.forFeature([
@@ -15,6 +18,8 @@ import { UsersService } from './users.service';
       ContractorContract,
       EmployeeContract,
       WorkItemEmployeeAssignment,
+      DistrictTpiAssignment,
+      TpiStaffRelationship,
     ]),
   ],
   controllers: [UsersController],

@@ -9,7 +9,12 @@ import {
   Query,
   Request,
   UseGuards,
+  UseInterceptors,
+  UploadedFile,
+  ParseFilePipeBuilder,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { SubmitBankDetailsDto } from './dto/submit-bank-details.dto';
 import {
   ApiBadRequestResponse,
   ApiBearerAuth,
@@ -24,6 +29,7 @@ import {
   ApiTags,
   ApiUnauthorizedResponse,
   ApiUnprocessableEntityResponse,
+  ApiConsumes,
 } from '@nestjs/swagger';
 import { PaginatedResponse } from '../../common/types/response.type';
 import { ApiPaginatedResponse } from '../../common/decorators/paginated.responce.decorator';
@@ -41,7 +47,9 @@ import {
   EmployeeResponseDto,
   WorkItemResponseDto,
 } from './dto/work-item-return-type.dto';
-import { WorkItem, WorkItemStatus } from './entities/work-item.entity';
+import { WorkItem, WorkItemStatus, WorkOrderType } from './entities/work-item.entity';
+import { AssignTpiStaffDto } from './dto/assign-tpi-staff.dto';
+import { ExecutiveEngineerGuard } from '../../common/guards/executive-engineer.guard';
 import { WorkItemsService } from './work-items.service';
 
 @ApiTags('Work Items')
@@ -54,7 +62,7 @@ export class WorkItemsController {
   constructor(private readonly workItemsService: WorkItemsService) {}
 
   @Get('my-work-items')
-  @Roles(UserRole.HO, UserRole.DO, UserRole.CO, UserRole.EM)
+  @Roles(UserRole.HO, UserRole.DO, UserRole.CO, UserRole.EM, UserRole.TPI, UserRole.TPI_STAFF)
   @ApiOperation({
     summary: 'List my work items',
     description:
@@ -68,12 +76,19 @@ export class WorkItemsController {
     type: String,
     description: 'Search by work code (partial match)',
   })
+  @ApiQuery({
+    name: 'workOrderType',
+    required: false,
+    enum: WorkOrderType,
+    description: 'Filter by work order type',
+  })
   @ApiPaginatedResponse(WorkItemResponseDto)
   async getMyWorkItems(
     @Request() req: { user: { userId: string; role: UserRole } },
     @Query('page') page: number = 1,
     @Query('limit') limit: number = 20,
     @Query('search') search?: string,
+    @Query('workOrderType') workOrderType?: WorkOrderType,
   ): Promise<PaginatedResponse<WorkItem>> {
     return await this.workItemsService.getMyWorkItems(
       req.user.userId,
@@ -81,6 +96,7 @@ export class WorkItemsController {
       page,
       limit,
       search,
+      workOrderType,
     );
   }
 
@@ -116,7 +132,14 @@ export class WorkItemsController {
   }
 
   @Get(':id/employees')
-  @Roles(UserRole.HO, UserRole.DO, UserRole.CO, UserRole.EM)
+  @Roles(
+    UserRole.HO,
+    UserRole.DO,
+    UserRole.CO,
+    UserRole.EM,
+    UserRole.TPI,
+    UserRole.TPI_STAFF,
+  )
   @ApiOperation({
     summary: 'Get employees assigned to work item',
     description: 'Returns list of employees assigned to a specific work item',
@@ -127,10 +150,15 @@ export class WorkItemsController {
     type: [EmployeeResponseDto],
   })
   @ApiNotFoundResponse({ description: 'Work item not found' })
-  getAssignedEmployees(
+  async getAssignedEmployees(
     @Param('id') id: string,
   ): Promise<EmployeeResponseDto[]> {
-    return this.workItemsService.getAssignedEmployees(id);
+    const employees = await this.workItemsService.getAssignedEmployees(id);
+    return employees.map((emp) => ({
+      id: emp.id,
+      code: emp.code ?? '',
+      email: emp.email,
+    }));
   }
 
   @Post(':id/assign-employee')
@@ -162,7 +190,14 @@ export class WorkItemsController {
   }
 
   @Get()
-  @Roles(UserRole.HO, UserRole.DO, UserRole.CO, UserRole.EM)
+  @Roles(
+    UserRole.HO,
+    UserRole.DO,
+    UserRole.CO,
+    UserRole.EM,
+    UserRole.TPI,
+    UserRole.TPI_STAFF,
+  )
   @ApiOperation({
     summary: 'List work items',
     description: 'Returns paginated work items list',
@@ -184,8 +219,38 @@ export class WorkItemsController {
     return await this.workItemsService.findAll(page, limit, search);
   }
 
+  @Get('completed')
+  @Roles(UserRole.DO)
+  @ApiOperation({
+    summary: 'List completed work items for DO',
+    description: 'Returns completed work items for the logged-in DO with bank details left joined.',
+  })
+  @ApiQuery({ name: 'page', required: false, type: Number, example: 1 })
+  @ApiQuery({ name: 'limit', required: false, type: Number, example: 20 })
+  @ApiQuery({ name: 'search', required: false, type: String })
+  async getCompletedWorkItems(
+    @Request() req: { user: { userId: string } },
+    @Query('page') page: number = 1,
+    @Query('limit') limit: number = 20,
+    @Query('search') search?: string,
+  ) {
+    return await this.workItemsService.findCompletedWorkItemsForDO(
+      req.user.userId,
+      page,
+      limit,
+      search,
+    );
+  }
+
   @Get(':id')
-  @Roles(UserRole.HO, UserRole.DO, UserRole.CO, UserRole.EM)
+  @Roles(
+    UserRole.HO,
+    UserRole.DO,
+    UserRole.CO,
+    UserRole.EM,
+    UserRole.TPI,
+    UserRole.TPI_STAFF,
+  )
   @ApiOperation({
     summary: 'Get work item by ID',
     description: 'Returns work item details by ID',
@@ -198,7 +263,14 @@ export class WorkItemsController {
   }
 
   @Get(':id/do-info')
-  @Roles(UserRole.HO, UserRole.DO, UserRole.CO, UserRole.EM)
+  @Roles(
+    UserRole.HO,
+    UserRole.DO,
+    UserRole.CO,
+    UserRole.EM,
+    UserRole.TPI,
+    UserRole.TPI_STAFF,
+  )
   @ApiOperation({
     summary: 'Get District Officer info by work item ID',
     description:
@@ -285,12 +357,160 @@ export class WorkItemsController {
   @Roles(UserRole.HO)
   @ApiOperation({
     summary: 'Delete work item',
-    description: 'Deletes a work item by ID',
+    description: 'Deletes an existing work item by ID (HO only)',
   })
   @ApiParam({ name: 'id', type: String, description: 'Work item ID' })
   @ApiOkResponse({ description: 'Work item deleted successfully' })
   @ApiNotFoundResponse({ description: 'Work item not found' })
   remove(@Param('id') id: string) {
     return this.workItemsService.remove(id);
+  }
+
+  @Post(':id/assign-tpi')
+  @UseGuards(ExecutiveEngineerGuard)
+  @Roles(UserRole.DO)
+  @ApiOperation({
+    summary: 'Assign TPI agency to work item',
+    description: 'Automatically resolves and assigns the active TPI of the district to the work item (Executive Engineer DO only)',
+  })
+  @ApiParam({ name: 'id', type: String, description: 'Work item ID' })
+  @ApiOkResponse({
+    description: 'TPI agency assigned successfully',
+    type: WorkItemResponseDto,
+  })
+  @ApiBadRequestResponse({ description: 'Invalid assignment payload or state' })
+  @ApiForbiddenResponse({ description: 'DO is not an Executive Engineer or district mismatch' })
+  assignTpi(
+    @Param('id') id: string,
+    @Request() req: { user: { userId: string } },
+  ) {
+    return this.workItemsService.assignTpi(id, req.user.userId);
+  }
+
+  @Delete(':id/tpi')
+  @UseGuards(ExecutiveEngineerGuard)
+  @Roles(UserRole.DO)
+  @ApiOperation({
+    summary: 'Unassign TPI agency from work item',
+    description: 'Removes TPI agency and staff assignments from the work item (Executive Engineer DO only)',
+  })
+  @ApiParam({ name: 'id', type: String, description: 'Work item ID' })
+  @ApiOkResponse({
+    description: 'TPI agency unassigned successfully',
+    type: WorkItemResponseDto,
+  })
+  @ApiForbiddenResponse({ description: 'DO is not an Executive Engineer or district mismatch' })
+  unassignTpi(
+    @Param('id') id: string,
+    @Request() req: { user: { userId: string } },
+  ) {
+    return this.workItemsService.unassignTpi(id, req.user.userId);
+  }
+
+  @Post(':id/assign-tpi-staff')
+  @Roles(UserRole.TPI)
+  @ApiOperation({
+    summary: 'Assign TPI staff to Bulk Village work item',
+    description: 'Assigns TPI staff member to work item (TPI agency only)',
+  })
+  @ApiParam({ name: 'id', type: String, description: 'Work item ID' })
+  @ApiBody({ type: AssignTpiStaffDto })
+  @ApiCreatedResponse({ description: 'Staff member assigned successfully' })
+  @ApiForbiddenResponse({ description: 'Work item not owned by caller TPI or staff does not belong to TPI' })
+  assignTpiStaff(
+    @Param('id') id: string,
+    @Body() dto: AssignTpiStaffDto,
+    @Request() req: { user: { userId: string } },
+  ) {
+    return this.workItemsService.assignTpiStaff(id, req.user.userId, dto.staffId);
+  }
+
+  @Delete(':id/tpi-staff/:staffId')
+  @Roles(UserRole.TPI)
+  @ApiOperation({
+    summary: 'Unassign TPI staff from Bulk Village work item',
+    description: 'Removes TPI staff member assignment from work item (TPI agency only)',
+  })
+  @ApiParam({ name: 'id', type: String, description: 'Work item ID' })
+  @ApiParam({ name: 'staffId', type: String, description: 'TPI Staff user ID' })
+  @ApiOkResponse({ description: 'Staff member unassigned successfully' })
+  @ApiForbiddenResponse({ description: 'Work item not owned by caller TPI' })
+  unassignTpiStaff(
+    @Param('id') id: string,
+    @Param('staffId') staffId: string,
+    @Request() req: { user: { userId: string } },
+  ) {
+    return this.workItemsService.unassignTpiStaff(id, req.user.userId, staffId);
+  }
+
+  @Get(':id/tpi-staff')
+  @Roles(
+    UserRole.HO,
+    UserRole.DO,
+    UserRole.TPI,
+    UserRole.TPI_STAFF,
+  )
+  @ApiOperation({
+    summary: 'Get TPI staff assigned to work item',
+    description: 'Returns list of TPI staff assigned to a specific work item',
+  })
+  @ApiParam({ name: 'id', type: String, description: 'Work item ID' })
+  @ApiOkResponse({
+    description: 'TPI Staff assigned to work item',
+    type: [EmployeeResponseDto],
+  })
+  async getAssignedTpiStaff(
+    @Param('id') id: string,
+  ): Promise<EmployeeResponseDto[]> {
+    const staff = await this.workItemsService.getAssignedTpiStaff(id);
+    return staff.map((s) => ({
+      id: s.id,
+      code: s.code ?? '',
+      email: s.email,
+      name: s.name ?? '',
+      mobile: s.mobile ?? '',
+      district_name: s.district_name ?? '',
+    } as any));
+  }
+
+  @Post(':id/bank-details')
+  @Roles(UserRole.DO)
+  @UseInterceptors(FileInterceptor('file'))
+  @ApiOperation({
+    summary: 'Submit bank details for a completed work item',
+    description: 'Uploads voucher file and saves/submits bank details for a completed work item.',
+  })
+  @ApiConsumes('multipart/form-data')
+  async submitBankDetails(
+    @Param('id') id: string,
+    @UploadedFile(
+      new ParseFilePipeBuilder()
+        .addMaxSizeValidator({ maxSize: 5 * 1024 * 1024 })
+        .build({ fileIsRequired: true }),
+    )
+    file: any,
+    @Body() dto: SubmitBankDetailsDto,
+    @Request() req: { user: { userId: string } },
+  ) {
+    return await this.workItemsService.submitBankDetails(
+      id,
+      file,
+      dto,
+      req.user.userId,
+    );
+  }
+
+  @Patch(':id/bank-details/approve')
+  @Roles(UserRole.DO)
+  @ApiOperation({
+    summary: 'Approve bank details for a completed work item',
+    description: 'Approve submitted bank details for a completed work item.',
+  })
+  @ApiParam({ name: 'id', type: String, description: 'Work item ID' })
+  async approveBankDetails(
+    @Param('id') id: string,
+    @Request() req: { user: { userId: string } },
+  ) {
+    return await this.workItemsService.approveBankDetails(id, req.user.userId);
   }
 }

@@ -12,9 +12,17 @@ import {
   Max,
   Min,
 } from 'class-validator';
-import { WorkItemStatus } from '../entities/work-item.entity';
+import { WorkItemStatus, WorkOrderType } from '../entities/work-item.entity';
 
 export class CreateWorkItemDto {
+  @ApiPropertyOptional({
+    description: 'Work order type (SVS or BULK_VILLAGE)',
+    enum: WorkOrderType,
+    example: WorkOrderType.SVS,
+  })
+  @IsEnum(WorkOrderType)
+  @IsOptional()
+  work_order_type?: WorkOrderType;
   @ApiProperty({
     description: 'Work code identifier',
     example: 'W123456789012',

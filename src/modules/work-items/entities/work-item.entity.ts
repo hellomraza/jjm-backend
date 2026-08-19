@@ -5,9 +5,11 @@ import {
   Index,
   JoinColumn,
   ManyToOne,
+  OneToOne,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
+import { WorkItemBankDetail } from './work-item-bank-detail.entity';
 import { Block } from '../../locations/entities/block.entity';
 import { Circle } from '../../locations/entities/circle.entity';
 import { District } from '../../locations/entities/district.entity';
@@ -22,6 +24,11 @@ export enum WorkItemStatus {
   PENDING = 'PENDING',
   IN_PROGRESS = 'IN_PROGRESS',
   COMPLETED = 'COMPLETED',
+}
+
+export enum WorkOrderType {
+  SVS = 'SVS',
+  BULK_VILLAGE = 'BULK_VILLAGE',
 }
 
 @Entity('work_items')
@@ -147,6 +154,32 @@ export class WorkItem {
   })
   status!: WorkItemStatus;
 
+  @Column({
+    type: 'enum',
+    enum: WorkOrderType,
+    default: WorkOrderType.SVS,
+  })
+  work_order_type!: WorkOrderType;
+
+  @Index()
+  @Column({ nullable: true })
+  tpi_id?: string | null;
+
+  @ManyToOne(() => User, { nullable: true, onDelete: 'SET NULL' })
+  @JoinColumn({ name: 'tpi_id', referencedColumnName: 'id' })
+  tpi?: User | null;
+
+  @Index()
+  @Column({ nullable: true })
+  tpi_assigned_by_id?: string | null;
+
+  @ManyToOne(() => User, { nullable: true, onDelete: 'SET NULL' })
+  @JoinColumn({ name: 'tpi_assigned_by_id', referencedColumnName: 'id' })
+  tpi_assigned_by?: User | null;
+
+  @Column({ type: 'datetime', nullable: true })
+  tpi_assigned_at?: Date | null;
+
   @CreateDateColumn()
   created_at!: Date; // systemdate
 
@@ -161,4 +194,7 @@ export class WorkItem {
 
   @Column({ type: 'varchar', length: 100, nullable: true })
   workcodeid?: string | null;
+
+  @OneToOne(() => WorkItemBankDetail, (bankDetail) => bankDetail.workItem, { nullable: true })
+  bankDetails?: WorkItemBankDetail | null;
 }

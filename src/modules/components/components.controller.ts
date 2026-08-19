@@ -33,6 +33,9 @@ import { Roles } from '../../common/decorators/roles.decorator';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { PhotoResponseDto } from '../photos/dto/photo-response.dto';
+import { UploadPhotoUrlDto } from '../photos/dto/upload-photo-url.dto';
+import { UploadTpiReferencePhotoUrlDto } from '../photos/dto/upload-tpi-reference-photo-url.dto';
+import { PhotosService } from '../photos/photos.service';
 import { UserRole } from '../users/entities/user.entity';
 import { ComponentsService } from './components.service';
 import {
@@ -59,10 +62,20 @@ type AuthenticatedRequest = {
 @Controller('components')
 @UseGuards(JwtAuthGuard, RolesGuard)
 export class ComponentsController {
-  constructor(private readonly componentsService: ComponentsService) {}
+  constructor(
+    private readonly componentsService: ComponentsService,
+    private readonly photosService: PhotosService,
+  ) {}
 
   @Get('master')
-  @Roles(UserRole.HO, UserRole.DO, UserRole.CO, UserRole.EM)
+  @Roles(
+    UserRole.HO,
+    UserRole.DO,
+    UserRole.CO,
+    UserRole.EM,
+    UserRole.TPI,
+    UserRole.TPI_STAFF,
+  )
   @ApiOperation({
     summary: 'List master components',
     description: 'Returns predefined static master components in display order',
@@ -316,7 +329,14 @@ export class ComponentsController {
   }
 
   @Get('work-item/:workItemId')
-  @Roles(UserRole.HO, UserRole.DO, UserRole.CO, UserRole.EM)
+  @Roles(
+    UserRole.HO,
+    UserRole.DO,
+    UserRole.CO,
+    UserRole.EM,
+    UserRole.TPI,
+    UserRole.TPI_STAFF,
+  )
   @ApiOperation({
     summary: 'List work item component mappings',
     description:
@@ -333,7 +353,14 @@ export class ComponentsController {
   }
 
   @Get(':id')
-  @Roles(UserRole.HO, UserRole.DO, UserRole.CO, UserRole.EM)
+  @Roles(
+    UserRole.HO,
+    UserRole.DO,
+    UserRole.CO,
+    UserRole.EM,
+    UserRole.TPI,
+    UserRole.TPI_STAFF,
+  )
   @ApiOperation({
     summary: 'Get work item component mapping by ID',
     description: 'Returns mapping details by work item component mapping ID',
@@ -404,5 +431,38 @@ export class ComponentsController {
       submitPhotoDto.photoId,
       req.user.userId,
     );
+  }
+
+  @Post(':componentId/tpi-reference-photos-url')
+  @Roles(UserRole.TPI_STAFF)
+  @ApiOperation({
+    summary: 'Upload TPI reference photo metadata using Cloudinary URL',
+    description: 'Stores geotagged reference photo metadata for Bulk Village components without progress data',
+  })
+  @ApiParam({ name: 'componentId', type: String, description: 'Component mapping ID' })
+  @ApiBody({ type: UploadTpiReferencePhotoUrlDto })
+  @ApiCreatedResponse({ description: 'TPI reference photo metadata stored successfully', type: PhotoResponseDto })
+  uploadTpiReferencePhotoUrl(
+    @Param('componentId') componentId: string,
+    @Body() dto: UploadTpiReferencePhotoUrlDto,
+    @Request() req: AuthenticatedRequest,
+  ) {
+    dto.component_id = componentId;
+    return this.photosService.uploadTpiReferencePhotoUrl(dto, req.user.userId);
+  }
+
+  @Get(':componentId/tpi-reference-photos')
+  @Roles(UserRole.TPI, UserRole.TPI_STAFF, UserRole.DO)
+  @ApiOperation({
+    summary: 'Get strictly scoped TPI reference photos',
+    description: 'Returns the list of TPI reference photos for a component, scoped by user assignment and district',
+  })
+  @ApiParam({ name: 'componentId', type: String, description: 'Component mapping ID' })
+  @ApiOkResponse({ description: 'Reference photos retrieved successfully', type: [PhotoResponseDto] })
+  listTpiReferencePhotos(
+    @Param('componentId') componentId: string,
+    @Request() req: { user: { userId: string; role: UserRole } },
+  ) {
+    return this.photosService.listTpiReferencePhotos(componentId, req.user.userId, req.user.role);
   }
 }

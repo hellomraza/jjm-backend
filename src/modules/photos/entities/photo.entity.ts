@@ -11,6 +11,11 @@ import { WorkItemComponent } from '../../components/entities/work-item-component
 import { User } from '../../users/entities/user.entity';
 import { WorkItem } from '../../work-items/entities/work-item.entity';
 
+export enum PhotoSource {
+  CONTRACTOR = 'CONTRACTOR',
+  TPI = 'TPI',
+}
+
 @Entity('photos')
 @Index('IDX_PHOTO_COMPONENT_SELECTED', ['component_id', 'is_selected'])
 @Index('IDX_PHOTO_COMPONENT_CREATED_AT', ['component_id', 'created_at'])
@@ -74,6 +79,13 @@ export class Photo {
 
   @Column({ type: 'datetime', nullable: true })
   forwarded_at: Date | null;
+
+  @Column({
+    type: 'enum',
+    enum: PhotoSource,
+    default: PhotoSource.CONTRACTOR,
+  })
+  source!: PhotoSource;
 
   @CreateDateColumn()
   created_at: Date;

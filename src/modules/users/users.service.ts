@@ -9,18 +9,30 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import * as bcrypt from 'bcryptjs';
 import * as crypto from 'crypto';
-import { DeepPartial, Repository } from 'typeorm';
+import {
+  DataSource,
+  DeepPartial,
+  FindOptionsWhere,
+  IsNull,
+  Repository,
+} from 'typeorm';
 import { PaginatedResponse } from '../../common/types/response.type';
 import { importContractorMapping } from '../import/import.service';
 import { WorkItemEmployeeAssignment } from '../work-items/entities/work-item-employee-assignment.entity';
 import { CreateContractorDto } from './dto/create-contractor.dto';
 import { CreateDODto } from './dto/create-do.dto';
 import { CreateEmployeeDto } from './dto/create-employee.dto';
+import { CreateTpiStaffDto } from './dto/create-tpi-staff.dto';
+import { CreateTpiDto } from './dto/create-tpi.dto';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateContractorDto } from './dto/update-contractor.dto';
 import { UpdateDODto } from './dto/update-do.dto';
+import { UpdateTpiStaffDto } from './dto/update-tpi-staff.dto';
+import { UpdateTpiDto } from './dto/update-tpi.dto';
 import { ContractorContract } from './entities/contractor-contract.entity';
+import { DistrictTpiAssignment } from './entities/district-tpi-assignment.entity';
 import { EmployeeContract } from './entities/employee-contract.entity';
+import { TpiStaffRelationship } from './entities/tpi-staff-relationship.entity';
 import { User, UserRole } from './entities/user.entity';
 
 @Injectable()
@@ -36,6 +48,7 @@ export class UsersService {
     private readonly userRepository: Repository<User>,
     @InjectRepository(WorkItemEmployeeAssignment)
     private readonly workItemEmployeeAssignmentRepository: Repository<WorkItemEmployeeAssignment>,
+    private readonly dataSource: DataSource,
   ) {}
 
   private stripPassword(user: User): Omit<User, 'password'> {
@@ -132,7 +145,7 @@ export class UsersService {
     }
 
     const existing = await this.userRepository.findOne({
-      where: { [field]: value } as Partial<User>,
+      where: { [field]: value } as FindOptionsWhere<User>,
       select: ['id'],
     });
 
@@ -360,9 +373,11 @@ export class UsersService {
 
         // Password: must hash
         const rawPassword =
-          typeof userPayload.password === 'string' && userPayload.password.trim()
+          typeof userPayload.password === 'string' &&
+          userPayload.password.trim()
             ? userPayload.password.trim()
-            : typeof item.contractorpass === 'string' && item.contractorpass.trim()
+            : typeof item.contractorpass === 'string' &&
+                item.contractorpass.trim()
               ? item.contractorpass.trim()
               : `Temp@${crypto.randomBytes(4).toString('hex')}`;
 
@@ -396,7 +411,10 @@ export class UsersService {
                 where: { auid: normalizedAuid },
                 select: ['id'],
               });
-              if (existingAuidUser && existingAuidUser.id !== existingContractor.id) {
+              if (
+                existingAuidUser &&
+                existingAuidUser.id !== existingContractor.id
+              ) {
                 delete userPayload.auid;
               }
             }
@@ -722,7 +740,6 @@ export class UsersService {
     await this.userRepository.save(user);
   }
 
-
   async getAllEmployees(): Promise<Omit<User, 'password'>[]> {
     const employees = await this.userRepository.find({
       where: { role: UserRole.EM },
@@ -799,7 +816,9 @@ export class UsersService {
       .take(limit)
       .getManyAndCount();
 
-    const data = contractors.map((contractor) => this.stripPassword(contractor));
+    const data = contractors.map((contractor) =>
+      this.stripPassword(contractor),
+    );
     const totalPages = Math.ceil(total / limit) || 1;
 
     return {
@@ -890,5 +909,386 @@ export class UsersService {
     contractor.is_active = is_active;
     const updated = await this.userRepository.save(contractor);
     return this.stripPassword(updated);
+  }
+
+  async createTpi(dto: CreateTpiDto): Promise<Omit<User, 'password'>> {
+    return await this.dataSource.transaction(async (manager) => {
+      const existingUser = await manager.findOne(User, {
+        where: { email: dto.email },
+      });
+      if (existingUser) {
+        throw new ConflictException(
+          `User with email ${dto.email} already exists`,
+        );
+      }
+
+      const existingCode = await manager.findOne(User, {
+        where: { code: dto.code },
+      });
+      if (existingCode) {
+        throw new ConflictException(
+          `User with code ${dto.code} already exists`,
+        );
+      }
+
+      const activeTpi = await manager.findOne(User, {
+        where: {
+          role: UserRole.TPI,
+          district_id: dto.district_id,
+          is_active: true,
+        },
+      });
+      if (activeTpi) {
+        throw new ConflictException(
+          `An active TPI agency already exists in district ${dto.district_id}`,
+        );
+      }
+
+      const hashedPassword = await bcrypt.hash(dto.password, 10);
+
+      const tpi = manager.create(User, {
+        code: dto.code,
+        email: dto.email,
+        password: hashedPassword,
+        name: dto.name,
+        role: UserRole.TPI,
+        mobile: dto.mobile,
+        pan_number: dto.pan_number,
+        address: dto.address,
+        designation: dto.designation,
+        district_id: dto.district_id,
+        is_active: true,
+      });
+
+      const savedTpi = await manager.save(User, tpi);
+
+      const assignment = manager.create(DistrictTpiAssignment, {
+        district_code: dto.district_id,
+        tpi_id: savedTpi.id,
+        is_active: true,
+        assigned_at: new Date(),
+      });
+      await manager.save(DistrictTpiAssignment, assignment);
+
+      return this.stripPassword(savedTpi);
+    });
+  }
+
+  async findAllTpis(
+    page: number = 1,
+    limit: number = 20,
+    search?: string,
+    districtId?: string,
+    isActive?: boolean,
+  ): Promise<PaginatedResponse<Omit<User, 'password'>>> {
+    const query = this.userRepository
+      .createQueryBuilder('user')
+      .where('user.role = :role', { role: UserRole.TPI });
+
+    if (districtId) {
+      query.andWhere('user.district_id = :districtId', { districtId });
+    }
+
+    if (isActive !== undefined) {
+      query.andWhere('user.is_active = :isActive', { isActive });
+    }
+
+    if (search && search.trim()) {
+      const s = search.trim();
+      query.andWhere(
+        '(user.name LIKE :search OR user.email LIKE :search OR user.code LIKE :search OR user.mobile LIKE :search OR user.pan_number LIKE :search)',
+        { search: `%${s}%` },
+      );
+    }
+
+    const skip = (page - 1) * limit;
+    const [tpis, total] = await query
+      .orderBy('user.created_at', 'DESC')
+      .skip(skip)
+      .take(limit)
+      .getManyAndCount();
+
+    const usersWithoutPassword = tpis.map((user) => this.stripPassword(user));
+
+    return {
+      data: usersWithoutPassword,
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+    };
+  }
+
+  async updateTpi(
+    id: string,
+    dto: UpdateTpiDto,
+  ): Promise<Omit<User, 'password'>> {
+    return await this.dataSource.transaction(async (manager) => {
+      const tpi = await manager.findOne(User, {
+        where: { id, role: UserRole.TPI },
+      });
+      if (!tpi) {
+        throw new NotFoundException(`TPI user #${id} not found`);
+      }
+
+      if (dto.email && dto.email !== tpi.email) {
+        const existingEmail = await manager.findOne(User, {
+          where: { email: dto.email },
+        });
+        if (existingEmail) {
+          throw new ConflictException(
+            `User with email ${dto.email} already exists`,
+          );
+        }
+      }
+
+      if (dto.code && dto.code !== tpi.code) {
+        const existingCode = await manager.findOne(User, {
+          where: { code: dto.code },
+        });
+        if (existingCode) {
+          throw new ConflictException(
+            `User with code ${dto.code} already exists`,
+          );
+        }
+      }
+
+      const newDistrict = dto.district_id ?? tpi.district_id;
+      const isDistrictChanging =
+        dto.district_id && dto.district_id !== tpi.district_id;
+
+      if (tpi.is_active && isDistrictChanging) {
+        const activeTpiInTarget = await manager.findOne(User, {
+          where: {
+            role: UserRole.TPI,
+            district_id: newDistrict,
+            is_active: true,
+          },
+        });
+        if (activeTpiInTarget && activeTpiInTarget.id !== tpi.id) {
+          throw new ConflictException(
+            `An active TPI agency already exists in district ${newDistrict}`,
+          );
+        }
+      }
+
+      if (dto.password) {
+        tpi.password = await bcrypt.hash(dto.password, 10);
+      }
+
+      const { password, ...updateData } = dto;
+      Object.assign(tpi, updateData);
+      const saved = await manager.save(User, tpi);
+
+      if (isDistrictChanging) {
+        await manager.update(
+          DistrictTpiAssignment,
+          { tpi_id: tpi.id, ended_at: IsNull() },
+          { ended_at: new Date(), is_active: false },
+        );
+
+        const assignment = manager.create(DistrictTpiAssignment, {
+          district_code: newDistrict!,
+          tpi_id: tpi.id,
+          is_active: tpi.is_active,
+          assigned_at: new Date(),
+        });
+        await manager.save(DistrictTpiAssignment, assignment);
+      }
+
+      return this.stripPassword(saved);
+    });
+  }
+
+  async updateTpiStatus(
+    id: string,
+    is_active: boolean,
+  ): Promise<Omit<User, 'password'>> {
+    return await this.dataSource.transaction(async (manager) => {
+      const tpi = await manager.findOne(User, {
+        where: { id, role: UserRole.TPI },
+      });
+      if (!tpi) {
+        throw new NotFoundException(`TPI user #${id} not found`);
+      }
+
+      if (tpi.is_active === is_active) {
+        return this.stripPassword(tpi);
+      }
+
+      if (is_active) {
+        const activeTpi = await manager.findOne(User, {
+          where: {
+            role: UserRole.TPI,
+            district_id: tpi.district_id,
+            is_active: true,
+          },
+        });
+        if (activeTpi && activeTpi.id !== tpi.id) {
+          throw new ConflictException(
+            `An active TPI agency already exists in district ${tpi.district_id}`,
+          );
+        }
+
+        const assignment = manager.create(DistrictTpiAssignment, {
+          district_code: tpi.district_id!,
+          tpi_id: tpi.id,
+          is_active: true,
+          assigned_at: new Date(),
+        });
+        await manager.save(DistrictTpiAssignment, assignment);
+      } else {
+        await manager.update(
+          DistrictTpiAssignment,
+          { tpi_id: tpi.id, ended_at: IsNull() },
+          { ended_at: new Date(), is_active: false },
+        );
+      }
+
+      tpi.is_active = is_active;
+      const saved = await manager.save(User, tpi);
+      return this.stripPassword(saved);
+    });
+  }
+
+  async createTpiStaff(
+    dto: CreateTpiStaffDto,
+    tpiId: string,
+  ): Promise<Omit<User, 'password'>> {
+    return await this.dataSource.transaction(async (manager) => {
+      const tpi = await manager.findOne(User, {
+        where: { id: tpiId, role: UserRole.TPI },
+      });
+      if (!tpi) {
+        throw new NotFoundException('Parent TPI user not found');
+      }
+      if (!tpi.is_active) {
+        throw new BadRequestException(
+          'Cannot create staff for an inactive TPI agency',
+        );
+      }
+
+      const existingUser = await manager.findOne(User, {
+        where: { email: dto.email },
+      });
+      if (existingUser) {
+        throw new ConflictException(
+          `User with email ${dto.email} already exists`,
+        );
+      }
+
+      const hashedPassword = await bcrypt.hash(dto.password, 10);
+
+      const staff = manager.create(User, {
+        email: dto.email,
+        password: hashedPassword,
+        name: dto.name,
+        role: UserRole.TPI_STAFF,
+        is_active: true,
+        district_id: tpi.district_id,
+      });
+
+      const savedStaff = await manager.save(User, staff);
+
+      const relationship = manager.create(TpiStaffRelationship, {
+        tpi_id: tpi.id,
+        staff_id: savedStaff.id,
+      });
+      await manager.save(TpiStaffRelationship, relationship);
+
+      return this.stripPassword(savedStaff);
+    });
+  }
+
+  async findAllTpiStaff(
+    tpiId: string,
+    page: number = 1,
+    limit: number = 20,
+    search?: string,
+  ): Promise<PaginatedResponse<Omit<User, 'password'>>> {
+    const skip = (page - 1) * limit;
+
+    const relationships = await this.dataSource
+      .getRepository(TpiStaffRelationship)
+      .find({
+        where: { tpi_id: tpiId },
+        select: ['staff_id'],
+      });
+
+    const staffIds = relationships.map((r) => r.staff_id);
+    if (staffIds.length === 0) {
+      return { data: [], total: 0, page, limit, totalPages: 0 };
+    }
+
+    const query = this.userRepository
+      .createQueryBuilder('user')
+      .where('user.id IN (:...staffIds)', { staffIds });
+
+    if (search && search.trim()) {
+      const s = search.trim();
+      query.andWhere(
+        '(user.name LIKE :search OR user.email LIKE :search OR user.mobile LIKE :search)',
+        { search: `%${s}%` },
+      );
+    }
+
+    const [staff, total] = await query
+      .orderBy('user.created_at', 'DESC')
+      .skip(skip)
+      .take(limit)
+      .getManyAndCount();
+
+    const result = staff.map((s) => this.stripPassword(s));
+
+    return {
+      data: result,
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+    };
+  }
+
+  async updateTpiStaff(
+    id: string,
+    tpiId: string,
+    dto: UpdateTpiStaffDto,
+  ): Promise<Omit<User, 'password'>> {
+    return await this.dataSource.transaction(async (manager) => {
+      const rel = await manager.findOne(TpiStaffRelationship, {
+        where: { staff_id: id, tpi_id: tpiId },
+      });
+      if (!rel) {
+        throw new ForbiddenException('You do not own this TPI staff member');
+      }
+
+      const staff = await manager.findOne(User, {
+        where: { id, role: UserRole.TPI_STAFF },
+      });
+      if (!staff) {
+        throw new NotFoundException(`TPI staff #${id} not found`);
+      }
+
+      if (dto.email && dto.email !== staff.email) {
+        const existingEmail = await manager.findOne(User, {
+          where: { email: dto.email },
+        });
+        if (existingEmail) {
+          throw new ConflictException(
+            `User with email ${dto.email} already exists`,
+          );
+        }
+      }
+
+      if (dto.password) {
+        staff.password = await bcrypt.hash(dto.password, 10);
+      }
+
+      const { password, ...updateData } = dto;
+      Object.assign(staff, updateData);
+      const saved = await manager.save(User, staff);
+
+      return this.stripPassword(saved);
+    });
   }
 }

@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ConflictException,
   ForbiddenException,
   Injectable,
@@ -19,6 +20,7 @@ import {
   Not,
   Repository,
 } from 'typeorm';
+import { UploadService } from '../../common/upload/upload.service';
 import { AgreementsService } from '../agreements/agreements.service';
 import { Agreement } from '../agreements/entities/agreement.entity';
 import { Component } from '../components/entities/component.entity';
@@ -30,12 +32,23 @@ import {
   importWorkItemMapping,
   type WorkItemImport,
 } from '../import/import.service';
+import { TpiStaffRelationship } from '../users/entities/tpi-staff-relationship.entity';
 import { User, UserRole } from '../users/entities/user.entity';
 import { AssignMultipleEmployeesResponseDto } from './dto/assign-work-item-employee.dto';
 import { CreateWorkItemDto } from './dto/create-work-item.dto';
+import { SubmitBankDetailsDto } from './dto/submit-bank-details.dto';
 import { UpdateWorkItemDto } from './dto/update-work-item.dto';
+import {
+  BankDetailsStatus,
+  WorkItemBankDetail,
+} from './entities/work-item-bank-detail.entity';
 import { WorkItemEmployeeAssignment } from './entities/work-item-employee-assignment.entity';
-import { WorkItem, WorkItemStatus } from './entities/work-item.entity';
+import { WorkItemTpiStaffAssignment } from './entities/work-item-tpi-staff-assignment.entity';
+import {
+  WorkItem,
+  WorkItemStatus,
+  WorkOrderType,
+} from './entities/work-item.entity';
 
 @Injectable()
 export class WorkItemsService {
@@ -46,8 +59,11 @@ export class WorkItemsService {
     private readonly workItemEmployeeAssignmentsRepository: Repository<WorkItemEmployeeAssignment>,
     @InjectRepository(User)
     private readonly usersRepository: Repository<User>,
+    @InjectRepository(WorkItemBankDetail)
+    private readonly bankDetailsRepository: Repository<WorkItemBankDetail>,
     private readonly agreementsService: AgreementsService,
     private readonly dataSource: DataSource,
+    private readonly uploadService: UploadService,
   ) {}
 
   private readonly locationRelations = {
@@ -59,6 +75,7 @@ export class WorkItemsService {
     subdivision: true,
     circle: true,
     zone: true,
+    tpi: true,
   } as const;
 
   private buildNumericCodeBody(): string {
@@ -152,13 +169,16 @@ export class WorkItemsService {
 
   async create(createWorkItemDto: CreateWorkItemDto): Promise<WorkItem> {
     return this.dataSource.transaction(async (manager) => {
+      const type = createWorkItemDto.work_order_type || WorkOrderType.SVS;
       const masterComponents = await manager.find(Component, {
+        where: { work_order_type: type },
         order: { order_number: 'ASC' },
       });
 
-      if (masterComponents.length !== 12) {
+      const expectedCount = type === WorkOrderType.BULK_VILLAGE ? 8 : 12;
+      if (masterComponents.length !== expectedCount) {
         throw new NotFoundException(
-          `Expected 12 static components, found ${masterComponents.length}`,
+          `Expected ${expectedCount} static components for type ${type}, found ${masterComponents.length}`,
         );
       }
 
@@ -186,8 +206,15 @@ export class WorkItemsService {
         contractorId = agreement.contractor_id ?? null;
       }
 
-      const { sr, agreement_id, title, latitude, longitude, ...rest } =
-        createWorkItemDto;
+      const {
+        sr,
+        agreement_id,
+        title,
+        latitude,
+        longitude,
+        work_order_type,
+        ...rest
+      } = createWorkItemDto;
 
       if (isNew) {
         workItem = manager.create(WorkItem, {
@@ -198,6 +225,7 @@ export class WorkItemsService {
           serial_no: sr ?? null,
           agreement_id: agreement_id ?? null,
           contractor_id: contractorId,
+          work_order_type: type,
           progress_percentage: 0,
           status: WorkItemStatus.PENDING,
         } as any);
@@ -210,6 +238,7 @@ export class WorkItemsService {
           serial_no: sr ?? null,
           agreement_id: agreement_id ?? null,
           contractor_id: contractorId,
+          work_order_type: type,
           status: WorkItemStatus.PENDING,
         });
       }
@@ -227,6 +256,9 @@ export class WorkItemsService {
         const mapping = new WorkItemComponent();
         mapping.work_item_id = savedWorkItem.id;
         mapping.component_id = component.id;
+        mapping.component_name = component.name;
+        mapping.component_unit = component.unit;
+        mapping.component_order_number = component.order_number;
         mapping.quantity = undefined;
         mapping.remarks = undefined;
         mapping.status = WorkItemComponentStatus.PENDING;
@@ -240,17 +272,22 @@ export class WorkItemsService {
 
   async bulkCreateFromImport(
     workItemImports: WorkItemImport[],
+    workOrderType: WorkOrderType = WorkOrderType.SVS,
   ): Promise<WorkItem[]> {
+    console.log(workOrderType);
     return this.dataSource.transaction(async (manager) => {
       const createdWorkItems: WorkItem[] = [];
 
       const masterComponents = await manager.find(Component, {
+        where: { work_order_type: workOrderType },
         order: { order_number: 'ASC' },
       });
 
-      if (masterComponents.length !== 12) {
+      const expectedCount =
+        workOrderType === WorkOrderType.BULK_VILLAGE ? 8 : 12;
+      if (masterComponents.length !== expectedCount) {
         throw new NotFoundException(
-          `Expected 12 static components, found ${masterComponents.length}`,
+          `Expected ${expectedCount} static components for type ${workOrderType}, found ${masterComponents.length}`,
         );
       }
 
@@ -270,38 +307,7 @@ export class WorkItemsService {
           );
         }
 
-        const contractorCode = workItemImport.contractor_code?.trim();
-        let contractorId: string | null = null;
         let inferredAgreementId: string | null = null;
-
-        if (contractorCode) {
-          const contractor = await this.findOrCreateTemporaryContractor(
-            manager,
-            contractorCode,
-          );
-          contractorId = contractor.id;
-        } else {
-          // If contractor is not present in workorder upload, infer from existing agreement for this workcode
-          const existingAgreement = await manager.findOne(Agreement, {
-            where: {
-              workItems: { work_code: workCode },
-            },
-          });
-
-          if (existingAgreement) {
-            contractorId = existingAgreement.contractor_id ?? null;
-            inferredAgreementId = existingAgreement.id;
-          } else {
-            const existingWorkItemForCode = await manager.findOne(WorkItem, {
-              where: { work_code: workCode },
-            });
-
-            if (existingWorkItemForCode) {
-              contractorId = existingWorkItemForCode.contractor_id ?? null;
-              inferredAgreementId = existingWorkItemForCode.agreement_id ?? null;
-            }
-          }
-        }
 
         const mappedWorkItem: Partial<WorkItem> = {};
 
@@ -353,8 +359,7 @@ export class WorkItemsService {
           ...mappedWorkItem,
           title: workCode,
           work_code: workCode,
-          contractor_id: contractorId ?? null,
-          agreement_id: inferredAgreementId ?? undefined,
+          work_order_type: workOrderType,
           latitude: Number.isFinite(Number(mappedWorkItem.latitude))
             ? Number(mappedWorkItem.latitude)
             : 0,
@@ -389,17 +394,13 @@ export class WorkItemsService {
             ...workItem,
           };
 
-          const finalContractorId = contractorCode
-            ? contractorId
-            : (existingWorkItem.contractor_id ?? contractorId ?? null);
-
           const finalAgreementId =
             inferredAgreementId ?? existingWorkItem.agreement_id ?? null;
 
           Object.assign(existingWorkItem, {
             ...updatableWorkItemFields,
-            contractor_id: finalContractorId,
             agreement_id: finalAgreementId,
+            work_order_type: workOrderType,
             description: updatableWorkItemFields?.description
               ?.toLocaleLowerCase()
               ?.includes('temporary')
@@ -418,6 +419,9 @@ export class WorkItemsService {
             const mapping = new WorkItemComponent();
             mapping.work_item_id = savedWorkItem.id;
             mapping.component_id = component.id;
+            mapping.component_name = component.name;
+            mapping.component_unit = component.unit;
+            mapping.component_order_number = component.order_number;
             mapping.quantity = undefined;
             mapping.remarks = undefined;
             mapping.status = WorkItemComponentStatus.PENDING;
@@ -441,6 +445,9 @@ export class WorkItemsService {
           const mapping = new WorkItemComponent();
           mapping.work_item_id = savedWorkItem.id;
           mapping.component_id = component.id;
+          mapping.component_name = component.name;
+          mapping.component_unit = component.unit;
+          mapping.component_order_number = component.order_number;
           mapping.quantity = undefined;
           mapping.remarks = undefined;
           mapping.status = WorkItemComponentStatus.PENDING;
@@ -497,6 +504,7 @@ export class WorkItemsService {
     page: number = 1,
     limit: number = 20,
     search?: string,
+    workOrderType?: WorkOrderType,
   ): Promise<{
     data: WorkItem[];
     total: number;
@@ -577,8 +585,41 @@ export class WorkItemsService {
       where = { id: In(assignedWorkItemIds) };
     }
 
+    if (role === UserRole.TPI) {
+      where = { tpi_id: userId };
+    }
+
+    if (role === UserRole.TPI_STAFF) {
+      const assignedRows = await this.dataSource
+        .getRepository(WorkItemTpiStaffAssignment)
+        .find({
+          where: { staff_id: userId },
+          select: ['work_item_id'],
+        });
+
+      const assignedWorkItemIds = [
+        ...new Set(assignedRows.map((row) => row.work_item_id)),
+      ];
+
+      if (assignedWorkItemIds.length === 0) {
+        return {
+          data: [],
+          total: 0,
+          page: safePage,
+          limit: safeLimit,
+          totalPages: 0,
+        };
+      }
+
+      where = { id: In(assignedWorkItemIds) };
+    }
+
     // Exclude temporary work items for all roles
     where.schemetype = Not('TEMP');
+
+    if (workOrderType) {
+      where.work_order_type = workOrderType;
+    }
 
     if (search) {
       where.work_code = ILike(`%${search}%`);
@@ -918,5 +959,395 @@ export class WorkItemsService {
   async remove(id: string): Promise<void> {
     const workItem = await this.findOne(id);
     await this.workItemsRepository.remove(workItem);
+  }
+
+  async findCompletedWorkItemsForDO(
+    userId: string,
+    page: number = 1,
+    limit: number = 20,
+    search?: string,
+  ): Promise<{
+    data: WorkItem[];
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+  }> {
+    const safePage = Number.isNaN(Number(page)) ? 1 : Number(page);
+    const safeLimit = Number.isNaN(Number(limit)) ? 20 : Number(limit);
+
+    const user = await this.usersRepository.findOne({ where: { id: userId } });
+    if (!user || user.role !== UserRole.DO) {
+      throw new ForbiddenException(
+        'Only district officers can access completed workflows',
+      );
+    }
+    if (!user.district_id) {
+      throw new BadRequestException(
+        'District officer district is not configured',
+      );
+    }
+
+    const where: FindOptionsWhere<WorkItem> = {
+      status: WorkItemStatus.COMPLETED,
+      district_id: user.district_id,
+    };
+
+    if (search) {
+      where.work_code = ILike(`%${search}%`);
+    }
+
+    const [items, total] = await this.workItemsRepository.findAndCount({
+      where,
+      skip: (safePage - 1) * safeLimit,
+      take: safeLimit,
+      order: { updated_at: 'DESC' },
+      relations: {
+        ...this.locationRelations,
+        bankDetails: true,
+      },
+    });
+
+    return {
+      data: items,
+      total,
+      page: safePage,
+      limit: safeLimit,
+      totalPages: Math.ceil(total / safeLimit),
+    };
+  }
+
+  async submitBankDetails(
+    workItemId: string,
+    file: any,
+    dto: SubmitBankDetailsDto,
+    userId: string,
+  ): Promise<WorkItemBankDetail> {
+    // Validate user role
+    const user = await this.usersRepository.findOne({ where: { id: userId } });
+    if (!user || user.role !== UserRole.DO) {
+      throw new ForbiddenException(
+        'Only district officers can submit bank details',
+      );
+    }
+
+    // Find the completed work item
+    const workItem = await this.workItemsRepository.findOne({
+      where: { id: workItemId },
+    });
+    if (!workItem) {
+      throw new NotFoundException(`Work item with ID ${workItemId} not found`);
+    }
+    if (workItem.status !== WorkItemStatus.COMPLETED) {
+      throw new BadRequestException(
+        'Bank details can only be submitted for completed work items',
+      );
+    }
+    if (user.district_id !== workItem.district_id) {
+      throw new ForbiddenException(
+        'District officer does not belong to this work item district',
+      );
+    }
+
+    // Upload the file to S3
+    const sanitizedName = file.originalname.replace(/[^a-zA-Z0-9.-]/g, '_');
+    const objectKey = `work-items/${workItemId}/vouchers/${Date.now()}-${sanitizedName}`;
+
+    let uploadResult;
+    try {
+      uploadResult = await this.uploadService.uploadObject({
+        objectKey,
+        body: file.buffer,
+        contentType: file.mimetype,
+      });
+    } catch (err) {
+      throw new InternalServerErrorException('Failed to upload voucher file');
+    }
+
+    // Check if bank details already exist
+    let bankDetail = await this.bankDetailsRepository.findOne({
+      where: { work_item_id: workItemId },
+    });
+
+    if (bankDetail) {
+      if (bankDetail.status === BankDetailsStatus.APPROVED) {
+        throw new BadRequestException(
+          'Approved bank details cannot be modified',
+        );
+      }
+      Object.assign(bankDetail, {
+        bank_account_name: dto.bank_account_name,
+        bank_account_number: dto.bank_account_number,
+        ifsc_code: dto.ifsc_code,
+        voucher_number: dto.voucher_number,
+        voucher_file_url: uploadResult.url,
+        status: BankDetailsStatus.SUBMITTED,
+        submitted_at: new Date(),
+      });
+    } else {
+      bankDetail = this.bankDetailsRepository.create({
+        work_item_id: workItemId,
+        bank_account_name: dto.bank_account_name,
+        bank_account_number: dto.bank_account_number,
+        ifsc_code: dto.ifsc_code,
+        voucher_number: dto.voucher_number,
+        voucher_file_url: uploadResult.url,
+        status: BankDetailsStatus.SUBMITTED,
+      });
+    }
+
+    return await this.bankDetailsRepository.save(bankDetail);
+  }
+
+  async approveBankDetails(
+    workItemId: string,
+    userId: string,
+  ): Promise<WorkItemBankDetail> {
+    // Validate user role
+    const user = await this.usersRepository.findOne({ where: { id: userId } });
+    if (!user || user.role !== UserRole.DO) {
+      throw new ForbiddenException(
+        'Only district officers can approve bank details',
+      );
+    }
+
+    // Find bank details
+    const bankDetail = await this.bankDetailsRepository.findOne({
+      where: { work_item_id: workItemId },
+      relations: ['workItem'],
+    });
+    if (!bankDetail) {
+      throw new NotFoundException(
+        `Bank details for work item ID ${workItemId} not found`,
+      );
+    }
+
+    if (user.district_id !== bankDetail.workItem.district_id) {
+      throw new ForbiddenException(
+        'District officer does not belong to this work item district',
+      );
+    }
+
+    if (bankDetail.status === BankDetailsStatus.APPROVED) {
+      throw new BadRequestException('Bank details are already approved');
+    }
+
+    bankDetail.status = BankDetailsStatus.APPROVED;
+    bankDetail.approved_at = new Date();
+    bankDetail.approved_by_id = userId;
+
+    return await this.bankDetailsRepository.save(bankDetail);
+  }
+
+  async assignTpi(workItemId: string, doUserId: string): Promise<WorkItem> {
+    return await this.dataSource.transaction(async (manager) => {
+      const doUser = await manager.findOne(User, { where: { id: doUserId } });
+      if (!doUser || doUser.role !== UserRole.DO) {
+        throw new ForbiddenException('Only District Officers can assign TPIs');
+      }
+
+      if (!doUser.is_executive_engineer) {
+        throw new ForbiddenException(
+          'Only Executive Engineers can assign TPIs',
+        );
+      }
+
+      const workItem = await manager.findOne(WorkItem, {
+        where: { id: workItemId },
+      });
+      if (!workItem) {
+        throw new NotFoundException(`Work item #${workItemId} not found`);
+      }
+
+      if (workItem.work_order_type !== WorkOrderType.BULK_VILLAGE) {
+        throw new BadRequestException(
+          'TPI can only be assigned to Bulk Village work items',
+        );
+      }
+
+      if (doUser.district_id !== workItem.district_id) {
+        throw new ForbiddenException(
+          'District Officer does not belong to this work item district',
+        );
+      }
+
+      // Automatically resolve the active TPI for the district
+      const activeTpi = await manager.findOne(User, {
+        where: {
+          role: UserRole.TPI,
+          district_id: doUser.district_id,
+          is_active: true,
+        },
+      });
+
+      if (!activeTpi) {
+        throw new BadRequestException(
+          `No active TPI agency found in district ${doUser.district_id}`,
+        );
+      }
+
+      workItem.tpi_id = activeTpi.id;
+      workItem.tpi_assigned_by_id = doUser.id;
+      workItem.tpi_assigned_at = new Date();
+
+      return await manager.save(WorkItem, workItem);
+    });
+  }
+
+  async unassignTpi(workItemId: string, doUserId: string): Promise<WorkItem> {
+    return await this.dataSource.transaction(async (manager) => {
+      const doUser = await manager.findOne(User, { where: { id: doUserId } });
+      if (!doUser || doUser.role !== UserRole.DO) {
+        throw new ForbiddenException(
+          'Only District Officers can unassign TPIs',
+        );
+      }
+
+      if (!doUser.is_executive_engineer) {
+        throw new ForbiddenException(
+          'Only Executive Engineers can unassign TPIs',
+        );
+      }
+
+      const workItem = await manager.findOne(WorkItem, {
+        where: { id: workItemId },
+      });
+      if (!workItem) {
+        throw new NotFoundException(`Work item #${workItemId} not found`);
+      }
+
+      if (workItem.work_order_type !== WorkOrderType.BULK_VILLAGE) {
+        throw new BadRequestException(
+          'TPI operations are only supported for Bulk Village work items',
+        );
+      }
+
+      if (doUser.district_id !== workItem.district_id) {
+        throw new ForbiddenException(
+          'District Officer does not belong to this work item district',
+        );
+      }
+
+      workItem.tpi_id = null;
+      workItem.tpi_assigned_by_id = null;
+      workItem.tpi_assigned_at = null;
+
+      // Also clean up any active staff assignments for this work item
+      await manager.delete(WorkItemTpiStaffAssignment, {
+        work_item_id: workItemId,
+      });
+
+      return await manager.save(WorkItem, workItem);
+    });
+  }
+
+  async assignTpiStaff(
+    workItemId: string,
+    tpiId: string,
+    staffId: string,
+  ): Promise<WorkItemTpiStaffAssignment> {
+    return await this.dataSource.transaction(async (manager) => {
+      const tpi = await manager.findOne(User, {
+        where: { id: tpiId, role: UserRole.TPI },
+      });
+      if (!tpi || !tpi.is_active) {
+        throw new ForbiddenException('Access denied or inactive TPI agency');
+      }
+
+      const workItem = await manager.findOne(WorkItem, {
+        where: { id: workItemId },
+      });
+      if (!workItem) {
+        throw new NotFoundException(`Work item #${workItemId} not found`);
+      }
+
+      if (workItem.tpi_id !== tpi.id) {
+        throw new ForbiddenException(
+          'This work item is not assigned to your TPI agency',
+        );
+      }
+
+      // Verify staff belongs to TPI
+      const rel = await manager.findOne(TpiStaffRelationship, {
+        where: { staff_id: staffId, tpi_id: tpi.id },
+      });
+      if (!rel) {
+        throw new ForbiddenException(
+          'Staff member does not belong to your TPI agency',
+        );
+      }
+
+      const staff = await manager.findOne(User, {
+        where: { id: staffId, role: UserRole.TPI_STAFF },
+      });
+      if (!staff || !staff.is_active) {
+        throw new BadRequestException('Staff member not found or inactive');
+      }
+
+      // Check if assignment already exists
+      const existing = await manager.findOne(WorkItemTpiStaffAssignment, {
+        where: { work_item_id: workItemId, staff_id: staffId },
+      });
+      if (existing) {
+        return existing;
+      }
+
+      const assignment = manager.create(WorkItemTpiStaffAssignment, {
+        work_item_id: workItemId,
+        staff_id: staffId,
+      });
+
+      return await manager.save(WorkItemTpiStaffAssignment, assignment);
+    });
+  }
+
+  async unassignTpiStaff(
+    workItemId: string,
+    tpiId: string,
+    staffId: string,
+  ): Promise<void> {
+    await this.dataSource.transaction(async (manager) => {
+      const tpi = await manager.findOne(User, {
+        where: { id: tpiId, role: UserRole.TPI },
+      });
+      if (!tpi || !tpi.is_active) {
+        throw new ForbiddenException('Access denied or inactive TPI agency');
+      }
+
+      const workItem = await manager.findOne(WorkItem, {
+        where: { id: workItemId },
+      });
+      if (!workItem) {
+        throw new NotFoundException(`Work item #${workItemId} not found`);
+      }
+
+      if (workItem.tpi_id !== tpi.id) {
+        throw new ForbiddenException(
+          'This work item is not assigned to your TPI agency',
+        );
+      }
+
+      await manager.delete(WorkItemTpiStaffAssignment, {
+        work_item_id: workItemId,
+        staff_id: staffId,
+      });
+    });
+  }
+
+  async getAssignedTpiStaff(
+    workItemId: string,
+  ): Promise<Omit<User, 'password'>[]> {
+    const assignments = await this.dataSource
+      .getRepository(WorkItemTpiStaffAssignment)
+      .find({
+        where: { work_item_id: workItemId },
+        relations: ['staff'],
+      });
+
+    return assignments.map((assignment) => {
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const { password, ...staffWithoutPassword } = assignment.staff;
+      return staffWithoutPassword;
+    });
   }
 }
