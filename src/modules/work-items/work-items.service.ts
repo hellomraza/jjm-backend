@@ -1333,4 +1333,21 @@ export class WorkItemsService {
       });
     });
   }
+
+  async getAssignedTpiStaff(
+    workItemId: string,
+  ): Promise<Omit<User, 'password'>[]> {
+    const assignments = await this.dataSource
+      .getRepository(WorkItemTpiStaffAssignment)
+      .find({
+        where: { work_item_id: workItemId },
+        relations: ['staff'],
+      });
+
+    return assignments.map((assignment) => {
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const { password, ...staffWithoutPassword } = assignment.staff;
+      return staffWithoutPassword;
+    });
+  }
 }

@@ -443,6 +443,36 @@ export class WorkItemsController {
     return this.workItemsService.unassignTpiStaff(id, req.user.userId, staffId);
   }
 
+  @Get(':id/tpi-staff')
+  @Roles(
+    UserRole.HO,
+    UserRole.DO,
+    UserRole.TPI,
+    UserRole.TPI_STAFF,
+  )
+  @ApiOperation({
+    summary: 'Get TPI staff assigned to work item',
+    description: 'Returns list of TPI staff assigned to a specific work item',
+  })
+  @ApiParam({ name: 'id', type: String, description: 'Work item ID' })
+  @ApiOkResponse({
+    description: 'TPI Staff assigned to work item',
+    type: [EmployeeResponseDto],
+  })
+  async getAssignedTpiStaff(
+    @Param('id') id: string,
+  ): Promise<EmployeeResponseDto[]> {
+    const staff = await this.workItemsService.getAssignedTpiStaff(id);
+    return staff.map((s) => ({
+      id: s.id,
+      code: s.code ?? '',
+      email: s.email,
+      name: s.name ?? '',
+      mobile: s.mobile ?? '',
+      district_name: s.district_name ?? '',
+    } as any));
+  }
+
   @Post(':id/bank-details')
   @Roles(UserRole.DO)
   @UseInterceptors(FileInterceptor('file'))
