@@ -1049,19 +1049,27 @@ export class WorkItemsService {
       );
     }
 
-    // Upload the file to S3
-    const sanitizedName = file.originalname.replace(/[^a-zA-Z0-9.-]/g, '_');
-    const objectKey = `work-items/${workItemId}/vouchers/${Date.now()}-${sanitizedName}`;
+    // Resolve voucher file URL
+    let fileUrl = dto.voucher_file_url;
 
-    let uploadResult;
-    try {
-      uploadResult = await this.uploadService.uploadObject({
-        objectKey,
-        body: file.buffer,
-        contentType: file.mimetype,
-      });
-    } catch (err) {
-      throw new InternalServerErrorException('Failed to upload voucher file');
+    if (file) {
+      const sanitizedName = file.originalname.replace(/[^a-zA-Z0-9.-]/g, '_');
+      const objectKey = `work-items/${workItemId}/vouchers/${Date.now()}-${sanitizedName}`;
+
+      try {
+        const uploadResult = await this.uploadService.uploadObject({
+          objectKey,
+          body: file.buffer,
+          contentType: file.mimetype,
+        });
+        fileUrl = uploadResult.url;
+      } catch (err) {
+        throw new InternalServerErrorException('Failed to upload voucher file');
+      }
+    }
+
+    if (!fileUrl) {
+      throw new BadRequestException('Voucher file is required');
     }
 
     // Check if bank details already exist
@@ -1069,30 +1077,32 @@ export class WorkItemsService {
       where: { work_item_id: workItemId },
     });
 
+    const bankDetailData = {
+      bank_account_name: dto.bank_account_name,
+      bank_account_number: dto.bank_account_number,
+      ifsc_code: dto.ifsc_code,
+      bank_name: dto.bank_name || null,
+      account_type: dto.account_type || null,
+      bank_address: dto.bank_address || null,
+      mobile: dto.mobile || null,
+      email: dto.email || null,
+      voucher_number: dto.voucher_number,
+      voucher_file_url: fileUrl,
+      status: BankDetailsStatus.SUBMITTED,
+      submitted_at: new Date(),
+    };
+
     if (bankDetail) {
       if (bankDetail.status === BankDetailsStatus.APPROVED) {
         throw new BadRequestException(
           'Approved bank details cannot be modified',
         );
       }
-      Object.assign(bankDetail, {
-        bank_account_name: dto.bank_account_name,
-        bank_account_number: dto.bank_account_number,
-        ifsc_code: dto.ifsc_code,
-        voucher_number: dto.voucher_number,
-        voucher_file_url: uploadResult.url,
-        status: BankDetailsStatus.SUBMITTED,
-        submitted_at: new Date(),
-      });
+      Object.assign(bankDetail, bankDetailData);
     } else {
       bankDetail = this.bankDetailsRepository.create({
         work_item_id: workItemId,
-        bank_account_name: dto.bank_account_name,
-        bank_account_number: dto.bank_account_number,
-        ifsc_code: dto.ifsc_code,
-        voucher_number: dto.voucher_number,
-        voucher_file_url: uploadResult.url,
-        status: BankDetailsStatus.SUBMITTED,
+        ...bankDetailData,
       });
     }
 

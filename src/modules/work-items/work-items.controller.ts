@@ -478,15 +478,15 @@ export class WorkItemsController {
   @UseInterceptors(FileInterceptor('file'))
   @ApiOperation({
     summary: 'Submit bank details for a completed work item',
-    description: 'Uploads voucher file and saves/submits bank details for a completed work item.',
+    description: 'Uploads voucher file or accepts voucher_file_url and saves/submits bank details for a completed work item.',
   })
-  @ApiConsumes('multipart/form-data')
+  @ApiConsumes('multipart/form-data', 'application/json')
   async submitBankDetails(
     @Param('id') id: string,
     @UploadedFile(
       new ParseFilePipeBuilder()
-        .addMaxSizeValidator({ maxSize: 5 * 1024 * 1024 })
-        .build({ fileIsRequired: true }),
+        .addMaxSizeValidator({ maxSize: 15 * 1024 * 1024 })
+        .build({ fileIsRequired: false }),
     )
     file: any,
     @Body() dto: SubmitBankDetailsDto,
