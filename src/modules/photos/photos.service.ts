@@ -356,8 +356,8 @@ export class PhotosService {
 
       if (role === UserRole.DO) {
         const doUser = await manager.findOne(User, { where: { id: userId, role: UserRole.DO } });
-        if (!doUser || !doUser.is_executive_engineer) {
-          throw new ForbiddenException('Only Executive Engineers can view TPI reference photos');
+        if (!doUser) {
+          throw new ForbiddenException('District Officer not found');
         }
         if (doUser.district_id !== workItem.district_id) {
           throw new ForbiddenException('District mismatch: You do not belong to this district');
@@ -532,8 +532,8 @@ export class PhotosService {
 
       if (role === UserRole.DO) {
         const doUser = await manager.findOne(User, { where: { id: userId, role: UserRole.DO } });
-        if (!doUser || !doUser.is_executive_engineer) {
-          throw new ForbiddenException('Only Executive Engineers can view TPI status');
+        if (!doUser) {
+          throw new ForbiddenException('District Officer not found');
         }
         if (doUser.district_id !== workItem.district_id) {
           throw new ForbiddenException('District mismatch: You do not belong to this district');

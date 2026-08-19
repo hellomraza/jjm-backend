@@ -213,7 +213,14 @@ export class PhotosController {
   }
 
   @Get(':id')
-  @Roles(UserRole.HO, UserRole.DO, UserRole.CO, UserRole.EM)
+  @Roles(
+    UserRole.HO,
+    UserRole.DO,
+    UserRole.CO,
+    UserRole.EM,
+    UserRole.TPI,
+    UserRole.TPI_STAFF,
+  )
   @ApiOperation({
     summary: 'Get photo by ID',
     description: 'Returns single photo metadata and relations by ID',
