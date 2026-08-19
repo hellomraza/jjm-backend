@@ -34,6 +34,7 @@ import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { PhotoResponseDto } from '../photos/dto/photo-response.dto';
 import { UploadPhotoUrlDto } from '../photos/dto/upload-photo-url.dto';
+import { UploadTpiReferencePhotoUrlDto } from '../photos/dto/upload-tpi-reference-photo-url.dto';
 import { PhotosService } from '../photos/photos.service';
 import { UserRole } from '../users/entities/user.entity';
 import { ComponentsService } from './components.service';
@@ -439,11 +440,11 @@ export class ComponentsController {
     description: 'Stores geotagged reference photo metadata for Bulk Village components without progress data',
   })
   @ApiParam({ name: 'componentId', type: String, description: 'Component mapping ID' })
-  @ApiBody({ type: UploadPhotoUrlDto })
+  @ApiBody({ type: UploadTpiReferencePhotoUrlDto })
   @ApiCreatedResponse({ description: 'TPI reference photo metadata stored successfully', type: PhotoResponseDto })
   uploadTpiReferencePhotoUrl(
     @Param('componentId') componentId: string,
-    @Body() dto: UploadPhotoUrlDto,
+    @Body() dto: UploadTpiReferencePhotoUrlDto,
     @Request() req: AuthenticatedRequest,
   ) {
     dto.component_id = componentId;

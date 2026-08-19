@@ -10,6 +10,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
 import { UploadService } from '../../common/upload/upload.service';
 import { UploadPhotoUrlDto } from './dto/upload-photo-url.dto';
+import { UploadTpiReferencePhotoUrlDto } from './dto/upload-tpi-reference-photo-url.dto';
 import { UploadPhotoDto } from './dto/upload-photo.dto';
 import { Photo, PhotoSource } from './entities/photo.entity';
 import { PhotoStatusService } from './photo-status.service';
@@ -249,7 +250,7 @@ export class PhotosService {
   }
 
   async uploadTpiReferencePhotoUrl(
-    dto: UploadPhotoUrlDto,
+    dto: UploadTpiReferencePhotoUrlDto,
     staffId: string,
   ): Promise<Photo> {
     return await this.dataSource.transaction(async (manager) => {
