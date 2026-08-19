@@ -1,9 +1,15 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsNotEmpty, IsString, Matches } from 'class-validator';
+import {
+  IsEmail,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  Matches,
+} from 'class-validator';
 
 export class SubmitBankDetailsDto {
   @ApiProperty({
-    description: 'The name registered with the bank account',
+    description: 'Account Holder Name registered with the bank account',
     example: 'M/S Sunrise Builders',
   })
   @IsString()
@@ -30,10 +36,64 @@ export class SubmitBankDetailsDto {
   ifsc_code!: string;
 
   @ApiProperty({
+    description: 'Bank Name',
+    example: 'State Bank of India',
+    required: false,
+  })
+  @IsString()
+  @IsOptional()
+  bank_name?: string;
+
+  @ApiProperty({
+    description: 'Account Type (Current / Saving / Joint)',
+    example: 'Current',
+    required: false,
+  })
+  @IsString()
+  @IsOptional()
+  account_type?: string;
+
+  @ApiProperty({
+    description: 'Bank Address',
+    example: 'Main Branch, City Center',
+    required: false,
+  })
+  @IsString()
+  @IsOptional()
+  bank_address?: string;
+
+  @ApiProperty({
+    description: 'Mobile Number',
+    example: '9876543210',
+    required: false,
+  })
+  @IsString()
+  @IsOptional()
+  mobile?: string;
+
+  @ApiProperty({
+    description: 'Email (optional / not mandatory)',
+    example: 'contractor@example.com',
+    required: false,
+  })
+  @IsEmail()
+  @IsOptional()
+  email?: string;
+
+  @ApiProperty({
     description: 'The voucher identifier number',
     example: 'VCH-2026-904',
   })
   @IsString()
   @IsNotEmpty()
   voucher_number!: string;
+
+  @ApiProperty({
+    description: 'Voucher file URL if uploaded directly to Cloudinary/S3',
+    example: 'https://res.cloudinary.com/dpaoqr7za/image/upload/...',
+    required: false,
+  })
+  @IsString()
+  @IsOptional()
+  voucher_file_url?: string;
 }

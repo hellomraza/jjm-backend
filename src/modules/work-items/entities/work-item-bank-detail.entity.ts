@@ -39,6 +39,21 @@ export class WorkItemBankDetail {
   @Column({ type: 'varchar', length: 15 })
   ifsc_code!: string;
 
+  @Column({ type: 'varchar', length: 255, nullable: true })
+  bank_name?: string | null;
+
+  @Column({ type: 'varchar', length: 50, nullable: true })
+  account_type?: string | null;
+
+  @Column({ type: 'text', nullable: true })
+  bank_address?: string | null;
+
+  @Column({ type: 'varchar', length: 20, nullable: true })
+  mobile?: string | null;
+
+  @Column({ type: 'varchar', length: 255, nullable: true })
+  email?: string | null;
+
   @Column({ type: 'varchar', length: 100 })
   voucher_number!: string;
 
