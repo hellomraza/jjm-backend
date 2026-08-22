@@ -623,9 +623,9 @@ export class UsersService {
       throw new NotFoundException(`User #${id} not found`);
     }
 
-    // If password is being updated, hash it
-    if (updateUserDto.password) {
-      updateUserDto.password = await bcrypt.hash(updateUserDto.password, 10);
+    // If password is being updated and non-empty, hash it
+    if (updateUserDto.password && updateUserDto.password.trim() !== '') {
+      user.password = await bcrypt.hash(updateUserDto.password, 10);
     }
 
     // Check if email already exists (if email is being updated)
@@ -651,8 +651,9 @@ export class UsersService {
         );
       }
     }
-    // Update user
-    Object.assign(user, updateUserDto);
+    // Update user (excluding password from Object.assign)
+    const { password: _, ...updateData } = updateUserDto;
+    Object.assign(user, updateData);
     const updatedUser = await this.userRepository.save(user);
 
     return this.stripPassword(updatedUser);
@@ -673,9 +674,9 @@ export class UsersService {
       );
     }
 
-    // If password is being updated, hash it
-    if (updateDODto.password) {
-      updateDODto.password = await bcrypt.hash(updateDODto.password, 10);
+    // If password is being updated and non-empty, hash it
+    if (updateDODto.password && updateDODto.password.trim() !== '') {
+      user.password = await bcrypt.hash(updateDODto.password, 10);
     }
 
     // Check if email already exists (if email is being updated)
@@ -705,8 +706,9 @@ export class UsersService {
       }
     }
 
-    // Update user
-    Object.assign(user, updateDODto);
+    // Update user (excluding password from Object.assign)
+    const { password: _, ...updateDOData } = updateDODto;
+    Object.assign(user, updateDOData);
     const updatedUser = await this.userRepository.save(user);
 
     return this.stripPassword(updatedUser);
@@ -1079,7 +1081,7 @@ export class UsersService {
         }
       }
 
-      if (dto.password) {
+      if (dto.password && dto.password.trim() !== '') {
         tpi.password = await bcrypt.hash(dto.password, 10);
       }
 
@@ -1287,7 +1289,7 @@ export class UsersService {
         }
       }
 
-      if (dto.password) {
+      if (dto.password && dto.password.trim() !== '') {
         staff.password = await bcrypt.hash(dto.password, 10);
       }
 
@@ -1359,8 +1361,8 @@ export class UsersService {
       );
     }
 
-    if (updateEEDto.password) {
-      updateEEDto.password = await bcrypt.hash(updateEEDto.password, 10);
+    if (updateEEDto.password && updateEEDto.password.trim() !== '') {
+      user.password = await bcrypt.hash(updateEEDto.password, 10);
     }
 
     if (updateEEDto.email && updateEEDto.email !== user.email) {
@@ -1388,7 +1390,8 @@ export class UsersService {
       }
     }
 
-    Object.assign(user, updateEEDto);
+    const { password: _, ...updateEEData } = updateEEDto;
+    Object.assign(user, updateEEData);
     const updatedUser = await this.userRepository.save(user);
 
     return this.stripPassword(updatedUser);
@@ -1531,7 +1534,7 @@ export class UsersService {
         }
       }
 
-      if (dto.password) {
+      if (dto.password && dto.password.trim() !== '') {
         staff.password = await bcrypt.hash(dto.password, 10);
       }
 
