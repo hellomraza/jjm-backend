@@ -1156,9 +1156,9 @@ export class WorkItemsService {
         throw new ForbiddenException('Only District Officers can assign TPIs');
       }
 
-      if (!doUser.is_executive_engineer) {
+      if (!doUser.is_bulk_order_allowed) {
         throw new ForbiddenException(
-          'Only Executive Engineers can assign TPIs',
+          'Only District Officers with bulk order permissions can assign TPIs',
         );
       }
 
@@ -1213,9 +1213,9 @@ export class WorkItemsService {
         );
       }
 
-      if (!doUser.is_executive_engineer) {
+      if (!doUser.is_bulk_order_allowed) {
         throw new ForbiddenException(
-          'Only Executive Engineers can unassign TPIs',
+          'Only District Officers with bulk order permissions can unassign TPIs',
         );
       }
 

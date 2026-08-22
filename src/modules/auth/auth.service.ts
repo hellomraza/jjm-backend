@@ -124,8 +124,15 @@ export class AuthService {
       throw new UnauthorizedException('Invalid credentials');
     }
 
-    // Only allow HO, CO, DO, and TPI roles for dashboard login
-    const allowedRoles = [UserRole.HO, UserRole.CO, UserRole.DO, UserRole.TPI];
+    // Allow HO, CO, DO, TPI, EE, and DO_STAFF roles for dashboard login
+    const allowedRoles = [
+      UserRole.HO,
+      UserRole.CO,
+      UserRole.DO,
+      UserRole.TPI,
+      UserRole.EE,
+      UserRole.DO_STAFF,
+    ];
     if (!allowedRoles.includes(user.role)) {
       throw new ForbiddenException(
         'Your role does not have access to the dashboard',

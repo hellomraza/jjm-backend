@@ -16,6 +16,8 @@ export enum UserRole {
   EM = 'EM', // Employee
   TPI = 'TPI', // Third-Party Inspector
   TPI_STAFF = 'TPI_STAFF', // TPI Staff
+  EE = 'EE', // Executive Engineer
+  DO_STAFF = 'DO_STAFF', // DO Staff
 }
 
 @Entity('users')
@@ -84,8 +86,8 @@ export class User {
   @Column({ name: 'is_active', type: 'boolean', default: false })
   is_active!: boolean;
 
-  @Column({ name: 'is_executive_engineer', type: 'boolean', default: false })
-  is_executive_engineer!: boolean;
+  @Column({ name: 'is_bulk_order_allowed', type: 'boolean', default: false })
+  is_bulk_order_allowed!: boolean;
 
   @CreateDateColumn()
   created_at!: Date;

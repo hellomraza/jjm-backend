@@ -5,6 +5,7 @@ import { ExtractJwt, Strategy } from 'passport-jwt';
 import { DataSource } from 'typeorm';
 import { User, UserRole } from '../../users/entities/user.entity';
 import { TpiStaffRelationship } from '../../users/entities/tpi-staff-relationship.entity';
+import { DoStaffRelationship } from '../../users/entities/do-staff-relationship.entity';
 import { JwtPayload } from '../auth.service';
 
 @Injectable()
@@ -39,7 +40,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       throw new UnauthorizedException('User not found');
     }
 
-    // Deny deactivated users (DO, CO, TPI, TPI_STAFF, EM)
+    // Deny deactivated users (DO, CO, TPI, TPI_STAFF, EM, EE, DO_STAFF)
     if (user.role !== UserRole.HO) {
       if (!user.is_active) {
         throw new UnauthorizedException('Your account is deactivated');
@@ -62,11 +63,27 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       }
     }
 
+    // Deny DO staff if parent DO is deactivated
+    if (user.role === UserRole.DO_STAFF) {
+      const relationship = await this.dataSource
+        .getRepository(DoStaffRelationship)
+        .findOne({
+          where: { staff_id: user.id },
+          relations: ['do'],
+        });
+
+      if (!relationship || !relationship.do || !relationship.do.is_active) {
+        throw new UnauthorizedException(
+          'Parent District Office is inactive or relationship is missing',
+        );
+      }
+    }
+
     return {
       userId: user.id,
       email: user.email,
       role: user.role,
-      is_executive_engineer: user.is_executive_engineer,
+      is_bulk_order_allowed: user.is_bulk_order_allowed,
       district_id: user.district_id,
     };
   }

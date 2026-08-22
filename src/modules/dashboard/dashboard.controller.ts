@@ -30,11 +30,18 @@ export class DashboardController {
   constructor(private readonly dashboardService: DashboardService) {}
 
   @Get('stats')
-  @Roles(UserRole.HO, UserRole.DO, UserRole.CO, UserRole.TPI)
+  @Roles(
+    UserRole.HO,
+    UserRole.DO,
+    UserRole.CO,
+    UserRole.TPI,
+    UserRole.EE,
+    UserRole.DO_STAFF,
+  )
   @ApiOperation({
     summary: 'Get dashboard statistics',
     description:
-      'Returns statistics based on user role. HO users get comprehensive application statistics. DO users get district-specific statistics with work items and progress percentages. CO users get their assigned work items with component and employee details. TPI users get Bulk Village assigned work orders, staff count, and reference evidence status.',
+      'Returns statistics based on user role. HO users get comprehensive application statistics. DO users get district-specific statistics with work items and progress percentages. CO users get their assigned work items with component and employee details. TPI users get Bulk Village assigned work orders, staff count, and reference evidence status. EE and DO_STAFF get empty dashboard placeholders.',
   })
   @ApiExtraModels(
     DistrictDashboardDto,
@@ -56,7 +63,11 @@ export class DashboardController {
   getStats(
     @Request() req: { user: { userId: string; role: UserRole } },
   ): Promise<
-    DashboardStatsDto | DistrictDashboardDto | ContractorDashboardDto | TpiDashboardDto
+    | DashboardStatsDto
+    | DistrictDashboardDto
+    | ContractorDashboardDto
+    | TpiDashboardDto
+    | any
   > {
     return this.dashboardService.getStats(req.user.userId, req.user.role);
   }

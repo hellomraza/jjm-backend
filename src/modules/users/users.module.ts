@@ -10,6 +10,7 @@ import { UsersService } from './users.service';
 
 import { DistrictTpiAssignment } from './entities/district-tpi-assignment.entity';
 import { TpiStaffRelationship } from './entities/tpi-staff-relationship.entity';
+import { DoStaffRelationship } from './entities/do-staff-relationship.entity';
 
 @Module({
   imports: [
@@ -20,6 +21,7 @@ import { TpiStaffRelationship } from './entities/tpi-staff-relationship.entity';
       WorkItemEmployeeAssignment,
       DistrictTpiAssignment,
       TpiStaffRelationship,
+      DoStaffRelationship,
     ]),
   ],
   controllers: [UsersController],
