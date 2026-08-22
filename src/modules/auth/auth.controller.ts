@@ -12,13 +12,13 @@ import {
 import { type Request } from 'express';
 import { User } from '../users/entities/user.entity';
 import { AuthService } from './auth.service';
+import { ForgotPasswordCodeDto } from './dto/forgot-password-code.dto';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { LoginCodeDto } from './dto/login-code.dto';
 import { LoginResponseDto } from './dto/login-response.dto';
 import { LoginDto } from './dto/login.dto';
-import { ResetPasswordDto } from './dto/reset-password.dto';
-import { ForgotPasswordCodeDto } from './dto/forgot-password-code.dto';
 import { ResetPasswordCodeDto } from './dto/reset-password-code.dto';
+import { ResetPasswordDto } from './dto/reset-password.dto';
 
 @ApiTags('Auth')
 @Controller('auth')
@@ -120,7 +120,8 @@ export class AuthController {
   @Post('reset-password/code')
   @ApiOperation({
     summary: 'Reset password with OTP using user code',
-    description: 'Verify the OTP and set a new password for the user matching the given user code.',
+    description:
+      'Verify the OTP and set a new password for the user matching the given user code.',
   })
   @ApiBody({ type: ResetPasswordCodeDto })
   @ApiOkResponse({ description: 'Password has been reset successfully.' })

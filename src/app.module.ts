@@ -9,6 +9,7 @@ import { ComponentsModule } from './modules/components/components.module';
 import { DashboardModule } from './modules/dashboard/dashboard.module';
 import { ImportModule } from './modules/import/import.module';
 import { LocationsModule } from './modules/locations/locations.module';
+import { PaymentsModule } from './modules/payments/payments.module';
 import { PhotosModule } from './modules/photos/photos.module';
 import { UsersModule } from './modules/users/users.module';
 import { WorkItemsModule } from './modules/work-items/work-items.module';
@@ -41,6 +42,7 @@ import { MailModule } from './common/mail/mail.module';
     WorkItemsModule,
     ComponentsModule,
     PhotosModule,
+    PaymentsModule,
     ImportModule,
     LocationsModule,
     DashboardModule,

@@ -547,59 +547,6 @@ export class UsersController {
     );
   }
 
-  @Get(':id')
-  @Roles(
-    UserRole.HO,
-    UserRole.DO,
-    UserRole.CO,
-    UserRole.EM,
-    UserRole.TPI,
-    UserRole.TPI_STAFF,
-    UserRole.EE,
-    UserRole.DO_STAFF,
-  )
-  @ApiOperation({
-    summary: 'Get user by ID',
-    description: 'Returns a single user details by user ID',
-  })
-  @ApiParam({ name: 'id', type: String, description: 'User ID' })
-  @ApiOkResponse({ description: 'User found', type: UserResponseDto })
-  @ApiNotFoundResponse({ description: 'User not found' })
-  findOne(@Param('id') id: string) {
-    return this.usersService.findOne(id);
-  }
-
-  @Patch(':id')
-  @Roles(UserRole.HO, UserRole.DO)
-  @ApiOperation({
-    summary: 'Update user',
-    description: 'Updates selected fields of an existing user',
-  })
-  @ApiParam({ name: 'id', type: String, description: 'User ID' })
-  @ApiOkResponse({
-    description: 'User updated successfully',
-    type: UserResponseDto,
-  })
-  @ApiBadRequestResponse({ description: 'Invalid request body' })
-  @ApiNotFoundResponse({ description: 'User not found' })
-  @ApiConflictResponse({ description: 'Email already in use' })
-  update(@Param('id') id: string, @Body() updateUserDto: UpdateUserDto) {
-    return this.usersService.update(id, updateUserDto);
-  }
-
-  @Delete(':id')
-  @Roles(UserRole.HO)
-  @ApiOperation({
-    summary: 'Delete user',
-    description: 'Deletes an existing user by ID',
-  })
-  @ApiParam({ name: 'id', type: String, description: 'User ID' })
-  @ApiOkResponse({ description: 'User deleted successfully' })
-  @ApiNotFoundResponse({ description: 'User not found' })
-  remove(@Param('id') id: string) {
-    return this.usersService.remove(id);
-  }
-
   // --- Executive Engineer (EE) Endpoints ---
 
   @Post('ee')
@@ -712,5 +659,60 @@ export class UsersController {
       req.user.userId,
       updateDOStaffDto,
     );
+  }
+
+  // --- Generic User Endpoints (:id) ---
+
+  @Get(':id')
+  @Roles(
+    UserRole.HO,
+    UserRole.DO,
+    UserRole.CO,
+    UserRole.EM,
+    UserRole.TPI,
+    UserRole.TPI_STAFF,
+    UserRole.EE,
+    UserRole.DO_STAFF,
+  )
+  @ApiOperation({
+    summary: 'Get user by ID',
+    description: 'Returns a single user details by user ID',
+  })
+  @ApiParam({ name: 'id', type: String, description: 'User ID' })
+  @ApiOkResponse({ description: 'User found', type: UserResponseDto })
+  @ApiNotFoundResponse({ description: 'User not found' })
+  findOne(@Param('id') id: string) {
+    return this.usersService.findOne(id);
+  }
+
+  @Patch(':id')
+  @Roles(UserRole.HO, UserRole.DO)
+  @ApiOperation({
+    summary: 'Update user',
+    description: 'Updates selected fields of an existing user',
+  })
+  @ApiParam({ name: 'id', type: String, description: 'User ID' })
+  @ApiOkResponse({
+    description: 'User updated successfully',
+    type: UserResponseDto,
+  })
+  @ApiBadRequestResponse({ description: 'Invalid request body' })
+  @ApiNotFoundResponse({ description: 'User not found' })
+  @ApiConflictResponse({ description: 'Email already in use' })
+  update(@Param('id') id: string, @Body() updateUserDto: UpdateUserDto) {
+    return this.usersService.update(id, updateUserDto);
+  }
+
+  @Delete(':id')
+  @Roles(UserRole.HO)
+  @ApiOperation({
+    summary: 'Delete user',
+    description: 'Deletes an existing user by ID',
+  })
+  @ApiParam({ name: 'id', type: String, description: 'User ID' })
+  @ApiOkResponse({ description: 'User deleted successfully' })
+  @ApiNotFoundResponse({ description: 'User not found' })
+  remove(@Param('id') id: string) {
+    return this.usersService.remove(id);
   }
 }
