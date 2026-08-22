@@ -1,6 +1,5 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import {
-  IsBoolean,
   IsEmail,
   IsOptional,
   IsString,
@@ -8,18 +7,18 @@ import {
   ValidateIf,
 } from 'class-validator';
 
-export class UpdateDODto {
+export class UpdateDOStaffDto {
   @ApiPropertyOptional({
-    description: 'Full name of the district office manager',
-    example: 'Ahmed Khan',
+    description: 'Full name of the DO staff member',
+    example: 'Sunil Verma',
   })
   @IsOptional()
   @IsString()
   name?: string;
 
   @ApiPropertyOptional({
-    description: 'Unique email address for the DO',
-    example: 'do@jjm.local',
+    description: 'Unique email address for the DO staff member',
+    example: 'dostaff@jjm.local',
   })
   @IsOptional()
   @IsEmail()
@@ -38,14 +37,6 @@ export class UpdateDODto {
   password?: string;
 
   @ApiPropertyOptional({
-    description: 'District ID',
-    example: 'DIST001',
-  })
-  @IsOptional()
-  @IsString()
-  district_id?: string;
-
-  @ApiPropertyOptional({
     description: 'Mobile phone number (10 digits)',
     example: '9123456789',
   })
@@ -55,12 +46,4 @@ export class UpdateDODto {
     message: 'Mobile must be a valid 10 digit Indian mobile number',
   })
   mobile?: string;
-
-  @ApiPropertyOptional({
-    description: 'Bulk order allowed flag (only for DO)',
-    example: false,
-  })
-  @IsOptional()
-  @IsBoolean()
-  is_bulk_order_allowed?: boolean;
 }

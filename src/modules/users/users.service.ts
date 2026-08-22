@@ -21,18 +21,23 @@ import { importContractorMapping } from '../import/import.service';
 import { WorkItemEmployeeAssignment } from '../work-items/entities/work-item-employee-assignment.entity';
 import { CreateContractorDto } from './dto/create-contractor.dto';
 import { CreateDODto } from './dto/create-do.dto';
+import { CreateEEDto } from './dto/create-ee.dto';
+import { CreateDOStaffDto } from './dto/create-do-staff.dto';
 import { CreateEmployeeDto } from './dto/create-employee.dto';
 import { CreateTpiStaffDto } from './dto/create-tpi-staff.dto';
 import { CreateTpiDto } from './dto/create-tpi.dto';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateContractorDto } from './dto/update-contractor.dto';
 import { UpdateDODto } from './dto/update-do.dto';
+import { UpdateEEDto } from './dto/update-ee.dto';
+import { UpdateDOStaffDto } from './dto/update-do-staff.dto';
 import { UpdateTpiStaffDto } from './dto/update-tpi-staff.dto';
 import { UpdateTpiDto } from './dto/update-tpi.dto';
 import { ContractorContract } from './entities/contractor-contract.entity';
 import { DistrictTpiAssignment } from './entities/district-tpi-assignment.entity';
 import { EmployeeContract } from './entities/employee-contract.entity';
 import { TpiStaffRelationship } from './entities/tpi-staff-relationship.entity';
+import { DoStaffRelationship } from './entities/do-staff-relationship.entity';
 import { User, UserRole } from './entities/user.entity';
 
 @Injectable()
@@ -510,6 +515,8 @@ export class UsersService {
       role: UserRole.DO,
       district_id,
       mobile,
+      is_active: true,
+      is_bulk_order_allowed: createDODto.is_bulk_order_allowed ?? false,
     };
     const created = this.userRepository.create(doObject);
     const savedDO = await this.userRepository.save(created);
@@ -616,9 +623,9 @@ export class UsersService {
       throw new NotFoundException(`User #${id} not found`);
     }
 
-    // If password is being updated, hash it
-    if (updateUserDto.password) {
-      updateUserDto.password = await bcrypt.hash(updateUserDto.password, 10);
+    // If password is being updated and non-empty, hash it
+    if (updateUserDto.password && updateUserDto.password.trim() !== '') {
+      user.password = await bcrypt.hash(updateUserDto.password, 10);
     }
 
     // Check if email already exists (if email is being updated)
@@ -644,8 +651,9 @@ export class UsersService {
         );
       }
     }
-    // Update user
-    Object.assign(user, updateUserDto);
+    // Update user (excluding password from Object.assign)
+    const { password: _, ...updateData } = updateUserDto;
+    Object.assign(user, updateData);
     const updatedUser = await this.userRepository.save(user);
 
     return this.stripPassword(updatedUser);
@@ -666,9 +674,9 @@ export class UsersService {
       );
     }
 
-    // If password is being updated, hash it
-    if (updateDODto.password) {
-      updateDODto.password = await bcrypt.hash(updateDODto.password, 10);
+    // If password is being updated and non-empty, hash it
+    if (updateDODto.password && updateDODto.password.trim() !== '') {
+      user.password = await bcrypt.hash(updateDODto.password, 10);
     }
 
     // Check if email already exists (if email is being updated)
@@ -698,8 +706,9 @@ export class UsersService {
       }
     }
 
-    // Update user
-    Object.assign(user, updateDODto);
+    // Update user (excluding password from Object.assign)
+    const { password: _, ...updateDOData } = updateDODto;
+    Object.assign(user, updateDOData);
     const updatedUser = await this.userRepository.save(user);
 
     return this.stripPassword(updatedUser);
@@ -1072,7 +1081,7 @@ export class UsersService {
         }
       }
 
-      if (dto.password) {
+      if (dto.password && dto.password.trim() !== '') {
         tpi.password = await bcrypt.hash(dto.password, 10);
       }
 
@@ -1280,7 +1289,252 @@ export class UsersService {
         }
       }
 
-      if (dto.password) {
+      if (dto.password && dto.password.trim() !== '') {
+        staff.password = await bcrypt.hash(dto.password, 10);
+      }
+
+      const { password, ...updateData } = dto;
+      Object.assign(staff, updateData);
+      const saved = await manager.save(User, staff);
+
+      return this.stripPassword(saved);
+    });
+  }
+
+  // --- Executive Engineer (EE) Methods ---
+
+  async createEE(createEEDto: CreateEEDto): Promise<Omit<User, 'password'>> {
+    const { email, password, name, district_id, mobile } = createEEDto;
+
+    // Check if user already exists
+    const existingUser = await this.userRepository.findOne({
+      where: { email },
+    });
+    if (existingUser) {
+      throw new ConflictException(`User with email ${email} already exists`);
+    }
+
+    // Check if another EE already exists with the same district_id
+    if (district_id) {
+      const existingEE = await this.userRepository.findOne({
+        where: { role: UserRole.EE, district_id },
+      });
+      if (existingEE) {
+        throw new ConflictException(
+          `Another Executive Engineer already exists for this district`,
+        );
+      }
+    }
+
+    // Hash password
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    const eeObject: DeepPartial<User> = {
+      code: await this.generateUniqueUserCode(UserRole.EE),
+      email,
+      password: hashedPassword,
+      name,
+      role: UserRole.EE,
+      district_id,
+      mobile,
+      is_active: true,
+      is_bulk_order_allowed: false,
+    };
+    const created = this.userRepository.create(eeObject);
+    const savedEE = await this.userRepository.save(created);
+
+    return this.stripPassword(savedEE);
+  }
+
+  async updateEE(
+    id: string,
+    updateEEDto: UpdateEEDto,
+  ): Promise<Omit<User, 'password'>> {
+    const user = await this.userRepository.findOne({ where: { id } });
+    if (!user) {
+      throw new NotFoundException(`User #${id} not found`);
+    }
+
+    if (user.role !== UserRole.EE) {
+      throw new BadRequestException(
+        `User #${id} is not an Executive Engineer`,
+      );
+    }
+
+    if (updateEEDto.password && updateEEDto.password.trim() !== '') {
+      user.password = await bcrypt.hash(updateEEDto.password, 10);
+    }
+
+    if (updateEEDto.email && updateEEDto.email !== user.email) {
+      const existingUser = await this.userRepository.findOne({
+        where: { email: updateEEDto.email },
+      });
+      if (existingUser) {
+        throw new ConflictException(
+          `User with email ${updateEEDto.email} already exists`,
+        );
+      }
+    }
+
+    if (
+      updateEEDto.district_id &&
+      updateEEDto.district_id !== user.district_id
+    ) {
+      const existingEE = await this.userRepository.findOne({
+        where: { role: UserRole.EE, district_id: updateEEDto.district_id },
+      });
+      if (existingEE) {
+        throw new ConflictException(
+          `Another Executive Engineer already exists for district ${updateEEDto.district_id}`,
+        );
+      }
+    }
+
+    const { password: _, ...updateEEData } = updateEEDto;
+    Object.assign(user, updateEEData);
+    const updatedUser = await this.userRepository.save(user);
+
+    return this.stripPassword(updatedUser);
+  }
+
+  async findAllEEs(): Promise<Omit<User, 'password'>[]> {
+    const ees = await this.userRepository.find({
+      where: { role: UserRole.EE },
+      relations: ['district'],
+      order: { created_at: 'DESC' },
+    });
+
+    return ees.map((ee) => this.stripPassword(ee));
+  }
+
+  // --- DO Staff (DO_STAFF) Methods ---
+
+  async createDOStaff(
+    dto: CreateDOStaffDto,
+    doUserId: string,
+  ): Promise<Omit<User, 'password'>> {
+    return await this.dataSource.transaction(async (manager) => {
+      const doUser = await manager.findOne(User, {
+        where: { id: doUserId, role: UserRole.DO },
+      });
+      if (!doUser) {
+        throw new NotFoundException('Parent District Officer not found');
+      }
+      if (!doUser.is_active) {
+        throw new BadRequestException(
+          'Cannot create staff for an inactive District Office',
+        );
+      }
+
+      // Check if DO already has a DO_STAFF
+      const existingRelationship = await manager.findOne(DoStaffRelationship, {
+        where: { do_id: doUserId },
+      });
+      if (existingRelationship) {
+        throw new ConflictException(
+          'A District Officer can only create one DO Staff member',
+        );
+      }
+
+      // Check if district already has a DO_STAFF
+      if (doUser.district_id) {
+        const existingStaffInDistrict = await manager.findOne(User, {
+          where: {
+            role: UserRole.DO_STAFF,
+            district_id: doUser.district_id,
+          },
+        });
+        if (existingStaffInDistrict) {
+          throw new ConflictException(
+            'A DO Staff member already exists for this district',
+          );
+        }
+      }
+
+      const existingUser = await manager.findOne(User, {
+        where: { email: dto.email },
+      });
+      if (existingUser) {
+        throw new ConflictException(
+          `User with email ${dto.email} already exists`,
+        );
+      }
+
+      const hashedPassword = await bcrypt.hash(dto.password, 10);
+
+      const staff = manager.create(User, {
+        code: await this.generateUniqueUserCode(UserRole.DO_STAFF),
+        email: dto.email,
+        password: hashedPassword,
+        name: dto.name,
+        mobile: dto.mobile,
+        role: UserRole.DO_STAFF,
+        is_active: true,
+        district_id: doUser.district_id,
+        is_bulk_order_allowed: false,
+      });
+
+      const savedStaff = await manager.save(User, staff);
+
+      const relationship = manager.create(DoStaffRelationship, {
+        do_id: doUser.id,
+        staff_id: savedStaff.id,
+      });
+      await manager.save(DoStaffRelationship, relationship);
+
+      return this.stripPassword(savedStaff);
+    });
+  }
+
+  async getDOStaff(
+    doUserId: string,
+  ): Promise<Omit<User, 'password'> | null> {
+    const relationship = await this.dataSource
+      .getRepository(DoStaffRelationship)
+      .findOne({
+        where: { do_id: doUserId },
+        relations: ['staff'],
+      });
+
+    if (!relationship || !relationship.staff) {
+      return null;
+    }
+
+    return this.stripPassword(relationship.staff);
+  }
+
+  async updateDOStaff(
+    id: string,
+    doUserId: string,
+    dto: UpdateDOStaffDto,
+  ): Promise<Omit<User, 'password'>> {
+    return await this.dataSource.transaction(async (manager) => {
+      const rel = await manager.findOne(DoStaffRelationship, {
+        where: { staff_id: id, do_id: doUserId },
+      });
+      if (!rel) {
+        throw new ForbiddenException('You do not own this DO staff member');
+      }
+
+      const staff = await manager.findOne(User, {
+        where: { id, role: UserRole.DO_STAFF },
+      });
+      if (!staff) {
+        throw new NotFoundException(`DO staff #${id} not found`);
+      }
+
+      if (dto.email && dto.email !== staff.email) {
+        const existingEmail = await manager.findOne(User, {
+          where: { email: dto.email },
+        });
+        if (existingEmail) {
+          throw new ConflictException(
+            `User with email ${dto.email} already exists`,
+          );
+        }
+      }
+
+      if (dto.password && dto.password.trim() !== '') {
         staff.password = await bcrypt.hash(dto.password, 10);
       }
 

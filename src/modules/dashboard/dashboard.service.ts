@@ -77,6 +77,10 @@ export class DashboardService {
       return this.getTpiStats(userId);
     }
 
+    if (userRole === UserRole.EE || userRole === UserRole.DO_STAFF) {
+      return { role: userRole } as any;
+    }
+
     throw new NotFoundException('Invalid user role for dashboard access');
   }
 

@@ -158,7 +158,7 @@ type Contractor = {
 };
 
 export const importContractorMapping: Record<
-  keyof Omit<User, 'district' | 'is_executive_engineer'>,
+  keyof Omit<User, 'district' | 'is_bulk_order_allowed'>,
   keyof Contractor
 > = {
   address: 'contractoraddress',

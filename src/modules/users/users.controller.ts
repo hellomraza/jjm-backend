@@ -30,6 +30,10 @@ import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { CreateContractorDto } from './dto/create-contractor.dto';
 import { CreateDODto } from './dto/create-do.dto';
+import { CreateEEDto } from './dto/create-ee.dto';
+import { UpdateEEDto } from './dto/update-ee.dto';
+import { CreateDOStaffDto } from './dto/create-do-staff.dto';
+import { UpdateDOStaffDto } from './dto/update-do-staff.dto';
 import { CreateEmployeeDto } from './dto/create-employee.dto';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateContractorDto } from './dto/update-contractor.dto';
@@ -257,6 +261,8 @@ export class UsersController {
     UserRole.EM,
     UserRole.TPI,
     UserRole.TPI_STAFF,
+    UserRole.EE,
+    UserRole.DO_STAFF,
   )
   @ApiOperation({
     summary: 'Get my profile',
@@ -360,6 +366,8 @@ export class UsersController {
     UserRole.EM,
     UserRole.TPI,
     UserRole.TPI_STAFF,
+    UserRole.EE,
+    UserRole.DO_STAFF,
   )
   @ApiOperation({
     summary: 'List users',
@@ -539,6 +547,122 @@ export class UsersController {
     );
   }
 
+  // --- Executive Engineer (EE) Endpoints ---
+
+  @Post('ee')
+  @Roles(UserRole.HO)
+  @ApiOperation({
+    summary: 'Create executive engineer',
+    description:
+      'Creates a new Executive Engineer account with name, email, password, and district (HO only)',
+  })
+  @ApiCreatedResponse({
+    description: 'Executive Engineer created successfully',
+    type: UserResponseDto,
+  })
+  @ApiBadRequestResponse({ description: 'Invalid request body' })
+  @ApiConflictResponse({ description: 'User with email already exists or EE already exists in district' })
+  createEE(@Body() createEEDto: CreateEEDto) {
+    return this.usersService.createEE(createEEDto);
+  }
+
+  @Patch('ee/:id')
+  @Roles(UserRole.HO)
+  @ApiOperation({
+    summary: 'Edit executive engineer',
+    description: 'Edits an existing Executive Engineer account (HO only)',
+  })
+  @ApiParam({ name: 'id', type: String, description: 'EE ID' })
+  @ApiOkResponse({
+    description: 'Executive Engineer updated successfully',
+    type: UserResponseDto,
+  })
+  @ApiBadRequestResponse({ description: 'Invalid request body' })
+  @ApiNotFoundResponse({ description: 'Executive Engineer not found' })
+  @ApiConflictResponse({ description: 'Email or district conflict' })
+  updateEE(@Param('id') id: string, @Body() updateEEDto: UpdateEEDto) {
+    return this.usersService.updateEE(id, updateEEDto);
+  }
+
+  @Get('ees')
+  @Roles(UserRole.HO)
+  @ApiOperation({
+    summary: 'List all executive engineers',
+    description: 'Returns all Executive Engineers with district info (HO only)',
+  })
+  @ApiOkResponse({
+    description: 'Executive Engineers retrieved successfully',
+    type: [UserResponseDto],
+  })
+  findAllEEs() {
+    return this.usersService.findAllEEs();
+  }
+
+  // --- DO Staff (DO_STAFF) Endpoints ---
+
+  @Post('do-staff')
+  @Roles(UserRole.DO)
+  @ApiOperation({
+    summary: 'Create DO staff member',
+    description:
+      'Creates a DO Staff member belonging to the current District Officer (DO only, 1 per DO/district)',
+  })
+  @ApiCreatedResponse({
+    description: 'DO staff member created successfully',
+    type: UserResponseDto,
+  })
+  @ApiBadRequestResponse({ description: 'Invalid request body or inactive DO' })
+  @ApiConflictResponse({ description: 'Email already in use or staff member already exists for this DO/district' })
+  createDOStaff(
+    @Body() createDOStaffDto: CreateDOStaffDto,
+    @Request() req: AuthenticatedRequest,
+  ) {
+    return this.usersService.createDOStaff(createDOStaffDto, req.user.userId);
+  }
+
+  @Get('do-staff')
+  @Roles(UserRole.DO)
+  @ApiOperation({
+    summary: 'Get DO staff member',
+    description: 'Returns the staff member belonging to the current District Officer',
+  })
+  @ApiOkResponse({
+    description: 'DO staff retrieved successfully',
+    type: UserResponseDto,
+  })
+  getDOStaff(@Request() req: AuthenticatedRequest) {
+    return this.usersService.getDOStaff(req.user.userId);
+  }
+
+  @Patch('do-staff/:id')
+  @Roles(UserRole.DO)
+  @ApiOperation({
+    summary: 'Update DO staff member',
+    description: 'Updates details of the DO staff member belonging to current DO',
+  })
+  @ApiParam({ name: 'id', type: String, description: 'Staff ID' })
+  @ApiOkResponse({
+    description: 'DO staff updated successfully',
+    type: UserResponseDto,
+  })
+  @ApiBadRequestResponse({ description: 'Invalid request body' })
+  @ApiNotFoundResponse({ description: 'DO staff not found' })
+  @ApiForbiddenResponse({ description: 'You do not own this DO staff member' })
+  @ApiConflictResponse({ description: 'Email already in use' })
+  updateDOStaff(
+    @Param('id') id: string,
+    @Body() updateDOStaffDto: UpdateDOStaffDto,
+    @Request() req: AuthenticatedRequest,
+  ) {
+    return this.usersService.updateDOStaff(
+      id,
+      req.user.userId,
+      updateDOStaffDto,
+    );
+  }
+
+  // --- Generic User Endpoints (:id) ---
+
   @Get(':id')
   @Roles(
     UserRole.HO,
@@ -547,6 +671,8 @@ export class UsersController {
     UserRole.EM,
     UserRole.TPI,
     UserRole.TPI_STAFF,
+    UserRole.EE,
+    UserRole.DO_STAFF,
   )
   @ApiOperation({
     summary: 'Get user by ID',

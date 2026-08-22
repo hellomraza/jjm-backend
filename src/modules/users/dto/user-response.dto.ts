@@ -88,10 +88,10 @@ export class UserResponseDto {
   is_active: boolean;
 
   @ApiProperty({
-    description: 'Executive Engineer flag (only for DO)',
+    description: 'Bulk order allowed flag (only for DO)',
     example: false,
   })
-  is_executive_engineer: boolean;
+  is_bulk_order_allowed: boolean;
 
   @ApiProperty({
     description: 'Timestamp when the user was created',

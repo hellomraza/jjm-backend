@@ -1,18 +1,18 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { IsEmail, IsNotEmpty, IsString, Matches } from 'class-validator';
 
-export class CreateDODto {
+export class CreateDOStaffDto {
   @ApiProperty({
-    description: 'Full name of the district office manager',
-    example: 'Ahmed Khan',
+    description: 'Full name of the DO staff member',
+    example: 'Sunil Verma',
   })
   @IsString()
   @IsNotEmpty()
   name: string;
 
   @ApiProperty({
-    description: 'Unique email address for the DO',
-    example: 'do@jjm.local',
+    description: 'Unique email address for the DO staff member',
+    example: 'dostaff@jjm.local',
   })
   @IsEmail()
   email: string;
@@ -27,16 +27,6 @@ export class CreateDODto {
   password: string;
 
   @ApiProperty({
-    description: 'District ID',
-    example: 'DIST001',
-    type: String,
-    required: false,
-  })
-  @IsString()
-  district_id?: string;
-
-  // mobile no
-  @ApiProperty({
     description: 'Mobile phone number (10 digits)',
     example: '9123456789',
     required: false,
@@ -46,11 +36,4 @@ export class CreateDODto {
     message: 'Mobile must be a valid 10 digit Indian mobile number',
   })
   mobile?: string;
-
-  @ApiProperty({
-    description: 'Bulk order allowed flag',
-    example: false,
-    required: false,
-  })
-  is_bulk_order_allowed?: boolean;
 }
