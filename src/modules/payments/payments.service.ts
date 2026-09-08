@@ -201,7 +201,13 @@ export class PaymentsService {
 
   async findAll(
     userId: string,
-    query: { page?: number; limit?: number; search?: string },
+    query: {
+      page?: number;
+      limit?: number;
+      search?: string;
+      status?: string;
+      district_id?: string;
+    },
   ) {
     const user = await this.getAuthenticatedUser(userId);
     const page = Math.max(1, Number(query.page) || 1);
@@ -237,9 +243,18 @@ export class PaymentsService {
         ],
       });
     } else if (role === UserRole.HO) {
-      // HO can view all
+      // HO can view all districts or filter by specific district
+      if (query.district_id) {
+        qb.andWhere('p.district_id = :districtId', {
+          districtId: query.district_id,
+        });
+      }
     } else {
       throw new ForbiddenException('Access denied to payment records');
+    }
+
+    if (query.status) {
+      qb.andWhere('p.status = :status', { status: query.status });
     }
 
     if (query.search) {
