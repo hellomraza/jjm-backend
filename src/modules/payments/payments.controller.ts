@@ -62,12 +62,16 @@ export class PaymentsController {
     @Query('page') page?: number,
     @Query('limit') limit?: number,
     @Query('search') search?: string,
+    @Query('status') status?: string,
+    @Query('district_id') district_id?: string,
     @Req() req?: AuthenticatedRequest,
   ) {
     return await this.paymentsService.findAll(req!.user.userId, {
       page,
       limit,
       search,
+      status,
+      district_id,
     });
   }
 
